@@ -30,4 +30,4 @@ const EVENT = {
 
 ## Publish on GitHub Pages
 
-Upload these files to the repository hosted at `https://bel-caylor.github.io/` and enable GitHub Pages for the branch that contains `index.html`.
+Upload these files to the repository hosted at `https://bel-caylor.github.io/hope-caleb/` and enable GitHub Pages for the branch that contains `index.html`.
