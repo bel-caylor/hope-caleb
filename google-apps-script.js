@@ -1,13 +1,14 @@
 const RSVP_SHEET_NAME = "RSVPs";
-const NOTE_SHEET_NAME = "Notes";
+const COMMENT_SHEET_NAME = "Comments";
+const MEDIA_FOLDER_NAME = "H&C Grad";
 
 function doPost(e) {
   const data = e.parameter;
 
-  if (data.formType === "note") {
+  if (isCommentSubmission(data)) {
     const media = saveMediaFile(data);
 
-    getSheet(NOTE_SHEET_NAME, ["Submitted At", "Name", "Comment", "Media Url", "Media Type", "Media Name"]).appendRow([
+    getSheet(COMMENT_SHEET_NAME, ["Submitted At", "Name", "Comment", "Media Url", "Media Type", "Media Name"]).appendRow([
       data.submittedAt || new Date().toISOString(),
       data.name || "",
       data.comment || "",
@@ -33,7 +34,7 @@ function doPost(e) {
 
 function doGet(e) {
   const rsvpRows = getSheet(RSVP_SHEET_NAME, ["Submitted At", "Name", "Email", "Attending", "Guests", "Comment"]).getDataRange().getValues().slice(1);
-  const noteRows = getSheet(NOTE_SHEET_NAME, ["Submitted At", "Name", "Comment", "Media Url", "Media Type", "Media Name"]).getDataRange().getValues().slice(1);
+  const commentRows = getSheet(COMMENT_SHEET_NAME, ["Submitted At", "Name", "Comment", "Media Url", "Media Type", "Media Name"]).getDataRange().getValues().slice(1);
 
   const responses = rsvpRows
     .filter(function(row) {
@@ -47,7 +48,7 @@ function doGet(e) {
     })
     .reverse();
 
-  const notes = noteRows
+  const notes = commentRows
     .filter(function(row) {
       return row[1] || row[2];
     })
@@ -76,6 +77,18 @@ function doGet(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+function isCommentSubmission(data) {
+  if (data.formType === "note" || data.formType === "comment") {
+    return true;
+  }
+
+  if (data.mediaData || data.mediaType || data.mediaName) {
+    return true;
+  }
+
+  return Boolean(data.comment) && !data.attending && !data.guests;
+}
+
 function saveMediaFile(data) {
   if (!data.mediaData || !data.mediaType) {
     return {};
@@ -84,7 +97,7 @@ function saveMediaFile(data) {
   const bytes = Utilities.base64Decode(data.mediaData);
   const name = data.mediaName || "note-upload";
   const blob = Utilities.newBlob(bytes, data.mediaType, name);
-  const file = DriveApp.createFile(blob);
+  const file = getMediaFolder().createFile(blob);
 
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
@@ -93,6 +106,16 @@ function saveMediaFile(data) {
     type: data.mediaType,
     name: name
   };
+}
+
+function getMediaFolder() {
+  const folders = DriveApp.getFoldersByName(MEDIA_FOLDER_NAME);
+
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+
+  return DriveApp.createFolder(MEDIA_FOLDER_NAME);
 }
 
 function getSheet(sheetName, headers) {
