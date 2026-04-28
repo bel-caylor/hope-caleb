@@ -6,16 +6,27 @@ function doPost(e) {
   const data = e.parameter;
 
   if (isCommentSubmission(data)) {
-    const media = saveMediaFile(data);
-
-    getSheet(COMMENT_SHEET_NAME, ["Submitted At", "Name", "Comment", "Media Url", "Media Type", "Media Name"]).appendRow([
+    const sheet = getSheet(COMMENT_SHEET_NAME, ["Submitted At", "Name", "Comment", "Media Url", "Media Type", "Media Name", "Media Error"]);
+    sheet.appendRow([
       data.submittedAt || new Date().toISOString(),
       data.name || "",
       data.comment || "",
-      media.url || "",
-      media.type || "",
-      media.name || ""
+      "",
+      data.mediaType || "",
+      data.mediaName || "",
+      ""
     ]);
+
+    const row = sheet.getLastRow();
+    SpreadsheetApp.flush();
+
+    const media = saveMediaFile(data);
+    sheet.getRange(row, 4, 1, 4).setValues([[
+      media.url || "",
+      media.type || data.mediaType || "",
+      media.name || data.mediaName || "",
+      media.error || ""
+    ]]);
   } else {
     getSheet(RSVP_SHEET_NAME, ["Submitted At", "Name", "Email", "Attending", "Guests", "Comment"]).appendRow([
       data.submittedAt || new Date().toISOString(),
@@ -34,7 +45,7 @@ function doPost(e) {
 
 function doGet(e) {
   const rsvpRows = getSheet(RSVP_SHEET_NAME, ["Submitted At", "Name", "Email", "Attending", "Guests", "Comment"]).getDataRange().getValues().slice(1);
-  const commentRows = getSheet(COMMENT_SHEET_NAME, ["Submitted At", "Name", "Comment", "Media Url", "Media Type", "Media Name"]).getDataRange().getValues().slice(1);
+  const commentRows = getSheet(COMMENT_SHEET_NAME, ["Submitted At", "Name", "Comment", "Media Url", "Media Type", "Media Name", "Media Error"]).getDataRange().getValues().slice(1);
 
   const responses = rsvpRows
     .filter(function(row) {
@@ -94,18 +105,26 @@ function saveMediaFile(data) {
     return {};
   }
 
-  const bytes = Utilities.base64Decode(data.mediaData);
-  const name = data.mediaName || "note-upload";
-  const blob = Utilities.newBlob(bytes, data.mediaType, name);
-  const file = getMediaFolder().createFile(blob);
+  try {
+    const bytes = Utilities.base64Decode(data.mediaData);
+    const name = data.mediaName || "note-upload";
+    const blob = Utilities.newBlob(bytes, data.mediaType, name);
+    const file = getMediaFolder().createFile(blob);
 
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-  return {
-    url: file.getUrl(),
-    type: data.mediaType,
-    name: name
-  };
+    return {
+      url: file.getUrl(),
+      type: data.mediaType,
+      name: name
+    };
+  } catch (error) {
+    return {
+      type: data.mediaType || "",
+      name: data.mediaName || "",
+      error: error && error.message ? error.message : String(error)
+    };
+  }
 }
 
 function getMediaFolder() {
@@ -128,6 +147,8 @@ function getSheet(sheetName, headers) {
 
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(headers);
+  } else if (sheet.getLastColumn() < headers.length) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
 
   return sheet;

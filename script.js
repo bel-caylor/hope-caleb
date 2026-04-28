@@ -4,7 +4,7 @@ const EVENT = {
   location: "Casa Caylor",
   food: "BBQ, drinks, and cupcakes.",
   saveViewFood: "BBQ, drinks, and cupcakes. Bring a side or appetizer to share.",
-  googleScriptUrl: "https://script.google.com/macros/s/AKfycbysJEGlQau-zVUi0vW3pKBtwG32lD6UBKu3X3Cx267R6tOKHsEDRha5B3mY25q7OKgU/exec"
+  googleScriptUrl: "https://script.google.com/macros/s/AKfycbyB2bNTF1rKhY9Dwx8EIRKdIiCdJGxHSXOyvaPy-6D9NAn2uuS2IJrs4LiQd1nEctOt/exec"
 };
 
 const form = document.querySelector("#rsvpForm");
@@ -281,7 +281,7 @@ function renderNotes(notes) {
 }
 
 function renderNoteMedia(note) {
-  if (!note.mediaUrl) {
+  if (!isUsableUrl(note.mediaUrl)) {
     return "";
   }
 
@@ -301,6 +301,10 @@ function renderNoteMedia(note) {
 }
 
 function getDrivePreviewUrl(url) {
+  if (!isUsableUrl(url)) {
+    return "";
+  }
+
   const idMatch = String(url).match(/\/d\/([^/]+)/);
 
   if (!idMatch) {
@@ -308,6 +312,11 @@ function getDrivePreviewUrl(url) {
   }
 
   return `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w1200`;
+}
+
+function isUsableUrl(value) {
+  const url = String(value || "").trim();
+  return Boolean(url) && url !== "undefined" && url !== "null";
 }
 
 function escapeHtml(value) {
@@ -421,6 +430,7 @@ noteForm.addEventListener("submit", async (event) => {
   }
 
   const payload = new FormData(noteForm);
+  payload.delete("media");
   const submittedNote = {
     name: payload.get("name"),
     comment: payload.get("comment"),

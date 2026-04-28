@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbysJEGlQau-zVUi0vW3pKBtwG32lD6UBKu3X3Cx267R6tOKHsEDRha5B3mY25q7OKgU/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyB2bNTF1rKhY9Dwx8EIRKdIiCdJGxHSXOyvaPy-6D9NAn2uuS2IJrs4LiQd1nEctOt/exec";
 const SLIDE_DURATION_MS = 6500;
 
 const LOCAL_PHOTOS = [
@@ -136,6 +136,10 @@ function createMediaNoteSlide(note) {
 }
 
 function getMediaMarkup(note) {
+  if (!isUsableUrl(note.mediaUrl)) {
+    return createNoteSlide(note).innerHTML;
+  }
+
   const url = escapeHtml(note.mediaUrl);
 
   if (note.mediaType && note.mediaType.startsWith("image/")) {
@@ -186,11 +190,19 @@ function setStatus(message) {
 }
 
 function getDriveThumbnailUrl(url) {
+  if (!isUsableUrl(url)) {
+    return "";
+  }
+
   const id = getDriveFileId(url);
   return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1600` : url;
 }
 
 function getDrivePreviewUrl(url) {
+  if (!isUsableUrl(url)) {
+    return "";
+  }
+
   const id = getDriveFileId(url);
   return id ? `https://drive.google.com/file/d/${id}/preview` : url;
 }
@@ -198,6 +210,11 @@ function getDrivePreviewUrl(url) {
 function getDriveFileId(url) {
   const match = String(url).match(/\/d\/([^/]+)/);
   return match ? match[1] : "";
+}
+
+function isUsableUrl(value) {
+  const url = String(value || "").trim();
+  return Boolean(url) && url !== "undefined" && url !== "null";
 }
 
 function escapeHtml(value) {
