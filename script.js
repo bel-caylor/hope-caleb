@@ -3,7 +3,7 @@ const EVENT = {
   time: "Open House from 3-7pm",
   location: "Casa Caylor",
   food: "BBQ, drinks, and cupcakes. Bring a side or appetizer to share.",
-  googleScriptUrl: ""
+  googleScriptUrl: "https://script.google.com/macros/s/AKfycbyfVDtoBuMCZ-nZc88ts1-Akr2B65JD1y-qu-WMBizqS5MbXOS7eDmIScI3nGXG8LSR/exec"
 };
 
 const form = document.querySelector("#rsvpForm");
