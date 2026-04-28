@@ -31,3 +31,10 @@ const EVENT = {
 ## Publish on GitHub Pages
 
 Upload these files to the repository hosted at `https://bel-caylor.github.io/hope-caleb/` and enable GitHub Pages for the branch that contains `index.html`.
+
+## Share Links
+
+- Out-of-town / congratulations version: `https://bel-caylor.github.io/hope-caleb/`
+- Party RSVP version: `https://bel-caylor.github.io/hope-caleb/?view=party`
+- Save the Date version: `https://bel-caylor.github.io/hope-caleb/?view=save`
+- TV slideshow: `https://bel-caylor.github.io/hope-caleb/slideshow.html`

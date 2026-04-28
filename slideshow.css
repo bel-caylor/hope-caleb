@@ -1,0 +1,152 @@
+:root {
+  --ink: #fffdf8;
+  --muted: rgba(255, 253, 248, 0.74);
+  --green: #21463a;
+  --red: #9c1f31;
+  --brown: #8a5f2d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: #08130f;
+  color: var(--ink);
+  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.tv-slideshow {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(156, 31, 49, 0.22), transparent 34%),
+    linear-gradient(135deg, #07100d, #19382e 58%, #07100d);
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(2rem, 5vw, 5rem);
+  opacity: 0;
+  transform: scale(1.015);
+  transition: opacity 900ms ease, transform 900ms ease;
+}
+
+.slide.is-active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.slide__photo,
+.slide__video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border: 0;
+  border-radius: 10px;
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.45);
+}
+
+.slide__photo--cover {
+  object-fit: cover;
+}
+
+.slide__message,
+.slide__note {
+  width: min(1180px, 88vw);
+  padding: clamp(2rem, 5vw, 5rem);
+  border: 1px solid rgba(255, 253, 248, 0.18);
+  border-radius: 12px;
+  background: rgba(8, 19, 15, 0.68);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.34);
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.slide__eyebrow {
+  margin: 0 0 1rem;
+  color: #f0d8a8;
+  font-size: clamp(1.1rem, 2vw, 1.8rem);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+h1,
+.slide__note-text {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  line-height: 1.08;
+}
+
+h1 {
+  font-size: clamp(4rem, 11vw, 11rem);
+}
+
+.slide__message p:last-child,
+.slide__note-from {
+  margin: 1.5rem 0 0;
+  color: var(--muted);
+  font-size: clamp(1.45rem, 3vw, 3rem);
+}
+
+.slide__note-text {
+  font-size: clamp(2.4rem, 5vw, 6.2rem);
+}
+
+.slide__note-from {
+  color: #f0d8a8;
+  font-weight: 800;
+}
+
+.slide__split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: clamp(1.25rem, 3vw, 3rem);
+  width: min(1500px, 92vw);
+  height: min(880px, 86vh);
+  align-items: center;
+}
+
+.slide__split .slide__note {
+  width: 100%;
+  text-align: left;
+}
+
+.slide__split .slide__note-text {
+  font-size: clamp(1.8rem, 3.6vw, 4.4rem);
+}
+
+.tv-status {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 4;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.12);
+  color: rgba(255, 253, 248, 0.7);
+  font-size: 0.9rem;
+}
+
+.tv-status:empty {
+  display: none;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  .slide__split {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}

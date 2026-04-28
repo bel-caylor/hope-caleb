@@ -3,9 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="RSVP for Hope Caylor and Caleb Montes' engagement and graduation party.">
+    <meta name="description" content="Celebrate Hope and Caleb's engagement and graduation.">
     <meta name="robots" content="noindex, nofollow, noarchive">
-    <title>Hope & Caleb | Engagement and Graduation Party</title>
+    <title>Hope & Caleb | Engagement and Graduation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -20,39 +23,67 @@
       <nav class="nav" aria-label="Primary navigation">
         <a href="#home" class="nav__brand">Hope & Caleb</a>
         <div class="nav__links">
-          <a href="#details">Details</a>
           <a href="#photos">Photos</a>
-          <a href="#rsvp">RSVP</a>
+          <a href="#notes">Notes</a>
+          <a class="party-only" href="#rsvp">RSVP</a>
         </div>
       </nav>
       <section class="hero__content">
-        <p class="eyebrow">Engagement & Graduation Party</p>
-        <h1>Hope Caylor & Caleb Montes</h1>
-        <p class="hero__copy">Open house from 3-7pm at Casa Caylor with BBQ, drinks, and cupcakes.</p>
-        <a class="button button--light" href="#rsvp">RSVP</a>
+        <p class="eyebrow">Engagement & Graduation</p>
+        <h1>Hope & Caleb</h1>
+        <div class="hero__actions">
+          <a class="button button--light party-only" href="#rsvp">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M8 2v4"></path>
+              <path d="M16 2v4"></path>
+              <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+              <path d="M3 10h18"></path>
+              <path d="m8 15 2 2 5-5"></path>
+            </svg>
+            <span>RSVP</span>
+          </a>
+          <a class="button button--heart" href="#notes" aria-label="Share Note" title="Share Note">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6L12 21l8.8-8.8a5.4 5.4 0 0 0 0-7.6z"></path>
+            </svg>
+            <span>Share Love</span>
+          </a>
+        </div>
       </section>
     </header>
 
     <main>
-      <section class="section details" id="details" aria-labelledby="details-heading">
+      <section class="section details party-only" id="details" aria-labelledby="details-heading">
         <div class="section__intro">
           <p class="eyebrow">Celebrate With Us</p>
           <h2 id="details-heading">Party Details</h2>
         </div>
         <div class="details__grid">
           <article class="detail">
+            <span class="detail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M3 10h18"></path></svg>
+            </span>
             <span class="detail__label">Date</span>
             <strong data-event-date>Coming soon</strong>
           </article>
           <article class="detail">
+            <span class="detail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+            </span>
             <span class="detail__label">Time</span>
             <strong data-event-time>Coming soon</strong>
           </article>
           <article class="detail">
+            <span class="detail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 21s7-5.1 7-11a7 7 0 0 0-14 0c0 5.9 7 11 7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+            </span>
             <span class="detail__label">Location</span>
             <strong data-event-location>Coming soon</strong>
           </article>
           <article class="detail detail--wide">
+            <span class="detail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M7 2v20"></path><path d="M11 2v8a4 4 0 0 1-8 0V2"></path><path d="M17 2v20"></path><path d="M17 2c3 2 4 5 4 9h-4"></path></svg>
+            </span>
             <span class="detail__label">Food</span>
             <strong data-event-food>Coming soon</strong>
           </article>
@@ -63,6 +94,10 @@
         <div class="save-date-slideshow" aria-label="Engagement photos">
           <img class="save-date-slideshow__image is-active" src="images/engagement/engagement ring.jpg" alt="Hope showing her engagement ring">
           <img class="save-date-slideshow__image" src="images/engagement/engagement.jpg" alt="Hope and Caleb celebrating their engagement">
+          <div class="slider-dots" aria-label="Choose engagement photo">
+            <button class="slider-dot is-active" type="button" aria-label="Show engagement photo 1" data-slider-dot="engagement" data-slide-index="0"></button>
+            <button class="slider-dot" type="button" aria-label="Show engagement photo 2" data-slider-dot="engagement" data-slide-index="1"></button>
+          </div>
         </div>
         <div class="save-date__content">
           <p class="eyebrow">Save the Date</p>
@@ -73,48 +108,158 @@
 
       <section class="section story" aria-labelledby="story-heading">
         <div class="story__text">
-          <p class="eyebrow">One Party, Two Milestones</p>
-          <h2 id="story-heading">A season worth gathering for.</h2>
-          <p>
+          <p class="eyebrow">Two Milestones</p>
+          <h2 id="story-heading">A season worth celebrating.</h2>
+          <p data-story-copy>
             Hope and Caleb are engaged, newly graduated, and grateful for the people
             who have encouraged them along the way. We will have BBQ, drinks, and
             cupcakes. Bring a side or appetizer to share.
           </p>
         </div>
         <div class="photo-slideshow" aria-label="Graduation celebration photos">
-          <img class="photo-slideshow__image is-active" src="images/grad celebration0.jpg" alt="Graduation celebration photo 0">
-          <img class="photo-slideshow__image" src="images/grad celebration1.jpg" alt="Graduation celebration photo 1">
-          <img class="photo-slideshow__image" src="images/grad celebration2.jpg" alt="Graduation celebration photo 2">
-          <img class="photo-slideshow__image" src="images/grad celebration3.jpg" alt="Graduation celebration photo 3">
+          <img class="photo-slideshow__image is-active" src="images/celebration/grad celebration0.jpg" alt="Graduation celebration photo 1">
+          <img class="photo-slideshow__image" src="images/celebration/grad celebration1.jpg" alt="Graduation celebration photo 2">
+          <img class="photo-slideshow__image" src="images/celebration/grad celebration2.jpg" alt="Graduation celebration photo 3">
+          <img class="photo-slideshow__image" src="images/celebration/grad celebration3.jpg" alt="Graduation celebration photo 4">
+          <div class="slider-dots" aria-label="Choose graduation celebration photo">
+            <button class="slider-dot is-active" type="button" aria-label="Show graduation celebration photo 1" data-slider-dot="graduation" data-slide-index="0"></button>
+            <button class="slider-dot" type="button" aria-label="Show graduation celebration photo 2" data-slider-dot="graduation" data-slide-index="1"></button>
+            <button class="slider-dot" type="button" aria-label="Show graduation celebration photo 3" data-slider-dot="graduation" data-slide-index="2"></button>
+            <button class="slider-dot" type="button" aria-label="Show graduation celebration photo 4" data-slider-dot="graduation" data-slide-index="3"></button>
+          </div>
         </div>
       </section>
 
-      <section class="section gallery" id="photos" aria-label="Photo gallery">
-        <img src="images/gallery/engagement ring.jpg" alt="Hope showing her engagement ring" loading="lazy">
-        <img src="images/gallery/engagement.jpg" alt="Hope and Caleb smiling together outdoors" loading="lazy">
-        <img src="images/gallery/grad caleb UTSA.jpg" alt="Caleb in graduation attire at UTSA" loading="lazy">
-        <img src="images/gallery/grad caleb.jpg" alt="Caleb in graduation attire" loading="lazy">
-        <img src="images/gallery/grad hats.jpg" alt="Graduation hats celebration photo" loading="lazy">
-        <img src="images/gallery/grad hc UTSA.jpg" alt="Hope and Caleb at UTSA graduation" loading="lazy">
-        <img src="images/gallery/grad hope UTSA.jpg" alt="Hope in graduation attire at UTSA" loading="lazy">
-        <img src="images/gallery/grad hope.jpg" alt="Hope in graduation attire" loading="lazy">
-        <img src="images/gallery/grad standing.jpg" alt="Hope and Caleb standing in graduation attire" loading="lazy">
-        <img src="images/gallery/grad standing2.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy">
-        <img src="images/gallery/grad UTSA friends.jpg" alt="Graduation celebration with friends at UTSA" loading="lazy">
-        <img src="images/gallery/grad water hope.jpg" alt="Hope celebrating graduation" loading="lazy">
-        <img src="images/gallery/stairs grad.jpg" alt="Hope and Caleb walking together in graduation attire" loading="lazy">
-        <img src="images/gallery/standing grad.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy">
+      <section class="section future" aria-labelledby="future-heading">
+        <img src="images/hope-job.jpg" alt="Hope trying a bionic hand at Alt-Bionics" loading="lazy">
+        <div class="future__content">
+          <p class="eyebrow">Future Plans</p>
+          <h2 id="future-heading">Hope's next chapter.</h2>
+          <p>
+            Hope has accepted a full-time role with
+            <a href="https://www.altbionics.com/" target="_blank" rel="noopener">Alt-Bionics</a>,
+            a company building advanced, accessible bionic hands for prosthetics and robotics.
+            She will also begin working on her electrical engineering master's degree in the fall.
+          </p>
+        </div>
       </section>
 
-      <section class="section rsvp" id="rsvp" aria-labelledby="rsvp-heading">
+      <section class="section future future--caleb" aria-labelledby="caleb-future-heading">
+        <img src="images/gallery/grad caleb.jpg" alt="Caleb in graduation attire" loading="lazy">
+        <div class="future__content">
+          <p class="eyebrow">Future Plans</p>
+          <h2 id="caleb-future-heading">Caleb's next chapter.</h2>
+          <p>
+            Caleb will be working for
+            <a href="https://www.caci.com/" target="_blank" rel="noopener">CACI</a>
+            and continuing his education by pursuing his master's degree in electrical engineering.
+          </p>
+        </div>
+      </section>
+
+      <section class="section gallery-section" id="photos" aria-labelledby="photos-heading">
+        <div class="section__intro">
+          <p class="eyebrow">Photos</p>
+          <h2 id="photos-heading">Gallery</h2>
+        </div>
+        <div class="portrait-slideshow" aria-label="Portrait photos">
+          <img class="portrait-slideshow__image is-active" src="images/portrait/grad caleb UTSA.jpg" alt="Caleb in graduation attire at UTSA">
+          <img class="portrait-slideshow__image" src="images/portrait/grad hc UTSA.jpg" alt="Hope and Caleb at UTSA graduation">
+          <img class="portrait-slideshow__image" src="images/portrait/grad hope UTSA.jpg" alt="Hope in graduation attire at UTSA">
+          <img class="portrait-slideshow__image" src="images/portrait/grad UTSA friends.jpg" alt="Graduation celebration with friends at UTSA">
+          <div class="slider-dots" aria-label="Choose portrait photo">
+            <button class="slider-dot is-active" type="button" aria-label="Show portrait photo 1" data-slider-dot="portrait" data-slide-index="0"></button>
+            <button class="slider-dot" type="button" aria-label="Show portrait photo 2" data-slider-dot="portrait" data-slide-index="1"></button>
+            <button class="slider-dot" type="button" aria-label="Show portrait photo 3" data-slider-dot="portrait" data-slide-index="2"></button>
+            <button class="slider-dot" type="button" aria-label="Show portrait photo 4" data-slider-dot="portrait" data-slide-index="3"></button>
+          </div>
+        </div>
+        <div class="gallery-slideshow" aria-label="Gallery photos">
+          <img class="gallery-slideshow__image is-active" src="images/gallery/grad caleb.jpg" alt="Caleb in graduation attire" loading="lazy">
+          <img class="gallery-slideshow__image" src="images/gallery/grad hats.jpg" alt="Graduation hats celebration photo" loading="lazy">
+          <img class="gallery-slideshow__image" src="images/gallery/grad hope.jpg" alt="Hope in graduation attire" loading="lazy">
+          <img class="gallery-slideshow__image" src="images/gallery/grad standing.jpg" alt="Hope and Caleb standing in graduation attire" loading="lazy">
+          <img class="gallery-slideshow__image" src="images/gallery/grad standing2.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy">
+          <img class="gallery-slideshow__image" src="images/gallery/grad water hope.jpg" alt="Hope celebrating graduation" loading="lazy">
+          <img class="gallery-slideshow__image" src="images/gallery/stairs grad.jpg" alt="Hope and Caleb walking together in graduation attire" loading="lazy">
+          <img class="gallery-slideshow__image" src="images/gallery/standing grad.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy">
+          <div class="slider-dots" aria-label="Choose gallery photo">
+            <button class="slider-dot is-active" type="button" aria-label="Show gallery photo 1" data-slider-dot="gallery" data-slide-index="0"></button>
+            <button class="slider-dot" type="button" aria-label="Show gallery photo 2" data-slider-dot="gallery" data-slide-index="1"></button>
+            <button class="slider-dot" type="button" aria-label="Show gallery photo 3" data-slider-dot="gallery" data-slide-index="2"></button>
+            <button class="slider-dot" type="button" aria-label="Show gallery photo 4" data-slider-dot="gallery" data-slide-index="3"></button>
+            <button class="slider-dot" type="button" aria-label="Show gallery photo 5" data-slider-dot="gallery" data-slide-index="4"></button>
+            <button class="slider-dot" type="button" aria-label="Show gallery photo 6" data-slider-dot="gallery" data-slide-index="5"></button>
+            <button class="slider-dot" type="button" aria-label="Show gallery photo 7" data-slider-dot="gallery" data-slide-index="6"></button>
+            <button class="slider-dot" type="button" aria-label="Show gallery photo 8" data-slider-dot="gallery" data-slide-index="7"></button>
+          </div>
+        </div>
+        <div class="gallery" aria-label="Photo gallery">
+          <img src="images/portrait/grad caleb UTSA.jpg" alt="Caleb in graduation attire at UTSA" loading="lazy">
+          <img src="images/gallery/grad caleb.jpg" alt="Caleb in graduation attire" loading="lazy">
+          <img src="images/portrait/grad hc UTSA.jpg" alt="Hope and Caleb at UTSA graduation" loading="lazy">
+          <img src="images/gallery/grad hats.jpg" alt="Graduation hats celebration photo" loading="lazy">
+          <img src="images/portrait/grad hope UTSA.jpg" alt="Hope in graduation attire at UTSA" loading="lazy">
+          <img src="images/gallery/grad hope.jpg" alt="Hope in graduation attire" loading="lazy">
+          <img src="images/portrait/grad UTSA friends.jpg" alt="Graduation celebration with friends at UTSA" loading="lazy">
+          <img src="images/gallery/grad standing.jpg" alt="Hope and Caleb standing in graduation attire" loading="lazy">
+          <img src="images/gallery/grad standing2.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy">
+          <img src="images/gallery/grad water hope.jpg" alt="Hope celebrating graduation" loading="lazy">
+          <img src="images/gallery/stairs grad.jpg" alt="Hope and Caleb walking together in graduation attire" loading="lazy">
+          <img src="images/gallery/standing grad.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy">
+        </div>
+      </section>
+
+      <section class="section notes" id="notes" aria-labelledby="notes-heading">
+        <div class="notes__panel">
+          <div class="section__intro">
+            <p class="eyebrow">Send Some Love</p>
+            <h2 id="notes-heading">Congratulations Notes</h2>
+            <p>Help us gather fun photos, short videos, memories, and congratulations for Hope and Caleb.</p>
+          </div>
+
+          <form id="noteForm" class="form">
+            <input type="hidden" name="formType" value="note">
+            <input type="hidden" name="submittedAt" id="noteSubmittedAt">
+            <div class="form__row">
+              <label for="noteName">Name</label>
+              <input id="noteName" name="name" type="text" autocomplete="name" required>
+            </div>
+
+            <div class="form__row">
+              <label for="noteComment">Message</label>
+              <textarea id="noteComment" name="comment" rows="5" placeholder="Share a memory, congratulations, inside joke, or quick note for Hope and Caleb." required></textarea>
+            </div>
+
+            <div class="form__row">
+              <label for="noteMedia">Fun photo or short video</label>
+              <p class="form__hint">Optional. Candid photos, silly clips, old memories, or short congratulations videos up to 10 MB work best.</p>
+              <input id="noteMedia" name="media" type="file" accept="image/*,video/*">
+              <input id="noteMediaName" name="mediaName" type="hidden">
+              <input id="noteMediaType" name="mediaType" type="hidden">
+              <input id="noteMediaData" name="mediaData" type="hidden">
+            </div>
+
+            <button class="button" type="submit">Share Note</button>
+            <p class="form__status" id="noteStatus" role="status" aria-live="polite"></p>
+          </form>
+
+          <div class="notes__list" id="notesList">
+            <p class="responses__empty">Notes will appear here after the Google Sheet is connected.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section rsvp party-only" id="rsvp" aria-labelledby="rsvp-heading">
         <div class="rsvp__panel">
           <div class="section__intro">
             <p class="eyebrow">Let Us Know</p>
             <h2 id="rsvp-heading">RSVP</h2>
-            <p>Send your response and leave a note for Hope and Caleb. Bring a side or appetizer to share.</p>
+            <p>Send your response for the open house. Bring a side or appetizer to share.</p>
           </div>
 
           <form id="rsvpForm" class="form">
+            <input type="hidden" name="formType" value="rsvp">
             <input type="hidden" name="submittedAt" id="submittedAt">
             <div class="form__row">
               <label for="name">Name</label>
@@ -147,9 +292,9 @@
               <input id="guests" name="guests" type="number" min="0" max="10" value="1" inputmode="numeric">
             </div>
 
-            <div class="form__row">
-              <label for="comment">Comment</label>
-              <textarea id="comment" name="comment" rows="5" placeholder="A note, congratulations, dietary needs, or anything we should know."></textarea>
+            <div class="form__row rsvp-comment">
+              <label for="rsvpComment">Comment</label>
+              <textarea id="rsvpComment" name="comment" rows="5" placeholder="Note what side/appetizer/dessert you're going to bring, or anything we should know."></textarea>
             </div>
 
             <button class="button" type="submit">Send RSVP</button>
@@ -158,11 +303,11 @@
         </div>
       </section>
 
-      <section class="section responses" id="responses" aria-labelledby="responses-heading">
+      <section class="section responses party-only" id="responses" aria-labelledby="responses-heading">
         <div class="section__intro">
-          <p class="eyebrow">Guest Notes</p>
+          <p class="eyebrow">Guest List</p>
           <h2 id="responses-heading">RSVP Responses</h2>
-          <p>Name, attending status, and comments from submitted RSVPs.</p>
+          <p>Name and attending status from submitted RSVPs.</p>
         </div>
         <div class="responses__list" id="responsesList">
           <p class="responses__empty">Responses will appear here after the Google Sheet is connected.</p>
@@ -171,11 +316,26 @@
     </main>
 
     <footer class="footer">
-      <span>Hope Caylor & Caleb Montes</span>
+      <span>Hope & Caleb</span>
       <a href="#home">Back to top</a>
     </footer>
 
-    <a class="floating-rsvp" href="#rsvp" aria-label="RSVP">RSVP</a>
+    <div class="floating-actions" aria-label="Quick actions">
+      <a class="floating-action party-only" href="#rsvp" aria-label="RSVP" title="RSVP">
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M8 2v4"></path>
+          <path d="M16 2v4"></path>
+          <path d="M3 10h18"></path>
+          <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+          <path d="m8 15 2 2 5-5"></path>
+        </svg>
+      </a>
+      <a class="floating-action floating-action--note" href="#notes" aria-label="Share Note" title="Share Note">
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6L12 21l8.8-8.8a5.4 5.4 0 0 0 0-7.6z"></path>
+        </svg>
+      </a>
+    </div>
 
     <div class="lightbox" id="photoLightbox" role="dialog" aria-modal="true" aria-label="Photo preview" hidden>
       <button class="lightbox__close" type="button" aria-label="Close photo preview">Close</button>
