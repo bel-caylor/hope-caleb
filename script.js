@@ -4,7 +4,7 @@ const EVENT = {
   location: "Casa Caylor",
   food: "BBQ, drinks, and cupcakes.",
   saveViewFood: "BBQ, drinks, and cupcakes. Bring a side or appetizer to share.",
-  googleScriptUrl: "https://script.google.com/macros/s/AKfycbxWIh9lszYwT0588uooKNQLKTbbxHRdqPWDmcgS6VxympnZ7witY9mrs1EWoziTYXjl/exec"
+  googleScriptUrl: "https://script.google.com/macros/s/AKfycbzZ2peyNc4rQABN3d-CzTc-HF90mJun19RO4oFbseruxx9U7PMFol2fMlv0J1jSs1w/exec"
 };
 
 const form = document.querySelector("#rsvpForm");
@@ -26,9 +26,11 @@ const noteMediaTypeInput = document.querySelector("#noteMediaType");
 const noteMediaDataInput = document.querySelector("#noteMediaData");
 const viewMode = new URLSearchParams(window.location.search).get("view");
 const isSaveView = viewMode === "save";
-const isPartyView = viewMode === "party" || isSaveView;
+const isPotluckView = viewMode === "potluck";
+const isPartyView = viewMode === "party" || isPotluckView || isSaveView;
 
 document.body.classList.toggle("is-save-view", isSaveView);
+document.body.classList.toggle("is-potluck-view", isPotluckView);
 document.body.classList.toggle("is-party-view", isPartyView);
 
 if (!isPartyView) {
@@ -38,7 +40,8 @@ if (!isPartyView) {
 document.querySelector("[data-event-date]").textContent = EVENT.date;
 document.querySelector("[data-event-time]").textContent = EVENT.time;
 document.querySelector("[data-event-location]").textContent = EVENT.location;
-document.querySelector("[data-event-food]").textContent = isSaveView ? EVENT.saveViewFood : EVENT.food;
+document.querySelector("[data-event-food]").textContent = isPotluckView ? EVENT.saveViewFood : EVENT.food;
+document.querySelector("[data-rsvp-copy]").textContent = isPotluckView ? "Send your response for the open house. Bring a side or appetizer to share." : "Send your response for the open house.";
 
 if (heroSlides.length > 1) {
   let activeSlide = 0;
@@ -235,7 +238,7 @@ function renderResponses(responses) {
   }
 
   const visibleResponses = responses.filter((response) => {
-    return response.name || response.attending;
+    return response.name || response.attending || response.comment;
   });
 
   if (!visibleResponses.length) {
@@ -246,6 +249,7 @@ function renderResponses(responses) {
   responsesList.innerHTML = visibleResponses.map((response) => {
     const name = escapeHtml(response.name || "Guest");
     const attending = escapeHtml(response.attending || "RSVP");
+    const comment = escapeHtml(response.comment || "");
 
     return `
       <article class="response-card">
@@ -253,6 +257,7 @@ function renderResponses(responses) {
           <p class="response-card__name">${name}</p>
           <span class="response-card__attending">${attending}</span>
         </div>
+        ${comment ? `<p class="response-card__comment">${comment}</p>` : ""}
       </article>
     `;
   }).join("");

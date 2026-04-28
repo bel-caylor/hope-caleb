@@ -36,5 +36,6 @@ Upload these files to the repository hosted at `https://bel-caylor.github.io/hop
 
 - Out-of-town / congratulations version: `https://bel-caylor.github.io/hope-caleb/`
 - Party RSVP version: `https://bel-caylor.github.io/hope-caleb/?view=party`
+- Potluck RSVP version: `https://bel-caylor.github.io/hope-caleb/?view=potluck`
 - Save the Date version: `https://bel-caylor.github.io/hope-caleb/?view=save`
 - TV slideshow: `https://bel-caylor.github.io/hope-caleb/slideshow.html`

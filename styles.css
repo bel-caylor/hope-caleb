@@ -435,12 +435,12 @@ h2 {
 }
 
 .save-date,
-.rsvp-comment {
+.form .rsvp-comment {
   display: none;
 }
 
 .is-save-view .save-date,
-.is-save-view .rsvp-comment {
+.is-potluck-view .form .rsvp-comment {
   display: grid;
 }
 

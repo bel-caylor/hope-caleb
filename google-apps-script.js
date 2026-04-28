@@ -49,12 +49,13 @@ function doGet(e) {
 
   const responses = rsvpRows
     .filter(function(row) {
-      return row[1] || row[3];
+      return row[1] || row[3] || row[5];
     })
     .map(function(row) {
       return {
         name: row[1] || "",
-        attending: row[3] || ""
+        attending: row[3] || "",
+        comment: row[5] || ""
       };
     })
     .reverse();

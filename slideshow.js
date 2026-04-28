@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxWIh9lszYwT0588uooKNQLKTbbxHRdqPWDmcgS6VxympnZ7witY9mrs1EWoziTYXjl/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZ2peyNc4rQABN3d-CzTc-HF90mJun19RO4oFbseruxx9U7PMFol2fMlv0J1jSs1w/exec";
 const SLIDE_DURATION_MS = 6500;
 
 const LOCAL_PHOTOS = [
