@@ -61,7 +61,7 @@ function doGet(e) {
 
   const notes = commentRows
     .filter(function(row) {
-      return row[1] || row[2];
+      return row[1] || row[2] || row[3];
     })
     .map(function(row) {
       return {

@@ -376,12 +376,6 @@ h2 {
     var(--green-light);
 }
 
-.future--caleb img {
-  max-height: 720px;
-  object-fit: cover;
-  object-position: center 18%;
-}
-
 .photo-slideshow {
   position: relative;
   width: 100%;
@@ -541,6 +535,31 @@ h2 {
   box-shadow: var(--shadow);
   touch-action: pan-y;
   display: none;
+}
+
+.caleb-slideshow {
+  position: relative;
+  width: 100%;
+  min-height: 620px;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  touch-action: pan-y;
+}
+
+.caleb-slideshow__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+
+.caleb-slideshow__image.is-active {
+  opacity: 1;
 }
 
 .save-date__content {
@@ -975,10 +994,10 @@ textarea:focus {
     padding-bottom: 6vh;
   }
 
-  h1 {
-    max-width: 10.6ch;
-    font-size: clamp(2.05rem, 11.3vw, 3.85rem);
-    white-space: normal;
+  .hero h1 {
+    max-width: none;
+    font-size: clamp(2.35rem, 10.5vw, 3.1rem);
+    white-space: nowrap;
   }
 
   .hero__copy {

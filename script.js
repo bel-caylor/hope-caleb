@@ -4,7 +4,7 @@ const EVENT = {
   location: "Casa Caylor",
   food: "BBQ, drinks, and cupcakes.",
   saveViewFood: "BBQ, drinks, and cupcakes. Bring a side or appetizer to share.",
-  googleScriptUrl: "https://script.google.com/macros/s/AKfycbyB2bNTF1rKhY9Dwx8EIRKdIiCdJGxHSXOyvaPy-6D9NAn2uuS2IJrs4LiQd1nEctOt/exec"
+  googleScriptUrl: "https://script.google.com/macros/s/AKfycbxWIh9lszYwT0588uooKNQLKTbbxHRdqPWDmcgS6VxympnZ7witY9mrs1EWoziTYXjl/exec"
 };
 
 const form = document.querySelector("#rsvpForm");
@@ -76,6 +76,13 @@ setupSlider({
   slides: Array.from(document.querySelectorAll(".gallery-slideshow__image")),
   dots: Array.from(document.querySelectorAll('[data-slider-dot="gallery"]')),
   intervalMs: 2200
+});
+
+setupSlider({
+  container: document.querySelector(".caleb-slideshow"),
+  slides: Array.from(document.querySelectorAll(".caleb-slideshow__image")),
+  dots: Array.from(document.querySelectorAll('[data-slider-dot="caleb"]')),
+  intervalMs: 2400
 });
 
 if (floatingActions && hero) {
@@ -257,7 +264,7 @@ function renderNotes(notes) {
   }
 
   const visibleNotes = notes.filter((note) => {
-    return note.name || note.comment;
+    return note.name || note.comment || isUsableUrl(note.mediaUrl);
   });
 
   if (!visibleNotes.length) {
@@ -273,7 +280,7 @@ function renderNotes(notes) {
     return `
       <article class="response-card">
         <p class="response-card__name">${name}</p>
-        <p class="response-card__comment">${comment}</p>
+        ${comment ? `<p class="response-card__comment">${comment}</p>` : ""}
         ${media}
       </article>
     `;
@@ -294,7 +301,8 @@ function renderNoteMedia(note) {
   }
 
   if (note.mediaType && note.mediaType.startsWith("video/")) {
-    return `<a class="response-card__media-link" href="${url}" target="_blank" rel="noopener">Watch shared video</a>`;
+    const videoUrl = escapeHtml(getDrivePreviewUrl(note.mediaUrl));
+    return `<a class="response-card__media" href="${url}" target="_blank" rel="noopener"><video src="${videoUrl}" controls preload="metadata"></video></a>`;
   }
 
   return `<a class="response-card__media-link" href="${url}" target="_blank" rel="noopener">Open shared file</a>`;

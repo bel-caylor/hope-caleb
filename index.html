@@ -14,10 +14,10 @@
   <body>
     <header class="hero" id="home">
       <div class="hero__slides" aria-hidden="true">
-        <img class="hero__image is-active" src="images/hero/engagement.jpg" alt="">
-        <img class="hero__image" src="images/hero/grad caleb.jpg" alt="">
-        <img class="hero__image" src="images/hero/grad hope.jpg" alt="">
-        <img class="hero__image hero__image--grad" src="images/hero/standing grad.jpg" alt="">
+        <img class="hero__image is-active" src="images/hero/engagement.jpg" alt="" loading="eager" fetchpriority="high" decoding="async">
+        <img class="hero__image" src="images/hero/grad caleb.jpg" alt="" loading="lazy" decoding="async">
+        <img class="hero__image" src="images/hero/grad hope.jpg" alt="" loading="lazy" decoding="async">
+        <img class="hero__image hero__image--grad" src="images/hero/standing grad.jpg" alt="" loading="lazy" decoding="async">
       </div>
       <div class="hero__shade"></div>
       <nav class="nav" aria-label="Primary navigation">
@@ -92,8 +92,8 @@
 
       <section class="section save-date" aria-labelledby="save-date-heading">
         <div class="save-date-slideshow" aria-label="Engagement photos">
-          <img class="save-date-slideshow__image is-active" src="images/engagement/engagement ring.jpg" alt="Hope showing her engagement ring">
-          <img class="save-date-slideshow__image" src="images/engagement/engagement.jpg" alt="Hope and Caleb celebrating their engagement">
+          <img class="save-date-slideshow__image is-active" src="images/engagement/engagement ring.jpg" alt="Hope showing her engagement ring" loading="lazy" decoding="async">
+          <img class="save-date-slideshow__image" src="images/engagement/engagement.jpg" alt="Hope and Caleb celebrating their engagement" loading="lazy" decoding="async">
           <div class="slider-dots" aria-label="Choose engagement photo">
             <button class="slider-dot is-active" type="button" aria-label="Show engagement photo 1" data-slider-dot="engagement" data-slide-index="0"></button>
             <button class="slider-dot" type="button" aria-label="Show engagement photo 2" data-slider-dot="engagement" data-slide-index="1"></button>
@@ -117,10 +117,10 @@
           </p>
         </div>
         <div class="photo-slideshow" aria-label="Graduation celebration photos">
-          <img class="photo-slideshow__image is-active" src="images/celebration/grad celebration0.jpg" alt="Graduation celebration photo 1">
-          <img class="photo-slideshow__image" src="images/celebration/grad celebration1.jpg" alt="Graduation celebration photo 2">
-          <img class="photo-slideshow__image" src="images/celebration/grad celebration2.jpg" alt="Graduation celebration photo 3">
-          <img class="photo-slideshow__image" src="images/celebration/grad celebration3.jpg" alt="Graduation celebration photo 4">
+          <img class="photo-slideshow__image is-active" src="images/celebration/grad celebration0.jpg" alt="Graduation celebration photo 1" loading="lazy" decoding="async">
+          <img class="photo-slideshow__image" src="images/celebration/grad celebration1.jpg" alt="Graduation celebration photo 2" loading="lazy" decoding="async">
+          <img class="photo-slideshow__image" src="images/celebration/grad celebration2.jpg" alt="Graduation celebration photo 3" loading="lazy" decoding="async">
+          <img class="photo-slideshow__image" src="images/celebration/grad celebration3.jpg" alt="Graduation celebration photo 4" loading="lazy" decoding="async">
           <div class="slider-dots" aria-label="Choose graduation celebration photo">
             <button class="slider-dot is-active" type="button" aria-label="Show graduation celebration photo 1" data-slider-dot="graduation" data-slide-index="0"></button>
             <button class="slider-dot" type="button" aria-label="Show graduation celebration photo 2" data-slider-dot="graduation" data-slide-index="1"></button>
@@ -131,7 +131,7 @@
       </section>
 
       <section class="section future" aria-labelledby="future-heading">
-        <img src="images/hope-job.jpg" alt="Hope trying a bionic hand at Alt-Bionics" loading="lazy">
+        <img src="images/hope-job.jpg" alt="Hope trying a bionic hand at Alt-Bionics" loading="lazy" decoding="async">
         <div class="future__content">
           <p class="eyebrow">Future Plans</p>
           <h2 id="future-heading">Hope's next chapter.</h2>
@@ -145,7 +145,14 @@
       </section>
 
       <section class="section future future--caleb" aria-labelledby="caleb-future-heading">
-        <img src="images/gallery/grad caleb.jpg" alt="Caleb in graduation attire" loading="lazy">
+        <div class="caleb-slideshow" aria-label="Caleb photos">
+          <img class="caleb-slideshow__image is-active" src="images/caleb/grad caleb.jpg" alt="Caleb in graduation attire" loading="lazy" decoding="async">
+          <img class="caleb-slideshow__image" src="images/caleb/grad caleb UTSA.jpg" alt="Caleb in graduation attire at UTSA" loading="lazy" decoding="async">
+          <div class="slider-dots" aria-label="Choose Caleb photo">
+            <button class="slider-dot is-active" type="button" aria-label="Show Caleb photo 1" data-slider-dot="caleb" data-slide-index="0"></button>
+            <button class="slider-dot" type="button" aria-label="Show Caleb photo 2" data-slider-dot="caleb" data-slide-index="1"></button>
+          </div>
+        </div>
         <div class="future__content">
           <p class="eyebrow">Future Plans</p>
           <h2 id="caleb-future-heading">Caleb's next chapter.</h2>
@@ -163,10 +170,10 @@
           <h2 id="photos-heading">Gallery</h2>
         </div>
         <div class="portrait-slideshow" aria-label="Portrait photos">
-          <img class="portrait-slideshow__image is-active" src="images/portrait/grad caleb UTSA.jpg" alt="Caleb in graduation attire at UTSA">
-          <img class="portrait-slideshow__image" src="images/portrait/grad hc UTSA.jpg" alt="Hope and Caleb at UTSA graduation">
-          <img class="portrait-slideshow__image" src="images/portrait/grad hope UTSA.jpg" alt="Hope in graduation attire at UTSA">
-          <img class="portrait-slideshow__image" src="images/portrait/grad UTSA friends.jpg" alt="Graduation celebration with friends at UTSA">
+          <img class="portrait-slideshow__image is-active" src="images/portrait/grad caleb UTSA.jpg" alt="Caleb in graduation attire at UTSA" loading="lazy" decoding="async">
+          <img class="portrait-slideshow__image" src="images/portrait/grad hc UTSA.jpg" alt="Hope and Caleb at UTSA graduation" loading="lazy" decoding="async">
+          <img class="portrait-slideshow__image" src="images/portrait/grad hope UTSA.jpg" alt="Hope in graduation attire at UTSA" loading="lazy" decoding="async">
+          <img class="portrait-slideshow__image" src="images/portrait/grad UTSA friends.jpg" alt="Graduation celebration with friends at UTSA" loading="lazy" decoding="async">
           <div class="slider-dots" aria-label="Choose portrait photo">
             <button class="slider-dot is-active" type="button" aria-label="Show portrait photo 1" data-slider-dot="portrait" data-slide-index="0"></button>
             <button class="slider-dot" type="button" aria-label="Show portrait photo 2" data-slider-dot="portrait" data-slide-index="1"></button>
@@ -175,14 +182,14 @@
           </div>
         </div>
         <div class="gallery-slideshow" aria-label="Gallery photos">
-          <img class="gallery-slideshow__image is-active" src="images/gallery/grad caleb.jpg" alt="Caleb in graduation attire" loading="lazy">
-          <img class="gallery-slideshow__image" src="images/gallery/grad hats.jpg" alt="Graduation hats celebration photo" loading="lazy">
-          <img class="gallery-slideshow__image" src="images/gallery/grad hope.jpg" alt="Hope in graduation attire" loading="lazy">
-          <img class="gallery-slideshow__image" src="images/gallery/grad standing.jpg" alt="Hope and Caleb standing in graduation attire" loading="lazy">
-          <img class="gallery-slideshow__image" src="images/gallery/grad standing2.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy">
-          <img class="gallery-slideshow__image" src="images/gallery/grad water hope.jpg" alt="Hope celebrating graduation" loading="lazy">
-          <img class="gallery-slideshow__image" src="images/gallery/stairs grad.jpg" alt="Hope and Caleb walking together in graduation attire" loading="lazy">
-          <img class="gallery-slideshow__image" src="images/gallery/standing grad.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy">
+          <img class="gallery-slideshow__image is-active" src="images/gallery/grad caleb.jpg" alt="Caleb in graduation attire" loading="lazy" decoding="async">
+          <img class="gallery-slideshow__image" src="images/gallery/grad hats.jpg" alt="Graduation hats celebration photo" loading="lazy" decoding="async">
+          <img class="gallery-slideshow__image" src="images/gallery/grad hope.jpg" alt="Hope in graduation attire" loading="lazy" decoding="async">
+          <img class="gallery-slideshow__image" src="images/gallery/grad standing.jpg" alt="Hope and Caleb standing in graduation attire" loading="lazy" decoding="async">
+          <img class="gallery-slideshow__image" src="images/gallery/grad standing2.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy" decoding="async">
+          <img class="gallery-slideshow__image" src="images/gallery/grad water hope.jpg" alt="Hope celebrating graduation" loading="lazy" decoding="async">
+          <img class="gallery-slideshow__image" src="images/gallery/stairs grad.jpg" alt="Hope and Caleb walking together in graduation attire" loading="lazy" decoding="async">
+          <img class="gallery-slideshow__image" src="images/gallery/standing grad.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy" decoding="async">
           <div class="slider-dots" aria-label="Choose gallery photo">
             <button class="slider-dot is-active" type="button" aria-label="Show gallery photo 1" data-slider-dot="gallery" data-slide-index="0"></button>
             <button class="slider-dot" type="button" aria-label="Show gallery photo 2" data-slider-dot="gallery" data-slide-index="1"></button>
@@ -195,18 +202,18 @@
           </div>
         </div>
         <div class="gallery" aria-label="Photo gallery">
-          <img src="images/portrait/grad caleb UTSA.jpg" alt="Caleb in graduation attire at UTSA" loading="lazy">
-          <img src="images/gallery/grad caleb.jpg" alt="Caleb in graduation attire" loading="lazy">
-          <img src="images/portrait/grad hc UTSA.jpg" alt="Hope and Caleb at UTSA graduation" loading="lazy">
-          <img src="images/gallery/grad hats.jpg" alt="Graduation hats celebration photo" loading="lazy">
-          <img src="images/portrait/grad hope UTSA.jpg" alt="Hope in graduation attire at UTSA" loading="lazy">
-          <img src="images/gallery/grad hope.jpg" alt="Hope in graduation attire" loading="lazy">
-          <img src="images/portrait/grad UTSA friends.jpg" alt="Graduation celebration with friends at UTSA" loading="lazy">
-          <img src="images/gallery/grad standing.jpg" alt="Hope and Caleb standing in graduation attire" loading="lazy">
-          <img src="images/gallery/grad standing2.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy">
-          <img src="images/gallery/grad water hope.jpg" alt="Hope celebrating graduation" loading="lazy">
-          <img src="images/gallery/stairs grad.jpg" alt="Hope and Caleb walking together in graduation attire" loading="lazy">
-          <img src="images/gallery/standing grad.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy">
+          <img src="images/portrait/grad caleb UTSA.jpg" alt="Caleb in graduation attire at UTSA" loading="lazy" decoding="async">
+          <img src="images/gallery/grad caleb.jpg" alt="Caleb in graduation attire" loading="lazy" decoding="async">
+          <img src="images/portrait/grad hc UTSA.jpg" alt="Hope and Caleb at UTSA graduation" loading="lazy" decoding="async">
+          <img src="images/gallery/grad hats.jpg" alt="Graduation hats celebration photo" loading="lazy" decoding="async">
+          <img src="images/portrait/grad hope UTSA.jpg" alt="Hope in graduation attire at UTSA" loading="lazy" decoding="async">
+          <img src="images/gallery/grad hope.jpg" alt="Hope in graduation attire" loading="lazy" decoding="async">
+          <img src="images/portrait/grad UTSA friends.jpg" alt="Graduation celebration with friends at UTSA" loading="lazy" decoding="async">
+          <img src="images/gallery/grad standing.jpg" alt="Hope and Caleb standing in graduation attire" loading="lazy" decoding="async">
+          <img src="images/gallery/grad standing2.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy" decoding="async">
+          <img src="images/gallery/grad water hope.jpg" alt="Hope celebrating graduation" loading="lazy" decoding="async">
+          <img src="images/gallery/stairs grad.jpg" alt="Hope and Caleb walking together in graduation attire" loading="lazy" decoding="async">
+          <img src="images/gallery/standing grad.jpg" alt="Hope and Caleb standing together after graduation" loading="lazy" decoding="async">
         </div>
       </section>
 
