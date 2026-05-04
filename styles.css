@@ -951,6 +951,14 @@ textarea:focus {
   transition: background-color 160ms ease, transform 160ms ease;
 }
 
+.floating-action.party-only {
+  display: none;
+}
+
+.is-party-view .floating-action.party-only {
+  display: inline-flex;
+}
+
 .floating-action:hover {
   background: #18352c;
   transform: translateY(-1px);

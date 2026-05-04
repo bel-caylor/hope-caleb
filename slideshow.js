@@ -29,11 +29,14 @@ const LOCAL_PHOTOS = [
 
 const slideshow = document.querySelector(".tv-slideshow");
 const statusEl = document.querySelector("#tvStatus");
+const arrowButtons = Array.from(document.querySelectorAll("[data-slide-direction]"));
 let slides = Array.from(document.querySelectorAll("[data-slide]"));
 let activeSlide = 0;
+const TRANSITIONS = ["kenburns-in", "kenburns-out", "drift-left", "drift-right", "lift"];
 
 buildLocalSlides();
 loadSharedNotes();
+setupArrows();
 startSlideshow();
 
 function buildLocalSlides() {
@@ -85,7 +88,7 @@ function createPhotoSlide(src) {
   const slide = document.createElement("section");
   const image = document.createElement("img");
 
-  slide.className = "slide";
+  slide.className = "slide slide--media";
   slide.dataset.slide = "";
   image.className = "slide__photo";
   image.src = src;
@@ -102,7 +105,7 @@ function createNoteSlide(note) {
   slide.className = "slide";
   slide.dataset.slide = "";
   slide.innerHTML = `
-    <article class="slide__note">
+    <article class="slide__note slide__note--quote">
       <p class="slide__note-text">${escapeHtml(note.comment)}</p>
       <p class="slide__note-from">- ${escapeHtml(note.name || "Guest")}</p>
     </article>
@@ -120,15 +123,16 @@ function createMediaNoteSlide(note) {
 
   if (note.comment) {
     slide.innerHTML = `
-      <div class="slide__split">
+      <div class="slide__media-quote">
         ${mediaMarkup}
-        <article class="slide__note">
+        <article class="slide__note slide__note--quote slide__note--overlay">
           <p class="slide__note-text">${escapeHtml(note.comment)}</p>
           <p class="slide__note-from">- ${escapeHtml(note.name || "Guest")}</p>
         </article>
       </div>
     `;
   } else {
+    slide.classList.add("slide--media");
     slide.innerHTML = mediaMarkup;
   }
 
@@ -166,16 +170,53 @@ function startSlideshow() {
       return;
     }
 
-    slides[activeSlide].classList.remove("is-active");
-    activeSlide = (activeSlide + 1) % slides.length;
-    slides[activeSlide].classList.add("is-active");
+    showSlide(activeSlide + 1);
   }, SLIDE_DURATION_MS);
+}
+
+function showSlide(index) {
+  if (!slides.length) {
+    return;
+  }
+
+  activeSlide = (index + slides.length) % slides.length;
+  updateActiveSlide();
 }
 
 function refreshSlides() {
   slides = Array.from(document.querySelectorAll("[data-slide]"));
+  applySlideTransitions();
+  updateActiveSlide();
+}
+
+function applySlideTransitions() {
+  slides.forEach((slide, index) => {
+    TRANSITIONS.forEach((name) => slide.classList.remove(`slide--${name}`));
+    slide.classList.add(`slide--${TRANSITIONS[index % TRANSITIONS.length]}`);
+  });
+}
+
+function updateActiveSlide() {
+  if (!slides.length) {
+    return;
+  }
+
+  if (activeSlide >= slides.length) {
+    activeSlide = 0;
+  }
+
   slides.forEach((slide, index) => {
     slide.classList.toggle("is-active", index === activeSlide);
+  });
+
+}
+
+function setupArrows() {
+  arrowButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const direction = button.dataset.slideDirection === "previous" ? -1 : 1;
+      showSlide(activeSlide + direction);
+    });
   });
 }
 

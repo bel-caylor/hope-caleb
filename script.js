@@ -26,10 +26,12 @@ const noteMediaTypeInput = document.querySelector("#noteMediaType");
 const noteMediaDataInput = document.querySelector("#noteMediaData");
 const viewMode = new URLSearchParams(window.location.search).get("view");
 const isSaveView = viewMode === "save";
+const isOotSaveView = viewMode === "oot-save";
 const isPotluckView = viewMode === "potluck";
 const isPartyView = viewMode === "party" || isPotluckView || isSaveView;
+const showsSaveDate = isSaveView || isOotSaveView;
 
-document.body.classList.toggle("is-save-view", isSaveView);
+document.body.classList.toggle("is-save-view", showsSaveDate);
 document.body.classList.toggle("is-potluck-view", isPotluckView);
 document.body.classList.toggle("is-party-view", isPartyView);
 
@@ -319,8 +321,9 @@ function renderResponses(responses) {
 }
 
 function renderResponseCard(response) {
-  const name = escapeHtml(formatVisibleName(response.name));
-  const comment = escapeHtml(response.comment || "");
+  const display = formatResponseDisplay(response);
+  const name = escapeHtml(display.name);
+  const comment = escapeHtml(display.comment);
 
   return `
     <article class="response-card">
@@ -328,6 +331,32 @@ function renderResponseCard(response) {
       ${comment ? `<p class="response-card__comment">${comment}</p>` : ""}
     </article>
   `;
+}
+
+function formatResponseDisplay(response) {
+  const extracted = extractNameNote(response.name);
+
+  return {
+    name: formatVisibleName(extracted.name),
+    comment: String(response.comment || extracted.note || "").trim()
+  };
+}
+
+function extractNameNote(name) {
+  const cleanedName = String(name || "").trim();
+  const noteMatch = cleanedName.match(/^(.*?)\s*\((.+)$/);
+
+  if (!noteMatch) {
+    return {
+      name: cleanedName,
+      note: ""
+    };
+  }
+
+  return {
+    name: noteMatch[1].trim(),
+    note: noteMatch[2].trim().replace(/\)\s*$/, "")
+  };
 }
 
 function formatVisibleName(name) {
