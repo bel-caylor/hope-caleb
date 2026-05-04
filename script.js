@@ -3,7 +3,7 @@ const EVENT = {
   time: "Open House from 3-7pm",
   location: "Casa Caylor",
   food: "BBQ, drinks, and cupcakes.",
-  saveViewFood: "BBQ, drinks, and cupcakes. Bring a side or appetizer to share.",
+  saveViewFood: "BBQ, drinks, and cupcakes. Bring a side, appetizer or drinks to share.",
   googleScriptUrl: "https://script.google.com/macros/s/AKfycbzZ2peyNc4rQABN3d-CzTc-HF90mJun19RO4oFbseruxx9U7PMFol2fMlv0J1jSs1w/exec"
 };
 
@@ -29,7 +29,7 @@ const isSaveView = viewMode === "save";
 const isOotSaveView = viewMode === "oot-save";
 const isPotluckView = viewMode === "potluck";
 const isPartyView = viewMode === "party" || isPotluckView || isSaveView;
-const showsSaveDate = isSaveView || isOotSaveView;
+const showsSaveDate = isSaveView || isOotSaveView || isPotluckView;
 
 document.body.classList.toggle("is-save-view", showsSaveDate);
 document.body.classList.toggle("is-potluck-view", isPotluckView);
