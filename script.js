@@ -33,6 +33,20 @@ document.body.classList.toggle("is-save-view", isSaveView);
 document.body.classList.toggle("is-potluck-view", isPotluckView);
 document.body.classList.toggle("is-party-view", isPartyView);
 
+window.addEventListener("load", () => {
+  const hash = window.location.hash;
+
+  if (hash) {
+    setTimeout(() => {
+      const el = document.querySelector(hash);
+
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 300);
+  }
+});
+
 if (!isPartyView) {
   document.querySelector("[data-story-copy]").textContent = "Hope and Caleb are engaged, newly graduated, and grateful for the people who have encouraged them along the way. Share a note, send congratulations, and celebrate this season with them from wherever you are.";
 }
