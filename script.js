@@ -43,7 +43,7 @@ window.addEventListener("load", () => {
       if (el) {
         el.scrollIntoView({ behavior: "smooth" });
       }
-    }, 300);
+    }, 100);
   }
 });
 
@@ -79,6 +79,13 @@ setupSlider({
   slides: Array.from(document.querySelectorAll(".save-date-slideshow__image")),
   dots: Array.from(document.querySelectorAll('[data-slider-dot="engagement"]')),
   intervalMs: 2400
+});
+
+setupSlider({
+  container: document.querySelector(".snow-slideshow"),
+  slides: Array.from(document.querySelectorAll(".snow-slideshow__image")),
+  dots: Array.from(document.querySelectorAll('[data-slider-dot="snow"]')),
+  intervalMs: 2600
 });
 
 setupSlider({
@@ -260,21 +267,110 @@ function renderResponses(responses) {
     return;
   }
 
-  responsesList.innerHTML = visibleResponses.map((response) => {
-    const name = escapeHtml(response.name || "Guest");
-    const attending = escapeHtml(response.attending || "RSVP");
-    const comment = escapeHtml(response.comment || "");
+  const groups = {
+    yes: [],
+    no: [],
+    maybe: []
+  };
 
+  visibleResponses.forEach((response) => {
+    groups[getResponseGroup(response.attending)].push(response);
+  });
+
+  const groupLabels = {
+    yes: "Yes",
+    no: "No",
+    maybe: "Maybe"
+  };
+
+  const summary = Object.keys(groups).map((key) => {
     return `
-      <article class="response-card">
-        <div class="response-card__top">
-          <p class="response-card__name">${name}</p>
-          <span class="response-card__attending">${attending}</span>
-        </div>
-        ${comment ? `<p class="response-card__comment">${comment}</p>` : ""}
+      <article class="responses-summary__item">
+        <span>${groupLabels[key]}</span>
+        <strong>${groups[key].length}</strong>
       </article>
     `;
   }).join("");
+
+  const accordions = Object.keys(groups).map((key, index) => {
+    const cards = groups[key].length
+      ? groups[key].map(renderResponseCard).join("")
+      : '<p class="responses__empty">No responses yet.</p>';
+
+    return `
+      <details class="responses-accordion" ${index === 0 ? "open" : ""}>
+        <summary>
+          <span>${groupLabels[key]}</span>
+          <strong>${groups[key].length}</strong>
+        </summary>
+        <div class="responses-accordion__body">
+          ${cards}
+        </div>
+      </details>
+    `;
+  }).join("");
+
+  responsesList.innerHTML = `
+    <div class="responses-summary" aria-label="RSVP response summary">
+      ${summary}
+    </div>
+    ${accordions}
+  `;
+}
+
+function renderResponseCard(response) {
+  const name = escapeHtml(formatVisibleName(response.name));
+  const comment = escapeHtml(response.comment || "");
+
+  return `
+    <article class="response-card">
+      <p class="response-card__name">${name}</p>
+      ${comment ? `<p class="response-card__comment">${comment}</p>` : ""}
+    </article>
+  `;
+}
+
+function formatVisibleName(name) {
+  const cleanedName = String(name || "").trim();
+  const coupleMatch = cleanedName.match(/^(\S+)\s+(?:&|and)\s+(\S+)(?:\s+(.+))?$/i);
+
+  if (coupleMatch) {
+    const firstName = coupleMatch[1];
+    const secondName = coupleMatch[2];
+    const sharedLastName = coupleMatch[3]?.trim().split(/\s+/).pop();
+
+    if (sharedLastName) {
+      return `${firstName} & ${secondName} ${sharedLastName.charAt(0)}.`;
+    }
+
+    return `${firstName} & ${secondName}`;
+  }
+
+  const parts = cleanedName.split(/\s+/).filter(Boolean);
+
+  if (!parts.length) {
+    return "Guest";
+  }
+
+  if (parts.length === 1) {
+    return parts[0];
+  }
+
+  return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
+}
+
+function getResponseGroup(attending) {
+  const normalized = String(attending || "").trim().toLowerCase();
+
+  if (normalized === "yes") {
+    return "yes";
+  }
+
+  if (normalized === "no") {
+    return "no";
+  }
+
+  return "maybe";
 }
 
 function renderNotes(notes) {
