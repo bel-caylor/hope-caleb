@@ -40,11 +40,22 @@ setupArrows();
 startSlideshow();
 
 function buildLocalSlides() {
-  LOCAL_PHOTOS.forEach((src) => {
+  shuffleItems(LOCAL_PHOTOS).forEach((src) => {
     slideshow.appendChild(createPhotoSlide(src));
   });
 
   refreshSlides();
+}
+
+function shuffleItems(items) {
+  const shuffled = [...items];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+  }
+
+  return shuffled;
 }
 
 function loadSharedNotes() {
@@ -86,16 +97,25 @@ function loadSharedNotes() {
 
 function createPhotoSlide(src) {
   const slide = document.createElement("section");
+  const media = document.createElement("div");
+  const background = document.createElement("img");
   const image = document.createElement("img");
 
   slide.className = "slide slide--media";
   slide.dataset.slide = "";
-  image.className = "slide__photo";
+  media.className = "slide__media-quote slide__media-quote--image";
+  background.className = "slide__photo-bg";
+  background.src = src;
+  background.alt = "";
+  background.setAttribute("aria-hidden", "true");
+  image.className = "slide__photo slide__photo--zoom";
   image.src = src;
   image.alt = "";
   image.loading = "eager";
+  trackPortraitImage(image);
 
-  slide.appendChild(image);
+  media.append(background, image);
+  slide.appendChild(media);
   return slide;
 }
 
@@ -117,26 +137,58 @@ function createNoteSlide(note) {
 function createMediaNoteSlide(note) {
   const slide = document.createElement("section");
   const mediaMarkup = getMediaMarkup(note);
+  const commentOnly = shouldShowCommentOnly(note);
+  const hasImage = isImageNote(note);
+  const imageUrl = hasImage ? getDriveThumbnailUrl(note.mediaUrl) : "";
+  const backgroundMarkup = imageUrl
+    ? `<img class="slide__photo-bg" src="${escapeHtml(imageUrl)}" alt="" aria-hidden="true">`
+    : "";
 
   slide.className = "slide";
   slide.dataset.slide = "";
 
+  if (hasImage) {
+    slide.classList.add("slide--media");
+  }
+
   if (note.comment) {
+    const noteClass = commentOnly
+      ? "slide__note slide__note--overlay slide__note--plain"
+      : "slide__note slide__note--quote slide__note--overlay";
+    const fromMarkup = commentOnly
+      ? ""
+      : `<p class="slide__note-from">- ${escapeHtml(note.name || "Guest")}</p>`;
+
     slide.innerHTML = `
-      <div class="slide__media-quote">
+      <div class="slide__media-quote${hasImage ? " slide__media-quote--image" : ""}">
+        ${backgroundMarkup}
         ${mediaMarkup}
-        <article class="slide__note slide__note--quote slide__note--overlay">
+        <article class="${noteClass}">
           <p class="slide__note-text">${escapeHtml(note.comment)}</p>
-          <p class="slide__note-from">- ${escapeHtml(note.name || "Guest")}</p>
+          ${fromMarkup}
         </article>
       </div>
     `;
   } else {
     slide.classList.add("slide--media");
-    slide.innerHTML = mediaMarkup;
+    slide.innerHTML = hasImage
+      ? `<div class="slide__media-quote slide__media-quote--image">${backgroundMarkup}${mediaMarkup}</div>`
+      : mediaMarkup;
   }
 
   return slide;
+}
+
+function shouldShowCommentOnly(note) {
+  if (!isImageNote(note)) {
+    return false;
+  }
+
+  return ["hope", "hc", "cm"].includes(String(note.name || "").trim().toLowerCase());
+}
+
+function isImageNote(note) {
+  return Boolean(note.mediaType && note.mediaType.startsWith("image/"));
 }
 
 function getMediaMarkup(note) {
@@ -148,7 +200,7 @@ function getMediaMarkup(note) {
 
   if (note.mediaType && note.mediaType.startsWith("image/")) {
     const imageUrl = escapeHtml(getDriveThumbnailUrl(note.mediaUrl));
-    return `<img class="slide__photo" src="${imageUrl}" alt="">`;
+    return `<img class="slide__photo slide__photo--zoom" src="${imageUrl}" alt="" data-detect-orientation>`;
   }
 
   if (note.mediaType && note.mediaType.startsWith("video/")) {
@@ -185,8 +237,28 @@ function showSlide(index) {
 
 function refreshSlides() {
   slides = Array.from(document.querySelectorAll("[data-slide]"));
+  document.querySelectorAll("[data-detect-orientation]").forEach(trackPortraitImage);
   applySlideTransitions();
   updateActiveSlide();
+}
+
+function trackPortraitImage(image) {
+  const updateOrientation = () => {
+    image.classList.toggle("slide__photo--portrait", image.naturalHeight > image.naturalWidth);
+  };
+
+  if (image.dataset.orientationTracked) {
+    return;
+  }
+
+  image.dataset.orientationTracked = "true";
+
+  if (image.complete && image.naturalWidth) {
+    updateOrientation();
+    return;
+  }
+
+  image.addEventListener("load", updateOrientation, { once: true });
 }
 
 function applySlideTransitions() {
