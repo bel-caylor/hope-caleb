@@ -1,6 +1,6 @@
-# Hope & Caleb Party RSVP
+# Hope & Caleb Site
 
-Static GitHub Pages site for Hope Caylor and Caleb Montes' engagement and graduation party.
+Static GitHub Pages site for Hope Caylor and Caleb Montes. The root page is now the wedding landing page, and the original engagement and graduation site is preserved separately.
 
 ## Edit Party Details
 
@@ -28,15 +28,20 @@ const EVENT = {
 9. Deploy and copy the Web app URL.
 10. Paste that URL into `googleScriptUrl` in `script.js`.
 
+## Main Pages
+
+- Wedding home: `https://hope-caleb.site/`
+- Preserved engagement / graduation site: `https://hope-caleb.site/celebration.html`
+
 ## Publish on GitHub Pages
 
 Upload these files to the repository hosted at `https://bel-caylor.github.io/hope-caleb/` and enable GitHub Pages for the branch that contains `index.html`.
 
 ## Share Links
 
-- Out-of-town / congratulations version: `https://hope-caleb.site/`
-- Party RSVP version: `https://hope-caleb.site/?view=party`
-- Potluck RSVP version: `https://hope-caleb.site/?view=potluck`
-- Save the Date version: `https://hope-caleb.site/?view=save`
-- Out-of-town Save the Date version: `https://hope-caleb.site/?view=oot-save`
+- Out-of-town / congratulations version: `https://hope-caleb.site/celebration.html`
+- Party RSVP version: `https://hope-caleb.site/celebration.html?view=party`
+- Potluck RSVP version: `https://hope-caleb.site/celebration.html?view=potluck`
+- Save the Date version: `https://hope-caleb.site/celebration.html?view=save`
+- Out-of-town Save the Date version: `https://hope-caleb.site/celebration.html?view=oot-save`
 - TV slideshow: `https://hope-caleb.site/slideshow.html`
