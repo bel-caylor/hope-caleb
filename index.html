@@ -1,220 +1,240 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- Source of truth for the root wedding landing page.
+         If you are working on dashboard.html or the standalone local server,
+         edit src/html/index.html instead and rebuild dist-standalone/. -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Wedding planning home for Hope and Caleb.">
+    <meta name="description" content="Wedding site for Hope and Caleb.">
     <meta name="robots" content="noindex, nofollow, noarchive">
     <title>Hope & Caleb | Wedding</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <style>
-      .wedding-home-celebration {
-        --ink: #3f3034;
-        --muted: #6f5a60;
-        --paper: #faf7f5;
-        --soft: #cfd1d1;
-        --line: rgba(89, 0, 0, 0.16);
-        --green: #590000;
-        --green-light: #cfd1d1;
-        --blush: #995566;
-        --gold: #9c9a45;
-        --white: #fffaf7;
-        --shadow: 0 24px 60px rgba(89, 0, 0, 0.14);
-        background:
-          radial-gradient(circle at top, rgba(153, 85, 102, 0.14), transparent 28%),
-          linear-gradient(180deg, #fcfaf8 0%, #f5efea 100%);
-      }
-
-      .wedding-home-celebration .hero__shade {
-        background:
-          linear-gradient(180deg, rgba(89, 0, 0, 0.08) 0%, rgba(89, 0, 0, 0.18) 42%, rgba(89, 0, 0, 0.62) 100%);
-      }
-
-      .wedding-home-celebration .hero .eyebrow {
-        color: #cfd1d1;
-      }
-
-      .wedding-home-celebration .eyebrow {
-        color: #810d0b;
-      }
-
-      .wedding-home-celebration .button {
-        background: #810d0b;
-      }
-
-      .wedding-home-celebration .button:hover {
-        background: #590000;
-      }
-
-      .wedding-home-celebration .button--light {
-        background: #cfd1d1;
-        color: #590000;
-      }
-
-      .wedding-home-celebration .button--light:hover {
-        background: #aeb081;
-      }
-
-      .wedding-home-celebration .details {
-        background:
-          linear-gradient(135deg, rgba(207, 209, 209, 0.8), rgba(174, 176, 129, 0.3)),
-          var(--paper);
-      }
-
-      .wedding-home-celebration .detail {
-        border-color: rgba(129, 13, 11, 0.12);
-      }
-
-      .wedding-home-celebration .detail__icon {
-        background: #aeb081;
-        color: #590000;
-      }
-
-      .wedding-home-celebration .story {
-        background:
-          linear-gradient(135deg, rgba(174, 176, 129, 0.84), rgba(156, 154, 69, 0.72));
-      }
-
-      .wedding-home-celebration .story__text p:last-child,
-      .wedding-home-celebration .future__content p:last-child {
-        color: #4f4044;
-      }
-
-      .wedding-home-celebration .future {
-        background:
-          linear-gradient(135deg, rgba(153, 85, 102, 0.12), rgba(129, 13, 11, 0.14)),
-          var(--paper);
-      }
-
-      .wedding-home-celebration .future--caleb {
-        background:
-          linear-gradient(135deg, rgba(129, 13, 11, 0.12), rgba(174, 176, 129, 0.22)),
-          #f7f1ee;
-      }
-
-      .wedding-home-celebration .future__content a {
-        color: #590000;
-      }
-
-      .wedding-home-celebration .photo-slideshow {
-        min-height: 460px;
-      }
-
-      .wedding-home-celebration .nav__brand {
-        font-family: "Pacifico", "Brush Script MT", cursive;
-        font-size: clamp(1.5rem, 3.5vw, 2.15rem);
-        font-weight: 400;
-      }
-
-      .wedding-home-celebration .hero__copy {
-        max-width: 48rem;
-      }
-    </style>
+    <link rel="stylesheet" href="site.css">
   </head>
-  <body class="wedding-home-celebration">
-    <header class="hero" id="home">
-      <div class="hero__slides" aria-hidden="true">
-        <img class="hero__image is-active" src="images/hero/engagement.jpg" alt="" loading="eager" fetchpriority="high" decoding="async">
+  <body>
+    <header class="site-header" id="home">
+      <div class="hero-media" aria-hidden="true">
+        <img src="images/hero-wedding/engagement.jpg" alt="" class="hero-photo hero-photo--active" loading="eager" fetchpriority="high" decoding="async">
+        <img src="images/hero-wedding/holding hands.jpg" alt="" class="hero-photo" loading="eager" fetchpriority="high" decoding="async">
+        <img src="images/hero-wedding/mountain.jpg" alt="" class="hero-photo" loading="eager" fetchpriority="high" decoding="async">
       </div>
-      <div class="hero__shade"></div>
-      <nav class="nav" aria-label="Primary navigation">
-        <a href="#home" class="nav__brand">Hope & Caleb</a>
-        <div class="nav__links">
-          <a href="#wedding-home">Wedding Home</a>
-          <a href="#next-steps">Next Steps</a>
-          <a href="celebration.html">Celebration</a>
-          <a href="slideshow.html">Slideshow</a>
-        </div>
-      </nav>
-      <section class="hero__content">
-        <p class="eyebrow">Wedding Planning Home</p>
+      <div class="hero-shade"></div>
+      <section class="hero-copy">
+        <p class="eyebrow">Wedding</p>
         <h1>Hope & Caleb</h1>
-        <p class="hero__copy">
-          The new wedding area now uses the same layout language as the celebration page, with a softer wine palette to carry the next chapter of the site.
-        </p>
-        <div class="hero__actions">
-          <a class="button" href="celebration.html">Open Celebration Page</a>
-          <a class="button button--light" href="celebration.html?view=save">Open Save the Date View</a>
+        <p class="hero-date">Friday, January 8, 2024</p>
+        <div class="hero-actions">
+          <a class="button" href="#rsvp">RSVP</a>
         </div>
       </section>
     </header>
 
-    <main id="wedding-home">
-      <section class="section details" aria-labelledby="details-heading">
-        <div class="section__intro">
-          <p class="eyebrow">Wedding Home</p>
-          <h2 id="details-heading">Everything now has a clearer place.</h2>
+    <nav class="section-nav" aria-label="Primary section navigation">
+      <div class="section-nav__inner">
+        <a href="#story">Our Story</a>
+        <a href="#details">Details</a>
+        <a href="#travel">Travel</a>
+        <a href="#faq">FAQ</a>
+        <a href="#registry">Registry</a>
+      </div>
+    </nav>
+
+    <main>
+      <section class="section" id="story">
+        <p class="eyebrow">Our Story</p>
+        <h2>Met at UTSA.</h2>
+        <p class="lead">We met at UTSA in engineering school, started dating at the end of freshman year, and graduated together in Spring 2026. What began in the middle of classes, labs, and long study days grew into a relationship that carried us all the way to graduation and into this next season together. UTSA was where our story started, and those years shaped so much of who we are together. From engineering classes to everyday campus life, we built a friendship and relationship that kept growing through college, and we are so thankful for the people who supported us through school, celebrated these milestones with us, and continue cheering us on as we prepare for marriage.</p>
+        <div class="photo-feature">
+          <div class="story-slider" data-slider data-interval="2600" aria-label="Graduation photo gallery">
+            <div class="story-slider__viewport">
+              <img class="story-slider__image is-active" src="images/graduation/standing grad.jpg" alt="Hope and Caleb together in graduation attire" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/graduation/stairs grad.jpg" alt="Hope and Caleb on the graduation steps" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/graduation/grad standing2.jpg" alt="Hope and Caleb smiling during graduation portraits" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/graduation/grad standing.jpg" alt="Hope and Caleb posing at UTSA graduation" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/graduation/celebration grad.jpg" alt="Hope and Caleb celebrating graduation together" loading="lazy" decoding="async">
+            </div>
+            <div class="story-slider__dots" aria-label="Graduation slider controls">
+              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show graduation photo 1"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show graduation photo 2"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show graduation photo 3"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show graduation photo 4"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="4" aria-label="Show graduation photo 5"></button>
+            </div>
+          </div>
         </div>
-        <div class="details__grid">
-          <article class="detail">
-            <span class="detail__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M4 19h16"></path><path d="M6 17V9"></path><path d="M18 17V5"></path><path d="M10 17V12"></path><path d="M14 17V8"></path></svg>
-            </span>
-            <span class="detail__label">Public Site</span>
-            <strong>Wedding homepage, RSVP, travel, and registry can live here next.</strong>
+        <div class="story-gallery-grid">
+          <article class="gallery-card gallery-card--slider">
+            <p class="eyebrow">Graduation</p>
+            <h3>Spring 2026</h3>
+            <p>Photos from the season where we finished school together.</p>
           </article>
-          <article class="detail">
-            <span class="detail__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M3 10h18"></path></svg>
-            </span>
-            <span class="detail__label">Planning Tools</span>
-            <strong>Dashboards, task tracking, and wedding coordination can grow from this area.</strong>
-          </article>
-          <article class="detail">
-            <span class="detail__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M12 16v2"></path><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 1 1 8 0v3"></path></svg>
-            </span>
-            <span class="detail__label">Private Access</span>
-            <strong>Password-protected planning pages can stay separate from public guest info.</strong>
-          </article>
-          <article class="detail detail--wide">
-            <span class="detail__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M5 4h14"></path><path d="M5 12h14"></path><path d="M5 20h14"></path></svg>
-            </span>
-            <span class="detail__label">Archive</span>
-            <strong>The engagement and graduation celebration page is still preserved exactly at <a href="celebration.html">celebration.html</a>.</strong>
+          <div class="story-slider" data-slider data-interval="3000" aria-label="Colorado photo gallery">
+            <div class="story-slider__viewport story-slider__viewport--wide">
+              <img class="story-slider__image is-active" src="images/colorado/mountain.jpg" alt="Hope and Caleb in the Colorado mountains" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/colorado/engagement.jpg" alt="Hope and Caleb during their Colorado engagement session" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/colorado/holding hands.jpg" alt="Hope and Caleb holding hands in Colorado" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/colorado/lift.jpg" alt="Hope and Caleb riding a lift in Colorado" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/colorado/mountain smiles.jpg" alt="Hope and Caleb smiling in the mountains" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/colorado/woods kiss.jpg" alt="Hope and Caleb kissing in the woods in Colorado" loading="lazy" decoding="async">
+            </div>
+            <div class="story-slider__dots" aria-label="Colorado slider controls">
+              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show Colorado photo 1"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show Colorado photo 2"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show Colorado photo 3"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show Colorado photo 4"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="4" aria-label="Show Colorado photo 5"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="5" aria-label="Show Colorado photo 6"></button>
+            </div>
+          </div>
+          <article class="gallery-card gallery-card--slider">
+            <p class="eyebrow">Colorado</p>
+            <h3>Mountain memories</h3>
+            <p>A few favorite photos from Colorado that we wanted to keep as part of this story.</p>
           </article>
         </div>
       </section>
 
-      <section class="section story" aria-labelledby="story-heading">
-        <div class="story__text">
-          <p class="eyebrow">Same Layout, New Palette</p>
-          <h2 id="story-heading">The new area now feels connected to the celebration page.</h2>
-          <p>
-            Instead of a separate card system, this homepage now borrows the celebration page's hero, section spacing, and content grid structure. That keeps the experience more unified while shifting the tone toward the wedding season.
-          </p>
-        </div>
-        <div class="photo-slideshow" aria-label="Hope and Caleb engagement photo">
-          <img class="photo-slideshow__image is-active" src="images/engagement/deck.jpg" alt="Hope and Caleb on a deck during their engagement session" loading="lazy" decoding="async">
+      <section class="section" id="details">
+        <p class="eyebrow">Wedding Details</p>
+        <h2>The high-level guest information has a clean home.</h2>
+        <div class="grid grid--two">
+          <article class="card">
+            <strong>Date</strong>
+            <p>Friday, January 8, 2027</p>
+          </article>
+          <article class="card">
+            <strong>Location</strong>
+            <p>South Texas venue details can be dropped in here once the final address is ready.</p>
+          </article>
+          <article class="card">
+            <strong>Ceremony</strong>
+            <p>Use this space for ceremony start time, arrival guidance, and whether the event is indoor or outdoor.</p>
+          </article>
+          <article class="card">
+            <strong>Reception</strong>
+            <p>Dinner, dancing, and any after-party notes can live here.</p>
+          </article>
         </div>
       </section>
 
-      <section class="section future" id="next-steps" aria-labelledby="next-steps-heading">
-        <img src="images/snow-angel/snowangel2.jpg" alt="Snow angel photo for the save the date theme" loading="lazy" decoding="async">
-        <div class="future__content">
-          <p class="eyebrow">Color Direction</p>
-          <h2 id="next-steps-heading">Wine, sage, olive, and soft stone set the tone.</h2>
-          <p>
-            The updated colors now pull from the wine palette: soft stone gray, muted sage, olive gold, dusty mauve, deep wine red, and a rich burgundy base for calls to action and overlays.
-          </p>
+      <section class="section" id="schedule">
+        <p class="eyebrow">Schedule</p>
+        <h2>Simple timeline for the day.</h2>
+        <div class="timeline">
+          <article class="timeline-card">
+            <span class="timeline-time">3:30 PM</span>
+            <strong>Guest arrival</strong>
+            <p>Guests arrive, park, and find their seats.</p>
+          </article>
+          <article class="timeline-card">
+            <span class="timeline-time">4:00 PM</span>
+            <strong>Ceremony begins</strong>
+            <p>Main ceremony start time placeholder.</p>
+          </article>
+          <article class="timeline-card">
+            <span class="timeline-time">4:30 PM</span>
+            <strong>Cocktail hour</strong>
+            <p>Photos, drinks, and conversation while the couple finishes portraits.</p>
+          </article>
+          <article class="timeline-card">
+            <span class="timeline-time">6:00 PM</span>
+            <strong>Reception</strong>
+            <p>Dinner, toasts, and the start of the celebration.</p>
+          </article>
         </div>
       </section>
 
-      <section class="section future future--caleb" aria-labelledby="links-heading">
-        <img src="images/hero/standing grad.jpg" alt="Hope and Caleb standing together" loading="lazy" decoding="async">
-        <div class="future__content">
-          <p class="eyebrow">Quick Links</p>
-          <h2 id="links-heading">The original views are still easy to reach.</h2>
-          <p>
-            Jump back to the <a href="celebration.html">celebration archive</a>, open the <a href="celebration.html?view=party">party RSVP view</a>, or use the <a href="celebration.html?view=save">save the date version</a> while the wedding experience continues to grow here.
-          </p>
+      <section class="section" id="travel">
+        <p class="eyebrow">Travel & Stay</p>
+        <h2>Helpful planning for out-of-town guests.</h2>
+        <div class="grid grid--three">
+          <article class="content-block">
+            <p class="eyebrow">Airport</p>
+            <h3>Fly into San Antonio</h3>
+            <p>If most guests will use San Antonio International Airport, this is the natural place to say that and add average drive time to the venue.</p>
+          </article>
+          <article class="content-block">
+            <p class="eyebrow">Hotel Block</p>
+            <h3>Nearby stays</h3>
+            <p>Add the hotel block, booking deadline, and discount code here when ready.</p>
+          </article>
+          <article class="content-block">
+            <p class="eyebrow">Transportation</p>
+            <h3>Getting around</h3>
+            <p>Use this section for shuttle service, rideshare notes, or guest driving guidance.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="rsvp">
+        <p class="eyebrow">RSVP</p>
+        <h2>Reply details are ready to wire up.</h2>
+        <div class="grid grid--two">
+          <article class="content-block">
+            <p class="eyebrow">Deadline</p>
+            <h3>Example: December 1, 2026</h3>
+            <p>Swap this for the real RSVP deadline when invitations go out.</p>
+          </article>
+          <article class="content-block">
+            <p class="eyebrow">Typical Questions</p>
+            <ul class="list-clean">
+              <li>Will you attend?</li>
+              <li>How many seats are reserved?</li>
+              <li>Meal preference</li>
+              <li>Song request or note to the couple</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="faq">
+        <p class="eyebrow">FAQ</p>
+        <h2>Common guest questions.</h2>
+        <div class="faq-list">
+          <article class="faq-item">
+            <h3>When should I arrive?</h3>
+            <p>A good default is 20 to 30 minutes before the ceremony. Replace this with your final recommendation later.</p>
+          </article>
+          <article class="faq-item">
+            <h3>Can I bring a plus-one?</h3>
+            <p>Use this space to explain that RSVP cards or invitations will reflect the number of seats reserved for each guest.</p>
+          </article>
+          <article class="faq-item">
+            <h3>Are kids invited?</h3>
+            <p>Add your exact policy here so guests know what to expect before making travel plans.</p>
+          </article>
+          <article class="faq-item">
+            <h3>What should I wear?</h3>
+            <p>Point guests back to the details section once the dress code is finalized.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="registry">
+        <p class="eyebrow">Registry</p>
+        <h2>Your presence is already a gift.</h2>
+        <div class="grid grid--two">
+          <article class="content-block">
+            <p>If you want to keep this minimal for now, this section works well with a short note and final links added later.</p>
+          </article>
+          <article class="content-block">
+            <ul class="list-clean">
+              <li>Main registry link</li>
+              <li>Home or kitchen favorites</li>
+              <li>Cash fund or honeymoon fund</li>
+            </ul>
+          </article>
         </div>
       </section>
     </main>
+
+    <footer class="site-footer">
+      <p>Hope & Caleb wedding site</p>
+    </footer>
+    <script src="site.js" defer></script>
   </body>
 </html>

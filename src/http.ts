@@ -1,4 +1,5 @@
 import { getGoogleClientId } from "./auth";
+import { listPublicFeed, savePublicSubmission } from "./features/feed";
 import { rpc } from "./rpc";
 
 declare const global: { __REQUEST_AUTH_TOKEN__?: string };
@@ -7,7 +8,11 @@ function include(filename: string) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-export function doGet() {
+export function doGet(e?: GoogleAppsScript.Events.DoGet) {
+  if (shouldServePublicFeed(e)) {
+    return publicFeedResponse(listPublicFeed(), e);
+  }
+
   const tpl = HtmlService.createTemplateFromFile("index");
   tpl.googleClientId = getGoogleClientId();
   tpl.scriptBaseUrl = (() => {
@@ -22,6 +27,10 @@ export function doGet() {
 }
 
 export function doPost(e?: GoogleAppsScript.Events.DoPost) {
+  if (!isRpcRequest(e)) {
+    return jsonResponse(savePublicSubmission(e?.parameter), e);
+  }
+
   const body = e?.postData?.contents || "";
   let parsed: { method?: string; payload?: unknown; authToken?: string } = {};
 
@@ -70,6 +79,44 @@ function jsonResponse(payload: unknown, e?: GoogleAppsScript.Events.DoPost) {
   }
 
   return output;
+}
+
+function publicFeedResponse(payload: unknown, e?: GoogleAppsScript.Events.DoGet) {
+  const callback = String(e?.parameter?.callback || "").trim();
+  const output = JSON.stringify(payload);
+
+  if (callback) {
+    return ContentService
+      .createTextOutput(`${callback}(${output});`)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  return ContentService
+    .createTextOutput(output)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function shouldServePublicFeed(e?: GoogleAppsScript.Events.DoGet) {
+  const callback = String(e?.parameter?.callback || "").trim();
+  const format = String(e?.parameter?.format || "").trim().toLowerCase();
+  const feed = String(e?.parameter?.feed || "").trim().toLowerCase();
+
+  return Boolean(callback) || format === "json" || feed === "public";
+}
+
+function isRpcRequest(e?: GoogleAppsScript.Events.DoPost) {
+  const body = String(e?.postData?.contents || "").trim();
+
+  if (!body) {
+    return false;
+  }
+
+  try {
+    const parsed = JSON.parse(body) as { method?: unknown };
+    return typeof parsed?.method === "string" && parsed.method.trim().length > 0;
+  } catch (_) {
+    return false;
+  }
 }
 
 function getOrigin(e?: GoogleAppsScript.Events.DoPost) {

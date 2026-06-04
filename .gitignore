@@ -8,6 +8,7 @@ dist-standalone/
 
 # Local Apps Script config
 .clasp.json
+.env.standalone.local
 
 # Cloudflare / Wrangler local state
 wedding-planner-proxy/.wrangler/

@@ -1,12 +1,15 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- Source of truth for the standalone dashboard/public shell.
+         Build output lands in dist-standalone/dashboard.html.
+         If you want to change the root landing page at /, edit /index.html instead. -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Hope & Caleb Wedding</title>
     <meta name="robots" content="noindex, nofollow, noarchive">
-    <meta name="planner-google-client-id" content="<?= googleClientId ?>">
-    <meta name="planner-script-base-url" content="<?= scriptBaseUrl ?>">
+    <meta name="planner-dashboard-password-hash" content="<?= dashboardPasswordHash ?>">
+    <meta name="planner-rsvp-feed-url" content="<?= rsvpFeedUrl ?>">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -88,6 +91,7 @@
         object-fit: cover;
         object-position: 50% 38%;
         opacity: 1;
+        filter: grayscale(1) contrast(1.05) brightness(0.9);
       }
 
       .hero__shade {
@@ -175,7 +179,8 @@
       .hero__actions,
       .auth-row,
       .toolbar,
-      .planner-summary {
+      .planner-summary,
+      .summary-grid {
         display: flex;
         gap: 0.75rem;
         flex-wrap: wrap;
@@ -317,6 +322,78 @@
         font-size: 1.08rem;
       }
 
+      .story-gallery-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.35fr) minmax(0, 0.9fr);
+        margin-top: 1rem;
+        align-items: stretch;
+      }
+
+      .story-slider {
+        position: relative;
+        min-height: 28rem;
+        overflow: hidden;
+        border: 1px solid rgba(129, 13, 11, 0.12);
+        border-radius: 1.2rem;
+        background: rgba(255, 250, 247, 0.92);
+        box-shadow: var(--shadow);
+      }
+
+      .story-slider__viewport {
+        position: relative;
+        min-height: 28rem;
+        height: 100%;
+      }
+
+      .story-slider__viewport--wide {
+        min-height: 24rem;
+      }
+
+      .story-slider__image {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0;
+        transition: opacity 700ms ease;
+      }
+
+      .story-slider__image.is-active {
+        opacity: 1;
+      }
+
+      .story-slider__dots {
+        position: absolute;
+        left: 50%;
+        bottom: 1rem;
+        z-index: 1;
+        display: flex;
+        gap: 0.5rem;
+        transform: translateX(-50%);
+      }
+
+      .story-slider__dot {
+        width: 0.72rem;
+        height: 0.72rem;
+        border: 1px solid rgba(255, 250, 247, 0.95);
+        border-radius: 999px;
+        padding: 0;
+        background: rgba(255, 250, 247, 0.38);
+        cursor: pointer;
+      }
+
+      .story-slider__dot.is-active {
+        background: rgba(255, 250, 247, 0.98);
+      }
+
+      .gallery-card--slider {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
       .future {
         display: grid;
         grid-template-columns: minmax(320px, 1.1fr) minmax(280px, 0.9fr);
@@ -389,6 +466,34 @@
         margin-bottom: 0.5rem;
       }
 
+      .summary-grid {
+        width: min(1120px, calc(100% - 2rem));
+        margin: 1rem auto 0;
+      }
+
+      .summary-card {
+        flex: 1 1 160px;
+        min-width: 0;
+        padding: 1rem 1.1rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.88);
+      }
+
+      .summary-card span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .summary-card strong {
+        display: block;
+        margin-top: 0.35rem;
+        font-size: 1.8rem;
+      }
+
       .list {
         display: grid;
         gap: 0.75rem;
@@ -410,6 +515,53 @@
 
       .card p {
         margin-top: 0.35rem;
+      }
+
+      .dashboard-entry {
+        padding-top: 0.75rem;
+        margin-top: 0.75rem;
+        border-top: 1px solid var(--planner-border);
+      }
+
+      .dashboard-entry:first-of-type {
+        padding-top: 0;
+        margin-top: 0;
+        border-top: 0;
+      }
+
+      .guest-table-wrap {
+        overflow: auto;
+        border: 1px solid var(--planner-border);
+        border-radius: 8px;
+        background: #fffdf9;
+      }
+
+      .guest-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+      }
+
+      .guest-table th,
+      .guest-table td {
+        padding: 0.75rem 0.85rem;
+        text-align: left;
+        vertical-align: top;
+        border-bottom: 1px solid var(--planner-border);
+      }
+
+      .guest-table th {
+        position: sticky;
+        top: 0;
+        background: #f6efe4;
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .guest-table tr:last-child td {
+        border-bottom: 0;
       }
 
       form {
@@ -475,8 +627,15 @@
         .details,
         .story,
         .future,
+        .story-gallery-grid,
         .planner-grid {
           grid-template-columns: 1fr;
+        }
+
+        .story-slider,
+        .story-slider__viewport,
+        .story-slider__viewport--wide {
+          min-height: 22rem;
         }
 
         .details__grid {
@@ -499,6 +658,12 @@
       }
 
       @media (max-width: 620px) {
+        .story-slider,
+        .story-slider__viewport,
+        .story-slider__viewport--wide {
+          min-height: 19rem;
+        }
+
         .split {
           grid-template-columns: 1fr;
         }
@@ -512,7 +677,6 @@
         }
       }
     </style>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
     <header class="hero" id="home" data-view="home">
@@ -524,7 +688,7 @@
         <a href="?view=home" data-route-link="home" class="nav__brand is-active">Hope & Caleb</a>
         <div class="nav__links">
           <a href="?view=home" data-route-link="home">Home</a>
-          <a href="?view=planner" data-route-link="planner">Planner</a>
+          <a href="/dashboard.html" data-route-link="planner">Dashboard</a>
           <a href="/celebration.html">Celebration</a>
           <a href="/slideshow.html">Slideshow</a>
         </div>
@@ -536,7 +700,7 @@
           This site should grow out of the celebration page instead of competing with it. The public home and the private planner now share the same basic visual language, structure, and tone.
         </p>
         <div class="hero__actions">
-          <a class="button" href="?view=planner">Open Planner</a>
+          <a class="button" href="/dashboard.html">Open Dashboard</a>
           <a class="button button--light" href="/celebration.html">View Celebration Site</a>
         </div>
       </section>
@@ -544,8 +708,7 @@
 
     <section class="signin-strip" data-view="home">
       <div class="auth-row">
-        <div id="signinButton"></div>
-        <div class="meta" id="viewerState">Sign in with an approved Google account to unlock planner tools.</div>
+        <div class="meta" id="viewerState">The dashboard is password protected.</div>
       </div>
     </section>
 
@@ -592,14 +755,60 @@
 
       <section class="section story" data-view="home" aria-labelledby="home-story-heading">
         <div class="story__text">
-          <p class="eyebrow">Why It Felt Off</p>
-          <h2 id="home-story-heading">The mismatch was coming from a separate planner shell.</h2>
+          <p class="eyebrow">Our Story</p>
+          <h2 id="home-story-heading">Met at UTSA.</h2>
           <p>
-            The rounded pills, boxed top bar, and card stack were not coming from the celebration page at all. They were hard-coded in this app template, which made the planner homepage feel disconnected from the site you already liked.
+            We met at UTSA in engineering school, started dating at the end of freshman year, and graduated together in Spring 2026. What began in the middle of classes, labs, and long study days grew into a relationship that carried us all the way to graduation and into this next season together. UTSA was where our story started, and those years shaped so much of who we are together. From engineering classes to everyday campus life, we built a friendship and relationship that kept growing through college, and we are so thankful for the people who supported us through school, celebrated these milestones with us, and continue cheering us on as we prepare for marriage.
           </p>
         </div>
-        <div class="photo-frame" aria-label="Engagement photo">
-          <img src="/images/engagement/deck.jpg" alt="Hope and Caleb on a deck during their engagement session" loading="lazy" decoding="async">
+        <div class="story-slider" data-slider data-interval="2600" aria-label="Graduation photo gallery">
+          <div class="story-slider__viewport">
+            <img class="story-slider__image is-active" src="/images/graduation/standing grad.jpg" alt="Hope and Caleb together in graduation attire" loading="lazy" decoding="async">
+            <img class="story-slider__image" src="/images/graduation/stairs grad.jpg" alt="Hope and Caleb on the graduation steps" loading="lazy" decoding="async">
+            <img class="story-slider__image" src="/images/graduation/grad standing2.jpg" alt="Hope and Caleb smiling during graduation portraits" loading="lazy" decoding="async">
+            <img class="story-slider__image" src="/images/graduation/grad standing.jpg" alt="Hope and Caleb posing at UTSA graduation" loading="lazy" decoding="async">
+            <img class="story-slider__image" src="/images/graduation/celebration grad.jpg" alt="Hope and Caleb celebrating graduation together" loading="lazy" decoding="async">
+          </div>
+          <div class="story-slider__dots" aria-label="Graduation slider controls">
+            <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show graduation photo 1"></button>
+            <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show graduation photo 2"></button>
+            <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show graduation photo 3"></button>
+            <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show graduation photo 4"></button>
+            <button class="story-slider__dot" type="button" data-slider-dot="4" aria-label="Show graduation photo 5"></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" data-view="home" aria-labelledby="home-colorado-heading">
+        <div class="story-gallery-grid">
+          <article class="gallery-card gallery-card--slider">
+            <p class="eyebrow">Graduation</p>
+            <h3>Spring 2026</h3>
+            <p>Photos from the season where we finished school together.</p>
+          </article>
+          <div class="story-slider" data-slider data-interval="3000" aria-label="Colorado photo gallery">
+            <div class="story-slider__viewport story-slider__viewport--wide">
+              <img class="story-slider__image is-active" src="/images/colorado/mountain.jpg" alt="Hope and Caleb in the Colorado mountains" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="/images/colorado/engagement.jpg" alt="Hope and Caleb during their Colorado engagement session" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="/images/colorado/holding hands.jpg" alt="Hope and Caleb holding hands in Colorado" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="/images/colorado/lift.jpg" alt="Hope and Caleb riding a lift in Colorado" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="/images/colorado/mountain smiles.jpg" alt="Hope and Caleb smiling in the mountains" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="/images/colorado/woods kiss.jpg" alt="Hope and Caleb kissing in the woods in Colorado" loading="lazy" decoding="async">
+            </div>
+            <div class="story-slider__dots" aria-label="Colorado slider controls">
+              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show Colorado photo 1"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show Colorado photo 2"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show Colorado photo 3"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show Colorado photo 4"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="4" aria-label="Show Colorado photo 5"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="5" aria-label="Show Colorado photo 6"></button>
+            </div>
+          </div>
+          <article class="gallery-card gallery-card--slider">
+            <p class="eyebrow">Colorado</p>
+            <h3 id="home-colorado-heading">Mountain memories</h3>
+            <p>A few favorite photos from Colorado that we wanted to keep as part of this story.</p>
+          </article>
         </div>
       </section>
 
@@ -628,14 +837,54 @@
       <section class="planner-banner section" data-view="planner" hidden aria-labelledby="planner-heading">
         <p class="eyebrow">Protected View</p>
         <h2 id="planner-heading">Wedding Planner Dashboard</h2>
-        <p class="meta">Private coordination tools for family, wedding party, and anyone helping the day run smoothly.</p>
+        <p class="meta">Private coordination tools for RSVPs, people, vendors, family, and your event timeline.</p>
         <div class="planner-summary" id="plannerGate">
-          <div id="plannerGateMessage" class="meta">Sign in to continue.</div>
-          <div id="signinButtonPlanner"></div>
+          <div id="plannerGateMessage" class="meta">Enter the dashboard password to continue.</div>
+          <button class="button button--light" type="button" id="plannerSignOut" hidden>Lock Dashboard</button>
         </div>
+        <p class="status" id="plannerSyncStatus"></p>
+      </section>
+
+      <section class="planner-banner section" data-view="planner" hidden id="plannerLocked" aria-labelledby="planner-locked-heading">
+        <h3 id="planner-locked-heading">Unlock Dashboard</h3>
+        <p class="meta">Use one shared password for the planner dashboard on this device.</p>
+        <form id="plannerLoginForm">
+          <label>Password <input id="plannerPassword" name="password" type="password" autocomplete="current-password" required></label>
+          <div class="toolbar">
+            <button class="button" type="submit">Unlock</button>
+          </div>
+          <p class="status" id="plannerLoginStatus"></p>
+        </form>
+      </section>
+
+      <section class="summary-grid" data-view="planner" hidden id="plannerUnlocked">
+        <div id="plannerSummary" class="summary-grid"></div>
       </section>
 
       <section class="planner-grid" data-view="planner" hidden id="plannerContent">
+        <section class="panel">
+          <div class="toolbar">
+            <div>
+              <h3>RSVPs</h3>
+              <p class="meta">Read-only RSVP feed from your public celebration form.</p>
+            </div>
+            <button class="button button--light" type="button" id="refreshRsvps">Refresh Feed</button>
+          </div>
+          <div class="list" id="rsvpList">
+            <p class="meta">No RSVP feed loaded yet.</p>
+          </div>
+          <p class="status" id="rsvpStatus"></p>
+        </section>
+
+        <section class="panel">
+          <h3>Guests</h3>
+          <p class="meta">Read-only rows from the `Guests` tab in your planning spreadsheet.</p>
+          <div class="list" id="guestsList">
+            <p class="meta">No guests feed loaded yet.</p>
+          </div>
+          <p class="status" id="guestsStatus"></p>
+        </section>
+
         <section class="panel">
           <h3>People</h3>
           <p class="meta">Wedding party, family, vendors, photographer, coordinator, or any custom group.</p>
@@ -705,6 +954,83 @@
         </section>
       </section>
     </main>
+    <script>
+      document.querySelectorAll("[data-slider]").forEach((slider) => {
+        const slides = Array.from(slider.querySelectorAll(".story-slider__image"));
+        const dots = Array.from(slider.querySelectorAll(".story-slider__dot"));
+        const intervalMs = Number(slider.dataset.interval) || 2800;
+
+        if (slides.length <= 1) {
+          return;
+        }
+
+        let activeIndex = slides.findIndex((slide) => slide.classList.contains("is-active"));
+        let paused = false;
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        if (activeIndex < 0) {
+          activeIndex = 0;
+          slides[0].classList.add("is-active");
+          dots[0]?.classList.add("is-active");
+        }
+
+        const showSlide = (index) => {
+          const nextIndex = (index + slides.length) % slides.length;
+
+          slides[activeIndex].classList.remove("is-active");
+          dots[activeIndex]?.classList.remove("is-active");
+          activeIndex = nextIndex;
+          slides[activeIndex].classList.add("is-active");
+          dots[activeIndex]?.classList.add("is-active");
+        };
+
+        dots.forEach((dot, index) => {
+          dot.addEventListener("click", () => showSlide(index));
+        });
+
+        slider.addEventListener("mouseenter", () => {
+          paused = true;
+        });
+
+        slider.addEventListener("mouseleave", () => {
+          paused = false;
+        });
+
+        slider.addEventListener("focusin", () => {
+          paused = true;
+        });
+
+        slider.addEventListener("focusout", () => {
+          paused = false;
+        });
+
+        slider.addEventListener("touchstart", (event) => {
+          touchStartX = event.changedTouches[0].clientX;
+          touchStartY = event.changedTouches[0].clientY;
+          paused = true;
+        }, { passive: true });
+
+        slider.addEventListener("touchend", (event) => {
+          const touchEndX = event.changedTouches[0].clientX;
+          const touchEndY = event.changedTouches[0].clientY;
+          const deltaX = touchEndX - touchStartX;
+          const deltaY = touchEndY - touchStartY;
+
+          if (Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY)) {
+            showSlide(deltaX < 0 ? activeIndex + 1 : activeIndex - 1);
+          }
+
+          paused = false;
+        }, { passive: true });
+
+        window.setInterval(() => {
+          if (!paused) {
+            showSlide(activeIndex + 1);
+          }
+        }, intervalMs);
+      });
+    </script>
     <?!= include("util"); ?>
     <?!= include("apps-planner"); ?>
   </body>

@@ -1,5 +1,6 @@
 const RSVP_SHEET_NAME = "RSVPs";
 const COMMENT_SHEET_NAME = "Comments";
+const GUESTS_SHEET_NAME = "Guests";
 const MEDIA_FOLDER_NAME = "H&C Grad";
 const RSVP_NOTIFICATION_EMAILS_PROPERTY = "RSVP_NOTIFICATION_EMAILS";
 
@@ -57,6 +58,7 @@ function doPost(e) {
 function doGet(e) {
   const rsvpRows = getSheet(RSVP_SHEET_NAME, ["Submitted At", "Name", "Email", "Attending", "Guests", "Comment"]).getDataRange().getValues().slice(1);
   const commentRows = getSheet(COMMENT_SHEET_NAME, ["Submitted At", "Name", "Comment", "Media Url", "Media Type", "Media Name", "Media Error"]).getDataRange().getValues().slice(1);
+  const guests = readSheetObjects(GUESTS_SHEET_NAME);
 
   const responses = rsvpRows
     .filter(function(row) {
@@ -64,8 +66,11 @@ function doGet(e) {
     })
     .map(function(row) {
       return {
+        submittedAt: row[0] || "",
         name: row[1] || "",
+        email: row[2] || "",
         attending: row[3] || "",
+        guests: row[4] || "",
         comment: row[5] || ""
       };
     })
@@ -86,7 +91,7 @@ function doGet(e) {
     })
     .reverse();
 
-  const output = JSON.stringify({ responses: responses, notes: notes });
+  const output = JSON.stringify({ responses: responses, notes: notes, guests: guests });
   const callback = e && e.parameter && e.parameter.callback;
 
   if (callback) {
@@ -202,4 +207,39 @@ function getSheet(sheetName, headers) {
   }
 
   return sheet;
+}
+
+function readSheetObjects(sheetName) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet.getSheetByName(sheetName);
+
+  if (!sheet) {
+    return [];
+  }
+
+  const values = sheet.getDataRange().getValues();
+
+  if (!values.length) {
+    return [];
+  }
+
+  const headers = values[0].map(function(header, index) {
+    const label = String(header || "").trim();
+    return label || "Column " + (index + 1);
+  });
+
+  return values
+    .slice(1)
+    .filter(function(row) {
+      return row.some(function(value) {
+        return value !== "" && value != null;
+      });
+    })
+    .map(function(row) {
+      return headers.reduce(function(record, header, index) {
+        record[header] = row[index] == null ? "" : String(row[index]);
+        return record;
+      }, {});
+    })
+    .reverse();
 }

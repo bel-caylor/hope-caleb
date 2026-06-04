@@ -1,7 +1,19 @@
-import type { PlannerRow } from "../constants";
+import { SPREADSHEET_ID_PROPERTY_KEY, type PlannerRow } from "../constants";
+
+function getSpreadsheet() {
+  const configuredId = String(
+    PropertiesService.getScriptProperties().getProperty(SPREADSHEET_ID_PROPERTY_KEY) || ""
+  ).trim();
+
+  if (configuredId) {
+    return SpreadsheetApp.openById(configuredId);
+  }
+
+  return SpreadsheetApp.getActive();
+}
 
 export function ensureSheet(name: string, headers: string[]) {
-  const ss = SpreadsheetApp.getActive();
+  const ss = getSpreadsheet();
   let sheet = ss.getSheetByName(name);
 
   if (!sheet) {
@@ -23,7 +35,7 @@ export function ensureSheet(name: string, headers: string[]) {
 }
 
 export function readRows(sheetName: string): PlannerRow[] {
-  const sheet = SpreadsheetApp.getActive().getSheetByName(sheetName);
+  const sheet = getSpreadsheet().getSheetByName(sheetName);
   if (!sheet || sheet.getLastRow() < 2) return [];
 
   const values = sheet.getDataRange().getValues();
@@ -36,6 +48,10 @@ export function readRows(sheetName: string): PlannerRow[] {
     });
     return record;
   });
+}
+
+export function getSheetByName(sheetName: string) {
+  return getSpreadsheet().getSheetByName(sheetName);
 }
 
 export function upsertRow(sheetName: string, headers: string[], id: string, values: PlannerRow) {

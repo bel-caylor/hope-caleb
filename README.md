@@ -1,6 +1,69 @@
 # Hope & Caleb Site
 
-Static GitHub Pages site for Hope Caylor and Caleb Montes. The root page is the wedding landing page, the original engagement and graduation site is preserved separately, and a new Google Apps Script planner scaffold now lives alongside the public site.
+Static GitHub Pages site for Hope Caylor and Caleb Montes. This repo contains two parallel frontends:
+
+- A root static site built from the top-level HTML/CSS/JS files
+- A standalone wedding dashboard/public shell built from `src/` into `dist-standalone/`
+
+## Start Here
+
+Use this table before editing anything:
+
+| What you want to change | Edit this source file | Rebuild / serve from |
+| --- | --- | --- |
+| Root wedding landing page at `/` | `index.html`, `site.css`, `site.js` | Root files directly |
+| Dashboard/public shell at `/dashboard.html` or local standalone dev | `src/html/index.html` and `src/html/js/*` | `dist-standalone/` via `npm run build:standalone` |
+| Preserved celebration page | `celebration.html`, `styles.css`, `script.js` | Root files directly |
+| TV slideshow | `slideshow.html`, `slideshow.css`, `slideshow.js` | Root files directly |
+
+For a focused version of this workflow, see [docs/build-workflow.md](/C:/Users/belin/Local%20Sites/hope-caleb/docs/build-workflow.md).
+
+## Build Outputs
+
+These two folders are not interchangeable:
+
+- `dist/`
+  - Intermediate build output
+  - Produced by `npm run build`
+  - Contains copied `src/html/**/*.html`, built Apps Script code from `src/http.ts`, and JSON assets
+  - Used as an input to the standalone assembly step
+- `dist-standalone/`
+  - Final standalone frontend output
+  - Produced by `npm run build:standalone`
+  - Contains the files you actually serve for local standalone/dashboard work
+  - Most important generated file: `dist-standalone/dashboard.html`
+
+## Recommended Workflow
+
+For dashboard or planner work:
+
+1. Edit `src/html/index.html` or `src/html/js/*`
+2. Run `npm run build:standalone`
+3. Open or refresh the page served from `dist-standalone/`
+
+For Apps Script backend work:
+
+1. Edit `src/**/*.ts` or `src/appsscript.json`
+2. Run `npm run build`
+3. Run `npm run deploy`
+4. Update the Apps Script web app deployment to the latest version if your `/exec` URL is versioned
+
+For local dashboard development with auto-rebuild:
+
+```powershell
+npm run dev:standalone
+```
+
+That watches source files, rebuilds `dist-standalone`, and serves the local frontend on `http://localhost:5173`.
+
+For root static site work:
+
+1. Edit the top-level files like `index.html`, `site.css`, `site.js`
+2. Refresh the root-served page
+
+## Common Mistake To Avoid
+
+If the page you are viewing is `dashboard.html` or coming from `http://localhost:5173`, do not edit the top-level `index.html` and expect that page to change. In that case, the source of truth is `src/html/index.html`, and the rendered output lives in `dist-standalone/dashboard.html`.
 
 ## Edit Party Details
 
@@ -19,14 +82,11 @@ const EVENT = {
 
 1. Create a Google Spreadsheet.
 2. Go to **Extensions > Apps Script**.
-3. Paste the contents of `google-apps-script.js` into the Apps Script editor.
-4. Save the project.
-5. Click **Deploy > New deployment**.
-6. Choose **Web app**.
-7. Set **Execute as** to **Me**.
-8. Set **Who has access** to **Anyone**.
-9. Deploy and copy the Web app URL.
-10. Paste that URL into `googleScriptUrl` in `script.js`.
+3. Set the `SPREADSHEET_ID` script property to the spreadsheet ID you want the web app to read.
+4. Run `npm run deploy` from this repo.
+5. In Apps Script, update the **Web app** deployment to the latest version.
+6. Copy the `/exec` URL.
+7. Paste that URL into `googleScriptUrl` in `script.js`.
 
 ### Optional RSVP Email Notifications
 
@@ -50,46 +110,37 @@ After that, every new RSVP submission will send an email with the guest name, em
 - Preserved engagement / graduation site: `https://hope-caleb.site/celebration.html`
 - Slideshow: `https://hope-caleb.site/slideshow.html`
 
-## Wedding Planner Scaffold
+## Wedding Dashboard
 
-This repo now also includes a `worship-plan-ts` style Google Apps Script frontend shell under `src/`, with public wedding views and a protected planner view in the same app.
+This repo now includes a protected dashboard under `src/`, with public wedding views and a private planner route in the same app.
 
-Current planner pieces:
+Current dashboard pieces:
 
-- `src/http.ts` - Apps Script web app entrypoint
-- `src/rpc.ts` - RPC router
-- `src/auth.ts` - Google ID token verification + admin check
-- `src/features/planner.ts` - people/events CRUD against Sheets
 - `src/html/index.html` - unified public + planner UI shell
+- `src/html/js/apps-planner.html` - password gate, RSVP panel, and planning tools
+- `src/http.ts` - Apps Script entrypoint bundled to `dist/Code.js`
+- `src/features/feed.ts` - public RSVP/comments/Guests feed logic
+- `scripts/build-standalone.cjs` - standalone builder with password hash injection
+- `dist-standalone/dashboard.html` - generated standalone output for the dashboard shell
 
-Planner sheets created automatically:
+The dashboard currently includes:
 
-- `Admins`
-- `People`
-- `Events`
+- `RSVPs` loaded from the public RSVP Apps Script feed
+- `People` stored locally in the browser for planning contacts
+- `Events` stored locally in the browser for the timeline and assignments
 
-### Planner setup
+The public celebration site remains in the root HTML/CSS/JS files and is not replaced by the dashboard scaffold.
 
-1. Run `npm install`
-2. Copy `.clasp.json.example` to `.clasp.json`
-3. Add your Apps Script project ID to `.clasp.json`
-4. In Apps Script Script Properties, add `GOOGLE_CLIENT_ID`
-5. Add your admin email to the `Admins` sheet after first deploy
-6. Run `npm run build`
-7. Run `npm run deploy`
+### Run Dashboard Locally
 
-The public celebration site remains in the root HTML/CSS/JS files and is not replaced by the planner scaffold.
+For UI development, you can run the dashboard locally without Google Sign-In.
 
-### Run Planner Frontend Locally
-
-For UI development, you can run the planner frontend locally while still using the Apps Script backend.
-
-1. Deploy the Apps Script web app and copy its `/exec` URL
+1. Copy `.env.standalone.example` to `.env.standalone.local`
 2. Set env vars in PowerShell:
 
 ```powershell
-$env:APPS_SCRIPT_BASE = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"
-$env:GOOGLE_CLIENT_ID = "your-client-id.apps.googleusercontent.com"
+$env:DASHBOARD_PASSWORD = "choose-a-strong-shared-password"
+$env:PUBLIC_RSVP_FEED_URL = "https://script.google.com/macros/s/YOUR_RSVP_DEPLOYMENT_ID/exec"
 ```
 
 3. Build the standalone page:
@@ -106,21 +157,27 @@ npm run serve:standalone
 
 Then open `http://localhost:5173`.
 
-If you want Google sign-in to work on localhost, add `http://localhost:5173` as an authorized JavaScript origin in your Google OAuth client.
+### RSVP Feed Setup
 
-For auto-rebuilding local development, use:
+The public RSVP form and the dashboard both use the Apps Script project built from [src/http.ts](/C:/Users/belin/Local%20Sites/hope-caleb/src/http.ts:1) and [src/features/feed.ts](/C:/Users/belin/Local%20Sites/hope-caleb/src/features/feed.ts:1).
 
-```powershell
-npm run dev:standalone
-```
+1. Create a Google Spreadsheet.
+2. Go to **Extensions > Apps Script**.
+3. In **Project Settings**, set `SPREADSHEET_ID` to the spreadsheet the feed should read.
+4. Run `npm run deploy`.
+5. Update the web app deployment to the latest version with access set to **Anyone**.
+6. Copy the deployment `/exec` URL.
+7. Use that URL in both `script.js` and `PUBLIC_RSVP_FEED_URL`.
 
-That watches `src/**/*`, rebuilds `dist-standalone`, and serves the local frontend on `http://localhost:5173`.
+The dashboard loads RSVPs with JSONP, so it avoids the CORS problem you hit when loading Apps Script directly from `localhost`.
 
-### Proxy Option
+### Source Of Truth
 
-If you want the same setup pattern as `worship-plan-ts`, use the Worker in [wedding-planner-proxy/README.md](</C:/Users/belin/Local Sites/hope-caleb/wedding-planner-proxy/README.md:1>).
-
-That lets the standalone frontend talk to a Cloudflare Worker URL instead of hitting Apps Script directly. In practice, that is the setup I would use for ongoing local development.
+- `src/http.ts` is the Apps Script entrypoint that builds to `dist/Code.js`
+- `src/features/feed.ts` handles public RSVP submissions, comments, media, and the `Guests` sheet feed
+- `src/features/planner.ts` handles planner-only People and Events RPC methods
+- `dist/` is generated output for `clasp`, not a file you should edit directly
+- The old root-level `google-apps-script.js` file has been removed
 
 ## Publish on GitHub Pages
 

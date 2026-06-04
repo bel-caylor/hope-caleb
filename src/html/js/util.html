@@ -1,34 +1,10 @@
 <script>
-  window.plannerAuthToken = "";
   const plannerMeta = (name) => document.querySelector(`meta[name="${name}"]`)?.getAttribute("content") || "";
 
   window.PLANNER_CTX = {
-    googleClientId: plannerMeta("planner-google-client-id"),
-    scriptBaseUrl: plannerMeta("planner-script-base-url")
+    dashboardPasswordHash: plannerMeta("planner-dashboard-password-hash"),
+    rsvpFeedUrl: plannerMeta("planner-rsvp-feed-url")
   };
-
-  async function callRpc(method, payload) {
-    const base = window.PLANNER_CTX.scriptBaseUrl;
-    if (!base) {
-      throw new Error("Apps Script deployment URL is not available yet.");
-    }
-
-    const response = await fetch(base, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        method,
-        payload: payload ?? null,
-        authToken: window.plannerAuthToken || ""
-      })
-    });
-
-    const result = await response.json();
-    if (!result.ok) {
-      throw new Error(result.error || "Request failed.");
-    }
-    return result.data;
-  }
 
   function setStatus(element, message, tone) {
     element.textContent = message || "";
