@@ -1,0 +1,289 @@
+<script>
+  const viewerStateEl = document.querySelector("#viewerState");
+  const plannerGateMessageEl = document.querySelector("#plannerGateMessage");
+  const signInMounts = Array.from(document.querySelectorAll("#signinButton, #signinButtonPlanner"));
+  const personForm = document.querySelector("#personForm");
+  const eventForm = document.querySelector("#eventForm");
+  const peopleListEl = document.querySelector("#peopleList");
+  const eventsListEl = document.querySelector("#eventsList");
+  const personStatusEl = document.querySelector("#personStatus");
+  const eventStatusEl = document.querySelector("#eventStatus");
+  const routeLinks = Array.from(document.querySelectorAll("[data-route-link]"));
+  const routedViews = Array.from(document.querySelectorAll("[data-view]"));
+  const plannerContentEl = document.querySelector("#plannerContent");
+
+  let cachedPeople = [];
+  let cachedEvents = [];
+  let currentView = getRequestedView();
+  let googleSignInInitialized = false;
+  let viewerProfile = {
+    signedIn: false,
+    email: "",
+    isAdmin: false
+  };
+
+  function getRequestedView() {
+    const requested = new URLSearchParams(window.location.search).get("view");
+    return requested === "planner" ? "planner" : "home";
+  }
+
+  function navigateTo(view) {
+    const url = new URL(window.location.href);
+    if (view === "planner") {
+      url.searchParams.set("view", "planner");
+    } else {
+      url.searchParams.delete("view");
+    }
+    window.history.pushState({}, "", url);
+    currentView = view;
+    renderRoute();
+    maybeLoadPlannerData();
+  }
+
+  function renderRoute() {
+    routedViews.forEach((section) => {
+      section.hidden = section.dataset.view !== currentView;
+    });
+
+    routeLinks.forEach((link) => {
+      link.classList.toggle("is-active", link.dataset.routeLink === currentView);
+    });
+
+    plannerContentEl.hidden = currentView !== "planner" || !viewerProfile.isAdmin;
+    updateViewerState();
+  }
+
+  function updateViewerState() {
+    if (!viewerProfile.signedIn) {
+      viewerStateEl.textContent = "Sign in with an approved Google account to unlock planner tools.";
+      plannerGateMessageEl.textContent = "Planner access is private. Sign in to see whether your account is approved.";
+      return;
+    }
+
+    if (!viewerProfile.isAdmin) {
+      viewerStateEl.textContent = `${viewerProfile.email} is signed in but not on the Admins sheet yet.`;
+      plannerGateMessageEl.textContent = `${viewerProfile.email} is signed in, but this account does not have planner access yet.`;
+      return;
+    }
+
+    viewerStateEl.textContent = `Signed in as ${viewerProfile.email}.`;
+    plannerGateMessageEl.textContent = "Planner unlocked. You can edit people and timeline entries below.";
+  }
+
+  function toLocalInputValue(isoString) {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return "";
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
+  function fillForm(form, values) {
+    Object.entries(values).forEach(([key, value]) => {
+      const field = form.elements.namedItem(key);
+      if (field) {
+        field.value = value == null ? "" : String(value);
+      }
+    });
+  }
+
+  function renderPeople() {
+    if (!cachedPeople.length) {
+      peopleListEl.innerHTML = '<p class="meta">No people yet. Add your wedding party, family, or vendors here.</p>';
+      return;
+    }
+
+    peopleListEl.innerHTML = cachedPeople.map((person) => `
+      <article class="card">
+        <h3>${escapeHtml(person.name || "Unnamed person")}</h3>
+        <p>${escapeHtml([person.role, person.groupName].filter(Boolean).join(" | ") || "No role or group yet")}</p>
+        <p class="meta">${escapeHtml(person.phone || "No phone")} | ${escapeHtml(person.consentStatus || "consent unknown")}</p>
+        <div class="toolbar">
+          <button type="button" data-edit-person="${escapeHtml(person.id)}">Edit</button>
+        </div>
+      </article>
+    `).join("");
+  }
+
+  function renderEvents() {
+    if (!cachedEvents.length) {
+      eventsListEl.innerHTML = '<p class="meta">No events yet. Add a timeline entry to start building reminders.</p>';
+      return;
+    }
+
+    eventsListEl.innerHTML = cachedEvents.map((event) => `
+      <article class="card">
+        <h3>${escapeHtml(event.title || "Untitled event")}</h3>
+        <p>${escapeHtml(event.location || "No location")} | ${escapeHtml(event.assignedTo || "No audience yet")}</p>
+        <p class="meta">${escapeHtml(event.startsAt || "")} | remind ${escapeHtml(event.reminderMinutes)} minutes ahead</p>
+        <div class="toolbar">
+          <button type="button" data-edit-event="${escapeHtml(event.id)}">Edit</button>
+        </div>
+      </article>
+    `).join("");
+  }
+
+  async function refreshData() {
+    cachedPeople = await callRpc("listPeople");
+    cachedEvents = await callRpc("listEvents");
+    renderPeople();
+    renderEvents();
+  }
+
+  async function refreshViewer() {
+    viewerProfile = await callRpc("getViewerProfile");
+    renderRoute();
+    return viewerProfile.isAdmin;
+  }
+
+  async function maybeLoadPlannerData() {
+    if (currentView !== "planner" || !viewerProfile.isAdmin) {
+      plannerContentEl.hidden = currentView !== "planner" || !viewerProfile.isAdmin;
+      return;
+    }
+
+    await refreshData();
+    plannerContentEl.hidden = false;
+  }
+
+  function initGoogleSignIn() {
+    const clientId = window.PLANNER_CTX.googleClientId;
+    if (!clientId) {
+      viewerStateEl.textContent = "Google sign-in is not configured yet. Add GOOGLE_CLIENT_ID to Script Properties.";
+      plannerGateMessageEl.textContent = "Planner login is waiting on Google sign-in configuration.";
+      return;
+    }
+
+    if (!window.google || !google.accounts || !google.accounts.id) {
+      viewerStateEl.textContent = "Google sign-in is still loading. Refresh the page if the button does not appear.";
+      plannerGateMessageEl.textContent = "Planner login is waiting for Google's sign-in library to finish loading.";
+      return;
+    }
+
+    if (googleSignInInitialized) {
+      return;
+    }
+
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: async (response) => {
+        try {
+          window.plannerAuthToken = response.credential || "";
+          await refreshViewer();
+          await maybeLoadPlannerData();
+        } catch (error) {
+          const message = error && error.message ? error.message : "Sign-in failed.";
+          viewerStateEl.textContent = message;
+          plannerGateMessageEl.textContent = message;
+        }
+      }
+    });
+
+    signInMounts.forEach((mount) => {
+      if (!mount) return;
+      mount.innerHTML = "";
+      google.accounts.id.renderButton(mount, {
+        theme: "outline",
+        size: "large",
+        shape: "pill"
+      });
+    });
+    googleSignInInitialized = true;
+  }
+
+  personForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!viewerProfile.isAdmin) {
+      setStatus(personStatusEl, "Please sign in with an approved account first.", "error");
+      return;
+    }
+
+    try {
+      await callRpc("savePerson", Object.fromEntries(new FormData(personForm).entries()));
+      setStatus(personStatusEl, "Person saved.", "success");
+      personForm.reset();
+      await refreshData();
+    } catch (error) {
+      setStatus(personStatusEl, error.message || "Unable to save person.", "error");
+    }
+  });
+
+  eventForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!viewerProfile.isAdmin) {
+      setStatus(eventStatusEl, "Please sign in with an approved account first.", "error");
+      return;
+    }
+
+    try {
+      await callRpc("saveEvent", Object.fromEntries(new FormData(eventForm).entries()));
+      setStatus(eventStatusEl, "Event saved.", "success");
+      eventForm.reset();
+      await refreshData();
+    } catch (error) {
+      setStatus(eventStatusEl, error.message || "Unable to save event.", "error");
+    }
+  });
+
+  document.querySelector("[data-reset-person]").addEventListener("click", () => {
+    personForm.reset();
+    setStatus(personStatusEl, "", "");
+  });
+
+  document.querySelector("[data-reset-event]").addEventListener("click", () => {
+    eventForm.reset();
+    eventForm.elements.namedItem("active").value = "true";
+    eventForm.elements.namedItem("reminderMinutes").value = "15";
+    setStatus(eventStatusEl, "", "");
+  });
+
+  peopleListEl.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-edit-person]");
+    if (!button) return;
+    const person = cachedPeople.find((item) => item.id === button.dataset.editPerson);
+    if (!person) return;
+    fillForm(personForm, person);
+    setStatus(personStatusEl, `Editing ${person.name}.`, "success");
+  });
+
+  eventsListEl.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-edit-event]");
+    if (!button) return;
+    const eventItem = cachedEvents.find((item) => item.id === button.dataset.editEvent);
+    if (!eventItem) return;
+    fillForm(eventForm, {
+      ...eventItem,
+      startsAt: toLocalInputValue(eventItem.startsAt),
+      active: eventItem.active ? "true" : "false"
+    });
+    setStatus(eventStatusEl, `Editing ${eventItem.title}.`, "success");
+  });
+
+  routeLinks.forEach((link) => {
+    link.addEventListener("click", (event) => {
+      const route = link.dataset.routeLink;
+      if (!route) return;
+      event.preventDefault();
+      navigateTo(route);
+    });
+  });
+
+  window.addEventListener("popstate", () => {
+    currentView = getRequestedView();
+    renderRoute();
+    maybeLoadPlannerData();
+  });
+
+  window.onGoogleLibraryLoad = () => {
+    initGoogleSignIn();
+  };
+
+  window.addEventListener("load", async () => {
+    renderRoute();
+    initGoogleSignIn();
+    await refreshViewer();
+    await maybeLoadPlannerData();
+  });
+</script>

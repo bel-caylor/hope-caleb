@@ -1,0 +1,2 @@
+# rootDir is already set to dist in .clasp.json, so clasp should upload
+# the built files in dist directly.

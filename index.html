@@ -12,184 +12,209 @@
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <style>
-      .wedding-home {
-        min-height: 100vh;
-        color: #fff8f2;
+      .wedding-home-celebration {
+        --ink: #3f3034;
+        --muted: #6f5a60;
+        --paper: #faf7f5;
+        --soft: #cfd1d1;
+        --line: rgba(89, 0, 0, 0.16);
+        --green: #590000;
+        --green-light: #cfd1d1;
+        --blush: #995566;
+        --gold: #9c9a45;
+        --white: #fffaf7;
+        --shadow: 0 24px 60px rgba(89, 0, 0, 0.14);
         background:
-          linear-gradient(135deg, rgba(65, 36, 26, 0.72), rgba(157, 92, 56, 0.35)),
-          url("images/hero/engagement.jpg") center/cover no-repeat;
+          radial-gradient(circle at top, rgba(153, 85, 102, 0.14), transparent 28%),
+          linear-gradient(180deg, #fcfaf8 0%, #f5efea 100%);
       }
 
-      .wedding-home__shade {
-        min-height: 100vh;
-        background: linear-gradient(180deg, rgba(21, 11, 8, 0.35), rgba(21, 11, 8, 0.72));
+      .wedding-home-celebration .hero__shade {
+        background:
+          linear-gradient(180deg, rgba(89, 0, 0, 0.08) 0%, rgba(89, 0, 0, 0.18) 42%, rgba(89, 0, 0, 0.62) 100%);
       }
 
-      .wedding-home__nav,
-      .wedding-home__content,
-      .wedding-home__cards,
-      .wedding-home__footer {
-        width: min(1120px, calc(100% - 2rem));
-        margin: 0 auto;
+      .wedding-home-celebration .hero .eyebrow {
+        color: #cfd1d1;
       }
 
-      .wedding-home__nav {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        padding: 1.5rem 0 1rem;
+      .wedding-home-celebration .eyebrow {
+        color: #810d0b;
       }
 
-      .wedding-home__brand {
-        color: inherit;
-        text-decoration: none;
-        font-family: "Pacifico", cursive;
-        font-size: clamp(1.6rem, 4vw, 2.2rem);
+      .wedding-home-celebration .button {
+        background: #810d0b;
       }
 
-      .wedding-home__nav-links {
-        display: flex;
-        gap: 1rem;
-        flex-wrap: wrap;
+      .wedding-home-celebration .button:hover {
+        background: #590000;
       }
 
-      .wedding-home__nav-links a,
-      .wedding-home__footer a {
-        color: inherit;
-        text-decoration: none;
+      .wedding-home-celebration .button--light {
+        background: #cfd1d1;
+        color: #590000;
       }
 
-      .wedding-home__content {
-        padding: 3.5rem 0 2rem;
+      .wedding-home-celebration .button--light:hover {
+        background: #aeb081;
       }
 
-      .wedding-home__eyebrow {
-        margin: 0 0 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
-        font-size: 0.82rem;
+      .wedding-home-celebration .details {
+        background:
+          linear-gradient(135deg, rgba(207, 209, 209, 0.8), rgba(174, 176, 129, 0.3)),
+          var(--paper);
       }
 
-      .wedding-home h1 {
-        margin: 0;
-        font-size: clamp(3rem, 10vw, 6.5rem);
-        line-height: 0.95;
-        font-family: "Pacifico", cursive;
+      .wedding-home-celebration .detail {
+        border-color: rgba(129, 13, 11, 0.12);
+      }
+
+      .wedding-home-celebration .detail__icon {
+        background: #aeb081;
+        color: #590000;
+      }
+
+      .wedding-home-celebration .story {
+        background:
+          linear-gradient(135deg, rgba(174, 176, 129, 0.84), rgba(156, 154, 69, 0.72));
+      }
+
+      .wedding-home-celebration .story__text p:last-child,
+      .wedding-home-celebration .future__content p:last-child {
+        color: #4f4044;
+      }
+
+      .wedding-home-celebration .future {
+        background:
+          linear-gradient(135deg, rgba(153, 85, 102, 0.12), rgba(129, 13, 11, 0.14)),
+          var(--paper);
+      }
+
+      .wedding-home-celebration .future--caleb {
+        background:
+          linear-gradient(135deg, rgba(129, 13, 11, 0.12), rgba(174, 176, 129, 0.22)),
+          #f7f1ee;
+      }
+
+      .wedding-home-celebration .future__content a {
+        color: #590000;
+      }
+
+      .wedding-home-celebration .photo-slideshow {
+        min-height: 460px;
+      }
+
+      .wedding-home-celebration .nav__brand {
+        font-family: "Pacifico", "Brush Script MT", cursive;
+        font-size: clamp(1.5rem, 3.5vw, 2.15rem);
         font-weight: 400;
       }
 
-      .wedding-home__date {
-        margin: 1.5rem 0 0.35rem;
-        font-size: clamp(1.25rem, 3vw, 1.85rem);
-      }
-
-      .wedding-home__copy {
-        max-width: 44rem;
-        font-size: 1.05rem;
-      }
-
-      .wedding-home__actions {
-        display: flex;
-        gap: 0.85rem;
-        flex-wrap: wrap;
-        margin-top: 1.75rem;
-      }
-
-      .wedding-home__cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 1rem;
-        padding: 1rem 0 3rem;
-      }
-
-      .wedding-home__card {
-        padding: 1.35rem;
-        border-radius: 1.35rem;
-        background: rgba(255, 248, 242, 0.12);
-        border: 1px solid rgba(255, 248, 242, 0.18);
-        backdrop-filter: blur(10px);
-        box-shadow: 0 18px 40px rgba(12, 8, 7, 0.2);
-      }
-
-      .wedding-home__card h2 {
-        margin: 0 0 0.65rem;
-        font-size: 1.2rem;
-      }
-
-      .wedding-home__card p {
-        margin: 0 0 1rem;
-      }
-
-      .wedding-home__card a {
-        color: #fff8f2;
-      }
-
-      .wedding-home__footer {
-        display: flex;
-        justify-content: space-between;
-        gap: 1rem;
-        padding: 0 0 1.75rem;
-        font-size: 0.95rem;
-      }
-
-      @media (max-width: 720px) {
-        .wedding-home__nav,
-        .wedding-home__footer {
-          flex-direction: column;
-          align-items: flex-start;
-        }
+      .wedding-home-celebration .hero__copy {
+        max-width: 48rem;
       }
     </style>
   </head>
-  <body class="wedding-home">
-    <div class="wedding-home__shade">
-      <nav class="wedding-home__nav" aria-label="Primary navigation">
-        <a class="wedding-home__brand" href="/">Hope & Caleb</a>
-        <div class="wedding-home__nav-links">
-          <a href="celebration.html">Engagement & Graduation</a>
+  <body class="wedding-home-celebration">
+    <header class="hero" id="home">
+      <div class="hero__slides" aria-hidden="true">
+        <img class="hero__image is-active" src="images/hero/engagement.jpg" alt="" loading="eager" fetchpriority="high" decoding="async">
+      </div>
+      <div class="hero__shade"></div>
+      <nav class="nav" aria-label="Primary navigation">
+        <a href="#home" class="nav__brand">Hope & Caleb</a>
+        <div class="nav__links">
+          <a href="#wedding-home">Wedding Home</a>
+          <a href="#next-steps">Next Steps</a>
+          <a href="celebration.html">Celebration</a>
           <a href="slideshow.html">Slideshow</a>
         </div>
       </nav>
+      <section class="hero__content">
+        <p class="eyebrow">Wedding Planning Home</p>
+        <h1>Hope & Caleb</h1>
+        <p class="hero__copy">
+          The new wedding area now uses the same layout language as the celebration page, with a softer wine palette to carry the next chapter of the site.
+        </p>
+        <div class="hero__actions">
+          <a class="button" href="celebration.html">Open Celebration Page</a>
+          <a class="button button--light" href="celebration.html?view=save">Open Save the Date View</a>
+        </div>
+      </section>
+    </header>
 
-      <main>
-        <section class="wedding-home__content">
-          <p class="wedding-home__eyebrow">Wedding Planning Home</p>
-          <h1>Hope & Caleb</h1>
-          <p class="wedding-home__date">Friday, January 8, 2027</p>
-          <p class="wedding-home__copy">
-            This is now the main home for the wedding site. We preserved the full engagement and graduation page on its own URL so we can build the wedding experience, planning tools, and private coordination features without losing the original celebration site.
+    <main id="wedding-home">
+      <section class="section details" aria-labelledby="details-heading">
+        <div class="section__intro">
+          <p class="eyebrow">Wedding Home</p>
+          <h2 id="details-heading">Everything now has a clearer place.</h2>
+        </div>
+        <div class="details__grid">
+          <article class="detail">
+            <span class="detail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 19h16"></path><path d="M6 17V9"></path><path d="M18 17V5"></path><path d="M10 17V12"></path><path d="M14 17V8"></path></svg>
+            </span>
+            <span class="detail__label">Public Site</span>
+            <strong>Wedding homepage, RSVP, travel, and registry can live here next.</strong>
+          </article>
+          <article class="detail">
+            <span class="detail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M3 10h18"></path></svg>
+            </span>
+            <span class="detail__label">Planning Tools</span>
+            <strong>Dashboards, task tracking, and wedding coordination can grow from this area.</strong>
+          </article>
+          <article class="detail">
+            <span class="detail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 16v2"></path><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 1 1 8 0v3"></path></svg>
+            </span>
+            <span class="detail__label">Private Access</span>
+            <strong>Password-protected planning pages can stay separate from public guest info.</strong>
+          </article>
+          <article class="detail detail--wide">
+            <span class="detail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M5 4h14"></path><path d="M5 12h14"></path><path d="M5 20h14"></path></svg>
+            </span>
+            <span class="detail__label">Archive</span>
+            <strong>The engagement and graduation celebration page is still preserved exactly at <a href="celebration.html">celebration.html</a>.</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="section story" aria-labelledby="story-heading">
+        <div class="story__text">
+          <p class="eyebrow">Same Layout, New Palette</p>
+          <h2 id="story-heading">The new area now feels connected to the celebration page.</h2>
+          <p>
+            Instead of a separate card system, this homepage now borrows the celebration page's hero, section spacing, and content grid structure. That keeps the experience more unified while shifting the tone toward the wedding season.
           </p>
-          <div class="wedding-home__actions">
-            <a class="button" href="celebration.html">Open Preserved Celebration Page</a>
-            <a class="button button--light" href="celebration.html?view=save">Open Save the Date View</a>
-          </div>
-        </section>
+        </div>
+        <div class="photo-slideshow" aria-label="Hope and Caleb engagement photo">
+          <img class="photo-slideshow__image is-active" src="images/engagement/deck.jpg" alt="Hope and Caleb on a deck during their engagement session" loading="lazy" decoding="async">
+        </div>
+      </section>
 
-        <section class="wedding-home__cards" aria-label="Wedding site sections">
-          <article class="wedding-home__card">
-            <h2>Wedding Site</h2>
-            <p>The public wedding homepage, RSVP flow, registry, FAQ, and travel info will live here next.</p>
-          </article>
-          <article class="wedding-home__card">
-            <h2>Planning Dashboard</h2>
-            <p>We can back a private dashboard with Google Sheets for task tracking, timeline items, and assigned responsibilities.</p>
-          </article>
-          <article class="wedding-home__card">
-            <h2>Private Access</h2>
-            <p>A simple password gate can protect planning pages for you, family, and the wedding party.</p>
-          </article>
-          <article class="wedding-home__card">
-            <h2>Legacy Celebration</h2>
-            <p>Your existing engagement and graduation site is safe at <a href="celebration.html">celebration.html</a>.</p>
-          </article>
-        </section>
-      </main>
+      <section class="section future" id="next-steps" aria-labelledby="next-steps-heading">
+        <img src="images/snow-angel/snowangel2.jpg" alt="Snow angel photo for the save the date theme" loading="lazy" decoding="async">
+        <div class="future__content">
+          <p class="eyebrow">Color Direction</p>
+          <h2 id="next-steps-heading">Wine, sage, olive, and soft stone set the tone.</h2>
+          <p>
+            The updated colors now pull from the wine palette: soft stone gray, muted sage, olive gold, dusty mauve, deep wine red, and a rich burgundy base for calls to action and overlays.
+          </p>
+        </div>
+      </section>
 
-      <footer class="wedding-home__footer">
-        <span>Wedding build in progress</span>
-        <a href="celebration.html?view=party">View party RSVP version</a>
-      </footer>
-    </div>
+      <section class="section future future--caleb" aria-labelledby="links-heading">
+        <img src="images/hero/standing grad.jpg" alt="Hope and Caleb standing together" loading="lazy" decoding="async">
+        <div class="future__content">
+          <p class="eyebrow">Quick Links</p>
+          <h2 id="links-heading">The original views are still easy to reach.</h2>
+          <p>
+            Jump back to the <a href="celebration.html">celebration archive</a>, open the <a href="celebration.html?view=party">party RSVP view</a>, or use the <a href="celebration.html?view=save">save the date version</a> while the wedding experience continues to grow here.
+          </p>
+        </div>
+      </section>
+    </main>
   </body>
 </html>

@@ -1,0 +1,28 @@
+{
+  "name": "hope-caleb-wedding-planner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rimraf dist && node esbuild.config.mjs && npm run copy:html && npm run copy:json",
+    "build:standalone": "npm run build && node scripts/build-standalone.cjs",
+    "watch:standalone": "chokidar \"src/**/*\" \"celebration.html\" \"slideshow.html\" \"styles.css\" \"script.js\" \"slideshow.css\" \"slideshow.js\" \"images/**/*\" -c \"npm run build:standalone\" --initial",
+    "copy:html": "copyfiles -f \"src/html/**/*.html\" dist",
+    "copy:json": "copyfiles -u 1 \"src/**/*.json\" dist/",
+    "serve:standalone": "http-server dist-standalone -p 5173 -c-1",
+    "dev:standalone": "concurrently -k \"npm:watch:standalone\" \"npm:serve:standalone\"",
+    "push": "clasp push",
+    "deploy": "npm run build && clasp push"
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.2.0",
+    "@types/google-apps-script": "^1.0.88",
+    "chokidar-cli": "^3.0.0",
+    "concurrently": "^9.2.1",
+    "copyfiles": "^2.4.1",
+    "esbuild": "^0.25.5",
+    "http-server": "^14.1.1",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,6 +1,7 @@
 const RSVP_SHEET_NAME = "RSVPs";
 const COMMENT_SHEET_NAME = "Comments";
 const MEDIA_FOLDER_NAME = "H&C Grad";
+const RSVP_NOTIFICATION_EMAILS_PROPERTY = "RSVP_NOTIFICATION_EMAILS";
 
 function doPost(e) {
   const data = e.parameter;
@@ -28,14 +29,24 @@ function doPost(e) {
       media.error || ""
     ]]);
   } else {
+    const submittedAt = data.submittedAt || new Date().toISOString();
     getSheet(RSVP_SHEET_NAME, ["Submitted At", "Name", "Email", "Attending", "Guests", "Comment"]).appendRow([
-      data.submittedAt || new Date().toISOString(),
+      submittedAt,
       data.name || "",
       data.email || "",
       data.attending || "",
       data.guests || "",
       data.comment || ""
     ]);
+
+    sendRsvpNotification({
+      submittedAt: submittedAt,
+      name: data.name || "",
+      email: data.email || "",
+      attending: data.attending || "",
+      guests: data.guests || "",
+      comment: data.comment || ""
+    });
   }
 
   return ContentService
@@ -136,6 +147,44 @@ function getMediaFolder() {
   }
 
   return DriveApp.createFolder(MEDIA_FOLDER_NAME);
+}
+
+function sendRsvpNotification(rsvp) {
+  const recipients = getNotificationRecipients();
+
+  if (!recipients.length) {
+    return;
+  }
+
+  const guestName = rsvp.name || "Guest";
+  const subject = "New RSVP received";
+  const lines = [
+    "A new RSVP was submitted.",
+    "",
+    "Name: " + guestName,
+    "Email: " + (rsvp.email || "Not provided"),
+    "Attending: " + (rsvp.attending || "Not provided"),
+    "Guests: " + (rsvp.guests || "Not provided"),
+    "Comment: " + (rsvp.comment || "None"),
+    "Submitted At: " + (rsvp.submittedAt || new Date().toISOString())
+  ];
+
+  MailApp.sendEmail({
+    to: recipients.join(","),
+    subject: subject,
+    body: lines.join("\n")
+  });
+}
+
+function getNotificationRecipients() {
+  const value = PropertiesService.getScriptProperties().getProperty(RSVP_NOTIFICATION_EMAILS_PROPERTY) || "";
+
+  return value
+    .split(",")
+    .map(function(email) {
+      return email.trim();
+    })
+    .filter(Boolean);
 }
 
 function getSheet(sheetName, headers) {

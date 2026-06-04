@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+wedding-planner-proxy/node_modules/
+
+# Build output
+dist/
+dist-standalone/
+
+# Local Apps Script config
+.clasp.json
+
+# Cloudflare / Wrangler local state
+wedding-planner-proxy/.wrangler/
+wedding-planner-proxy/.dev.vars
+wedding-planner-proxy/.env
+wedding-planner-proxy/.env.*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / editor noise
+.DS_Store
+Thumbs.db

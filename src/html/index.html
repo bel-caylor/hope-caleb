@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hope & Caleb Wedding</title>
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <meta name="planner-google-client-id" content="<?= googleClientId ?>">
+    <meta name="planner-script-base-url" content="<?= scriptBaseUrl ?>">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #3f3034;
+        --muted: #6f5a60;
+        --paper: #faf7f5;
+        --soft: #cfd1d1;
+        --line: rgba(89, 0, 0, 0.16);
+        --green: #590000;
+        --green-light: #cfd1d1;
+        --blush: #995566;
+        --gold: #9c9a45;
+        --white: #fffaf7;
+        --shadow: 0 24px 60px rgba(89, 0, 0, 0.14);
+        --planner-panel: rgba(255, 250, 247, 0.92);
+        --planner-border: rgba(89, 0, 0, 0.1);
+        --planner-success: #5f6f3a;
+        --planner-danger: #810d0b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+        overflow-x: hidden;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at top, rgba(153, 85, 102, 0.14), transparent 28%),
+          linear-gradient(180deg, #fcfaf8 0%, #f5efea 100%);
+        color: var(--ink);
+        font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 1.55;
+        overflow-x: hidden;
+      }
+
+      img {
+        display: block;
+        max-width: 100%;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .hero {
+        position: relative;
+        min-height: 100vh;
+        min-height: 100svh;
+        display: grid;
+        align-items: end;
+        overflow: hidden;
+        color: var(--white);
+      }
+
+      .hero__slides,
+      .hero__image,
+      .hero__shade {
+        position: absolute;
+        inset: 0;
+      }
+
+      .hero__slides {
+        overflow: hidden;
+      }
+
+      .hero__image {
+        inset: -2px;
+        width: calc(100% + 4px);
+        height: calc(100% + 4px);
+        object-fit: cover;
+        object-position: 50% 38%;
+        opacity: 1;
+      }
+
+      .hero__shade {
+        background:
+          linear-gradient(180deg, rgba(89, 0, 0, 0.08) 0%, rgba(89, 0, 0, 0.18) 42%, rgba(89, 0, 0, 0.62) 100%);
+      }
+
+      .nav {
+        position: absolute;
+        z-index: 2;
+        top: 0;
+        left: 0;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.1rem clamp(1rem, 4vw, 3.5rem);
+      }
+
+      .nav a {
+        text-decoration: none;
+      }
+
+      .nav__brand {
+        font-family: "Pacifico", "Brush Script MT", cursive;
+        font-size: clamp(1.5rem, 3.5vw, 2.15rem);
+        font-weight: 400;
+      }
+
+      .nav__links {
+        display: flex;
+        gap: clamp(0.75rem, 2vw, 1.6rem);
+        flex-wrap: wrap;
+        font-size: 0.95rem;
+      }
+
+      .hero__content {
+        position: relative;
+        z-index: 1;
+        width: min(1120px, calc(100% - 4rem));
+        margin: 0 auto;
+        padding: 44vh 0 8vh;
+      }
+
+      .eyebrow {
+        margin: 0 0 0.65rem;
+        color: #810d0b;
+        font-size: clamp(0.9rem, 1.4vw, 1.08rem);
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .hero .eyebrow {
+        color: #cfd1d1;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        line-height: 1.03;
+        font-family: Georgia, "Times New Roman", serif;
+        font-weight: 500;
+      }
+
+      h1 {
+        font-size: clamp(2.1rem, 6vw, 5.1rem);
+      }
+
+      h2 {
+        font-size: clamp(2rem, 4.8vw, 3.8rem);
+      }
+
+      h3 {
+        font-size: clamp(1.2rem, 2.4vw, 1.8rem);
+      }
+
+      .hero__copy {
+        max-width: 48rem;
+        margin: 0.95rem 0 0;
+        font-size: clamp(1.08rem, 2vw, 1.35rem);
+      }
+
+      .hero__actions,
+      .auth-row,
+      .toolbar,
+      .planner-summary {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .hero__actions {
+        margin-top: 1.1rem;
+      }
+
+      .button {
+        appearance: none;
+        display: inline-flex;
+        gap: 0.5rem;
+        align-items: center;
+        justify-content: center;
+        min-height: 3rem;
+        border: 0;
+        border-radius: 6px;
+        padding: 0.8rem 1.2rem;
+        background: #810d0b;
+        color: var(--white);
+        font: inherit;
+        font-weight: 800;
+        text-decoration: none;
+        cursor: pointer;
+        transition: transform 160ms ease, background-color 160ms ease;
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+        background: #590000;
+      }
+
+      .button--light {
+        background: #cfd1d1;
+        color: #590000;
+      }
+
+      .button--light:hover {
+        background: #aeb081;
+      }
+
+      .section {
+        padding: clamp(3.5rem, 8vw, 7rem) clamp(1rem, 4vw, 3.5rem);
+      }
+
+      .section__intro {
+        max-width: 760px;
+      }
+
+      .section__intro p:last-child,
+      .meta {
+        color: var(--muted);
+      }
+
+      .details {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(280px, 1.4fr);
+        gap: clamp(1.5rem, 5vw, 5rem);
+        align-items: start;
+        background:
+          linear-gradient(135deg, rgba(207, 209, 209, 0.8), rgba(174, 176, 129, 0.3)),
+          var(--paper);
+      }
+
+      .details__grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .detail {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        column-gap: 1rem;
+        align-items: center;
+        padding: 1.25rem;
+        border: 1px solid rgba(129, 13, 11, 0.12);
+        border-radius: 8px;
+        background: rgba(255, 253, 248, 0.82);
+        box-shadow: 0 14px 34px rgba(31, 41, 51, 0.08);
+      }
+
+      .detail--wide {
+        grid-column: 1 / -1;
+      }
+
+      .detail__icon {
+        grid-row: span 2;
+        display: flex;
+        width: 3.6rem;
+        height: 3.6rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: #aeb081;
+        color: #590000;
+      }
+
+      .detail__icon svg {
+        width: 1.75rem;
+        height: 1.75rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .detail__label {
+        display: block;
+        align-self: end;
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .detail strong {
+        display: block;
+        align-self: start;
+        font-size: clamp(1rem, 2vw, 1.24rem);
+      }
+
+      .story {
+        display: grid;
+        grid-template-columns: minmax(280px, 0.88fr) minmax(320px, 1fr);
+        gap: clamp(1.5rem, 5vw, 5rem);
+        align-items: center;
+        background:
+          linear-gradient(135deg, rgba(174, 176, 129, 0.84), rgba(156, 154, 69, 0.72));
+      }
+
+      .story__text p:last-child,
+      .future__content p:last-child {
+        max-width: 640px;
+        color: #4f4044;
+        font-size: 1.08rem;
+      }
+
+      .future {
+        display: grid;
+        grid-template-columns: minmax(320px, 1.1fr) minmax(280px, 0.9fr);
+        gap: clamp(1.5rem, 5vw, 5rem);
+        align-items: center;
+        background:
+          linear-gradient(135deg, rgba(153, 85, 102, 0.12), rgba(129, 13, 11, 0.14)),
+          var(--paper);
+      }
+
+      .future--planner {
+        background:
+          linear-gradient(135deg, rgba(129, 13, 11, 0.12), rgba(174, 176, 129, 0.22)),
+          #f7f1ee;
+      }
+
+      .future img,
+      .photo-frame img {
+        width: 100%;
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      .future__content a {
+        color: #590000;
+        font-weight: 800;
+      }
+
+      .photo-frame {
+        width: 100%;
+      }
+
+      .signin-strip,
+      .planner-banner,
+      .panel {
+        border: 1px solid var(--planner-border);
+        border-radius: 8px;
+        background: var(--planner-panel);
+        box-shadow: var(--shadow);
+      }
+
+      .signin-strip {
+        width: min(1120px, calc(100% - 2rem));
+        margin: -2rem auto 0;
+        padding: 1.1rem 1.25rem;
+        position: relative;
+        z-index: 2;
+      }
+
+      .planner-banner {
+        width: min(1120px, calc(100% - 2rem));
+        margin: 0 auto;
+        padding: 1.5rem;
+      }
+
+      .planner-grid {
+        width: min(1120px, calc(100% - 2rem));
+        margin: 1rem auto 4rem;
+        display: grid;
+        grid-template-columns: 1.1fr 1.3fr;
+        gap: 1rem;
+      }
+
+      .panel {
+        padding: 1.25rem;
+      }
+
+      .panel h2,
+      .panel h3 {
+        margin-bottom: 0.5rem;
+      }
+
+      .list {
+        display: grid;
+        gap: 0.75rem;
+        max-height: 28rem;
+        overflow: auto;
+      }
+
+      .card {
+        padding: 0.95rem 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--planner-border);
+        background: #fffdf9;
+      }
+
+      .card h3,
+      .card p {
+        margin: 0;
+      }
+
+      .card p {
+        margin-top: 0.35rem;
+      }
+
+      form {
+        display: grid;
+        gap: 0.85rem;
+      }
+
+      label {
+        display: grid;
+        gap: 0.35rem;
+        font-size: 0.95rem;
+        font-weight: 800;
+      }
+
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 0.75rem 0.85rem;
+        border: 1px solid rgba(89, 0, 0, 0.18);
+        border-radius: 6px;
+        font: inherit;
+        background: rgba(255, 255, 255, 0.96);
+        color: var(--ink);
+      }
+
+      input:focus,
+      textarea:focus,
+      select:focus {
+        outline: 2px solid rgba(129, 13, 11, 0.16);
+        border-color: #810d0b;
+      }
+
+      textarea {
+        min-height: 6rem;
+        resize: vertical;
+      }
+
+      .split {
+        display: grid;
+        gap: 0.85rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .status {
+        min-height: 1.2rem;
+        color: var(--muted);
+      }
+
+      .status.error {
+        color: var(--planner-danger);
+      }
+
+      .status.success {
+        color: var(--planner-success);
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      @media (max-width: 860px) {
+        .details,
+        .story,
+        .future,
+        .planner-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .details__grid {
+          grid-template-columns: 1fr;
+        }
+
+        .detail--wide {
+          grid-column: auto;
+        }
+
+        .hero__content {
+          width: min(1120px, calc(100% - 2rem));
+          padding: 36vh 0 7vh;
+        }
+
+        .nav {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .split {
+          grid-template-columns: 1fr;
+        }
+
+        .hero__actions,
+        .auth-row,
+        .toolbar,
+        .planner-summary {
+          flex-direction: column;
+          align-items: stretch;
+        }
+      }
+    </style>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body>
+    <header class="hero" id="home" data-view="home">
+      <div class="hero__slides" aria-hidden="true">
+        <img class="hero__image" src="/images/hero/engagement.jpg" alt="" loading="eager" fetchpriority="high" decoding="async">
+      </div>
+      <div class="hero__shade"></div>
+      <nav class="nav" aria-label="App navigation">
+        <a href="?view=home" data-route-link="home" class="nav__brand is-active">Hope & Caleb</a>
+        <div class="nav__links">
+          <a href="?view=home" data-route-link="home">Home</a>
+          <a href="?view=planner" data-route-link="planner">Planner</a>
+          <a href="/celebration.html">Celebration</a>
+          <a href="/slideshow.html">Slideshow</a>
+        </div>
+      </nav>
+      <section class="hero__content">
+        <p class="eyebrow">Wedding Home</p>
+        <h1>Hope & Caleb</h1>
+        <p class="hero__copy">
+          This site should grow out of the celebration page instead of competing with it. The public home and the private planner now share the same basic visual language, structure, and tone.
+        </p>
+        <div class="hero__actions">
+          <a class="button" href="?view=planner">Open Planner</a>
+          <a class="button button--light" href="/celebration.html">View Celebration Site</a>
+        </div>
+      </section>
+    </header>
+
+    <section class="signin-strip" data-view="home">
+      <div class="auth-row">
+        <div id="signinButton"></div>
+        <div class="meta" id="viewerState">Sign in with an approved Google account to unlock planner tools.</div>
+      </div>
+    </section>
+
+    <main>
+      <section class="section details" data-view="home" aria-labelledby="home-details-heading">
+        <div class="section__intro">
+          <p class="eyebrow">Starting Point</p>
+          <h2 id="home-details-heading">The celebration page is now the design baseline.</h2>
+          <p>
+            Instead of maintaining a separate planner-looking homepage, this app now starts from the same section rhythm and visual structure as the celebration site.
+          </p>
+        </div>
+        <div class="details__grid">
+          <article class="detail">
+            <span class="detail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 19h16"></path><path d="M6 17V9"></path><path d="M18 17V5"></path><path d="M10 17V12"></path><path d="M14 17V8"></path></svg>
+            </span>
+            <span class="detail__label">Public Side</span>
+            <strong>Wedding schedule, travel, registry, and guest-facing updates can all live here.</strong>
+          </article>
+          <article class="detail">
+            <span class="detail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 16v2"></path><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 1 1 8 0v3"></path></svg>
+            </span>
+            <span class="detail__label">Planner Side</span>
+            <strong>Private tools still sit behind sign-in, but they now belong to the same site instead of a separate product shell.</strong>
+          </article>
+          <article class="detail">
+            <span class="detail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M3 10h18"></path></svg>
+            </span>
+            <span class="detail__label">Direction</span>
+            <strong>We can keep building from this base rather than translating between two totally different layouts.</strong>
+          </article>
+          <article class="detail detail--wide">
+            <span class="detail__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M5 4h14"></path><path d="M5 12h14"></path><path d="M5 20h14"></path></svg>
+            </span>
+            <span class="detail__label">Archive</span>
+            <strong>The original engagement and graduation page stays available at <a href="/celebration.html">celebration.html</a> while we adapt its structure into the new site.</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="section story" data-view="home" aria-labelledby="home-story-heading">
+        <div class="story__text">
+          <p class="eyebrow">Why It Felt Off</p>
+          <h2 id="home-story-heading">The mismatch was coming from a separate planner shell.</h2>
+          <p>
+            The rounded pills, boxed top bar, and card stack were not coming from the celebration page at all. They were hard-coded in this app template, which made the planner homepage feel disconnected from the site you already liked.
+          </p>
+        </div>
+        <div class="photo-frame" aria-label="Engagement photo">
+          <img src="/images/engagement/deck.jpg" alt="Hope and Caleb on a deck during their engagement session" loading="lazy" decoding="async">
+        </div>
+      </section>
+
+      <section class="section future" data-view="home" aria-labelledby="home-next-heading">
+        <img src="/images/snow-angel/snowangel2.jpg" alt="Snow angel photo for the save the date theme" loading="lazy" decoding="async">
+        <div class="future__content">
+          <p class="eyebrow">Next Build</p>
+          <h2 id="home-next-heading">Now we can evolve one site instead of juggling two styles.</h2>
+          <p>
+            The next step is to keep lifting pieces from the celebration page into the wedding version: public-facing content first, then planner tools where they support the same story and layout.
+          </p>
+        </div>
+      </section>
+
+      <section class="section future future--planner" data-view="home" aria-labelledby="home-links-heading">
+        <img src="/images/hero/standing grad.jpg" alt="Hope and Caleb standing together" loading="lazy" decoding="async">
+        <div class="future__content">
+          <p class="eyebrow">Quick Links</p>
+          <h2 id="home-links-heading">The existing pages are still easy to reach.</h2>
+          <p>
+            You can still jump to the <a href="/celebration.html">celebration archive</a>, the <a href="/celebration.html?view=party">party RSVP version</a>, and the <a href="/celebration.html?view=save">save the date view</a> while we keep turning this into the main wedding site.
+          </p>
+        </div>
+      </section>
+
+      <section class="planner-banner section" data-view="planner" hidden aria-labelledby="planner-heading">
+        <p class="eyebrow">Protected View</p>
+        <h2 id="planner-heading">Wedding Planner Dashboard</h2>
+        <p class="meta">Private coordination tools for family, wedding party, and anyone helping the day run smoothly.</p>
+        <div class="planner-summary" id="plannerGate">
+          <div id="plannerGateMessage" class="meta">Sign in to continue.</div>
+          <div id="signinButtonPlanner"></div>
+        </div>
+      </section>
+
+      <section class="planner-grid" data-view="planner" hidden id="plannerContent">
+        <section class="panel">
+          <h3>People</h3>
+          <p class="meta">Wedding party, family, vendors, photographer, coordinator, or any custom group.</p>
+          <form id="personForm">
+            <input type="hidden" name="id">
+            <label>Name <input name="name" required></label>
+            <div class="split">
+              <label>Phone <input name="phone" placeholder="+12105551234"></label>
+              <label>Role <input name="role" placeholder="Bridesmaid"></label>
+            </div>
+            <div class="split">
+              <label>Group <input name="groupName" placeholder="Family Photos"></label>
+              <label>Consent <input name="consentStatus" placeholder="opted-in"></label>
+            </div>
+            <label>Notes <textarea name="notes" placeholder="Any context, relationship, vendor details, or timing notes."></textarea></label>
+            <div class="toolbar">
+              <button class="button" type="submit">Save Person</button>
+              <button class="button button--light" type="button" data-reset-person>Clear</button>
+            </div>
+            <p class="status" id="personStatus"></p>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h3>People List</h3>
+          <div class="list" id="peopleList">
+            <p class="meta">No people loaded yet.</p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>Events</h3>
+          <p class="meta">Timeline entries with location, audience, and reminder timing.</p>
+          <form id="eventForm">
+            <input type="hidden" name="id">
+            <label>Title <input name="title" required placeholder="Family photos"></label>
+            <div class="split">
+              <label>Start Time <input name="startsAt" type="datetime-local" required></label>
+              <label>Location <input name="location" placeholder="Courtyard"></label>
+            </div>
+            <div class="split">
+              <label>Assigned To <input name="assignedTo" placeholder="Bridesmaids, Parents"></label>
+              <label>Reminder Minutes <input name="reminderMinutes" type="number" min="0" value="15"></label>
+            </div>
+            <label>Message Template <textarea name="messageTemplate" placeholder="Hope & Caleb update: Family photos at 3:15 PM in the courtyard. Please head there by 3:00 PM."></textarea></label>
+            <label>Notes <textarea name="notes" placeholder="Use this for shot list notes, fallback locations, or vendor context."></textarea></label>
+            <label>
+              Active
+              <select name="active">
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </label>
+            <div class="toolbar">
+              <button class="button" type="submit">Save Event</button>
+              <button class="button button--light" type="button" data-reset-event>Clear</button>
+            </div>
+            <p class="status" id="eventStatus"></p>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h3>Timeline</h3>
+          <div class="list" id="eventsList">
+            <p class="meta">No events loaded yet.</p>
+          </div>
+        </section>
+      </section>
+    </main>
+    <?!= include("util"); ?>
+    <?!= include("apps-planner"); ?>
+  </body>
+</html>
