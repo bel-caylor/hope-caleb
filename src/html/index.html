@@ -10,6 +10,7 @@
     <meta name="robots" content="noindex, nofollow, noarchive">
     <meta name="planner-dashboard-password-hash" content="<?= dashboardPasswordHash ?>">
     <meta name="planner-rsvp-feed-url" content="<?= rsvpFeedUrl ?>">
+    <meta name="planner-script-base-url" content="<?= scriptBaseUrl ?>">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -501,6 +502,27 @@
         overflow: auto;
       }
 
+      .list-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .list-header__copy h3 {
+        margin: 0;
+      }
+
+      .button--icon {
+        min-width: 2.25rem;
+        min-height: 2.25rem;
+        padding: 0.35rem;
+        font-size: 1.1rem;
+        line-height: 1;
+        border-radius: 999px;
+      }
+
       .card {
         padding: 0.95rem 1rem;
         border-radius: 8px;
@@ -564,6 +586,103 @@
         border-bottom: 0;
       }
 
+      .guest-accordion {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .guest-filter {
+        margin: 0.75rem 0 1rem;
+      }
+
+      .guest-filter label {
+        display: grid;
+        gap: 0.35rem;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .guest-filter select {
+        width: 100%;
+        padding: 0.75rem 0.85rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 10px;
+        background: #fffdf9;
+        color: var(--ink);
+        font: inherit;
+      }
+
+      .guest-card {
+        border: 1px solid var(--planner-border);
+        border-radius: 8px;
+        background: #fffdf9;
+        overflow: hidden;
+      }
+
+      .guest-card summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.95rem 1rem;
+        background: #6f1d2a;
+        color: #fff8f6;
+        cursor: pointer;
+        list-style: none;
+        font-weight: 800;
+      }
+
+      .guest-card summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .guest-card summary::after {
+        content: "+";
+        flex: 0 0 auto;
+        color: currentColor;
+        font-size: 1.15rem;
+      }
+
+      .guest-card[open] summary::after {
+        content: "−";
+      }
+
+      .guest-card__meta {
+        color: rgba(255, 248, 246, 0.82);
+        font-weight: 500;
+        font-size: 0.92rem;
+      }
+
+      .guest-card__body {
+        display: grid;
+        gap: 0.75rem;
+        padding: 0 1rem 1rem;
+        border-top: 1px solid var(--planner-border);
+      }
+
+      .guest-card__grid {
+        display: grid;
+        gap: 0.75rem 1rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .guest-card__field span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .guest-card__field strong {
+        display: block;
+        margin-top: 0.2rem;
+        font-size: 0.96rem;
+      }
+
       form {
         display: grid;
         gap: 0.85rem;
@@ -619,6 +738,42 @@
         color: var(--planner-success);
       }
 
+      .modal[hidden] {
+        display: none !important;
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+      }
+
+      .modal__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(30, 20, 18, 0.46);
+      }
+
+      .modal__dialog {
+        position: relative;
+        z-index: 1;
+        width: min(100%, 40rem);
+        max-height: calc(100vh - 2rem);
+        overflow: auto;
+        padding: 1.25rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 10px;
+        background: var(--planner-panel);
+        box-shadow: 0 22px 56px rgba(43, 30, 29, 0.18);
+      }
+
+      .modal__dialog h3 {
+        margin-bottom: 0.4rem;
+      }
+
       [hidden] {
         display: none !important;
       }
@@ -666,6 +821,15 @@
 
         .split {
           grid-template-columns: 1fr;
+        }
+
+        .guest-card__grid {
+          grid-template-columns: 1fr;
+        }
+
+        .list-header {
+          align-items: center;
+          flex-direction: row;
         }
 
         .hero__actions,
@@ -879,6 +1043,12 @@
         <section class="panel">
           <h3>Guests</h3>
           <p class="meta">Read-only rows from the `Guests` tab in your planning spreadsheet.</p>
+          <div class="guest-filter">
+            <label for="guestTypeFilter">Filter by type</label>
+            <select id="guestTypeFilter">
+              <option value="">All types</option>
+            </select>
+          </div>
           <div class="list" id="guestsList">
             <p class="meta">No guests feed loaded yet.</p>
           </div>
@@ -886,70 +1056,96 @@
         </section>
 
         <section class="panel">
-          <h3>People</h3>
-          <p class="meta">Wedding party, family, vendors, photographer, coordinator, or any custom group.</p>
-          <form id="personForm">
-            <input type="hidden" name="id">
-            <label>Name <input name="name" required></label>
-            <div class="split">
-              <label>Phone <input name="phone" placeholder="+12105551234"></label>
-              <label>Role <input name="role" placeholder="Bridesmaid"></label>
+          <div class="list-header">
+            <div class="list-header__copy">
+              <h3>People/Vendors</h3>
             </div>
-            <div class="split">
-              <label>Group <input name="groupName" placeholder="Family Photos"></label>
-              <label>Consent <input name="consentStatus" placeholder="opted-in"></label>
-            </div>
-            <label>Notes <textarea name="notes" placeholder="Any context, relationship, vendor details, or timing notes."></textarea></label>
-            <div class="toolbar">
-              <button class="button" type="submit">Save Person</button>
-              <button class="button button--light" type="button" data-reset-person>Clear</button>
-            </div>
-            <p class="status" id="personStatus"></p>
-          </form>
-        </section>
-
-        <section class="panel">
-          <h3>People List</h3>
+            <button class="button button--icon" type="button" id="openPersonModal" aria-label="Add person">+</button>
+          </div>
           <div class="list" id="peopleList">
             <p class="meta">No people loaded yet.</p>
           </div>
         </section>
 
-        <section class="panel">
-          <h3>Events</h3>
-          <p class="meta">Timeline entries with location, audience, and reminder timing.</p>
-          <form id="eventForm">
-            <input type="hidden" name="id">
-            <label>Title <input name="title" required placeholder="Family photos"></label>
-            <div class="split">
-              <label>Start Time <input name="startsAt" type="datetime-local" required></label>
-              <label>Location <input name="location" placeholder="Courtyard"></label>
-            </div>
-            <div class="split">
-              <label>Assigned To <input name="assignedTo" placeholder="Bridesmaids, Parents"></label>
-              <label>Reminder Minutes <input name="reminderMinutes" type="number" min="0" value="15"></label>
-            </div>
-            <label>Message Template <textarea name="messageTemplate" placeholder="Hope & Caleb update: Family photos at 3:15 PM in the courtyard. Please head there by 3:00 PM."></textarea></label>
-            <label>Notes <textarea name="notes" placeholder="Use this for shot list notes, fallback locations, or vendor context."></textarea></label>
-            <label>
-              Active
-              <select name="active">
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
-            </label>
+        <section class="modal" id="personModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-person-modal></div>
+          <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="personModalTitle">
             <div class="toolbar">
-              <button class="button" type="submit">Save Event</button>
-              <button class="button button--light" type="button" data-reset-event>Clear</button>
+              <div>
+                <h3 id="personModalTitle">Add Person</h3>
+                <p class="meta">Save a contact for the wedding party, family, vendor team, or any custom group.</p>
+              </div>
+              <button class="button button--light" type="button" data-close-person-modal>Close</button>
             </div>
-            <p class="status" id="eventStatus"></p>
-          </form>
+            <form id="personForm">
+              <input type="hidden" name="id">
+              <label>Name <input name="name" required></label>
+              <div class="split">
+                <label>Phone <input name="phone" placeholder="+12105551234"></label>
+                <label>Role <input name="role" placeholder="Bridesmaid"></label>
+              </div>
+              <div class="split">
+                <label>Group <input name="groupName" placeholder="Family Photos"></label>
+                <label>Consent <input name="consentStatus" placeholder="opted-in"></label>
+              </div>
+              <label>Notes <textarea name="notes" placeholder="Any context, relationship, vendor details, or timing notes."></textarea></label>
+              <div class="toolbar">
+                <button class="button" type="submit">Save Person</button>
+                <button class="button button--light" type="button" data-reset-person>Clear</button>
+              </div>
+              <p class="status" id="personStatus"></p>
+            </form>
+          </div>
         </section>
 
         <section class="panel">
-          <h3>Timeline</h3>
+          <div class="list-header">
+            <div class="list-header__copy">
+              <h3>Events</h3>
+            </div>
+            <button class="button button--icon" type="button" id="openEventModal" aria-label="Add event">+</button>
+          </div>
           <div class="list" id="eventsList">
             <p class="meta">No events loaded yet.</p>
+          </div>
+        </section>
+
+        <section class="modal" id="eventModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-event-modal></div>
+          <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle">
+            <div class="toolbar">
+              <div>
+                <h3 id="eventModalTitle">Add Event</h3>
+                <p class="meta">Timeline entries with location, audience, and reminder timing.</p>
+              </div>
+              <button class="button button--light" type="button" data-close-event-modal>Close</button>
+            </div>
+            <form id="eventForm">
+              <input type="hidden" name="id">
+              <label>Title <input name="title" required placeholder="Family photos"></label>
+              <div class="split">
+                <label>Start Time <input name="startsAt" type="datetime-local" required></label>
+                <label>Location <input name="location" placeholder="Courtyard"></label>
+              </div>
+              <div class="split">
+                <label>Assigned To <input name="assignedTo" placeholder="Bridesmaids, Parents"></label>
+                <label>Reminder Minutes <input name="reminderMinutes" type="number" min="0" value="15"></label>
+              </div>
+              <label>Message Template <textarea name="messageTemplate" placeholder="Hope & Caleb update: Family photos at 3:15 PM in the courtyard. Please head there by 3:00 PM."></textarea></label>
+              <label>Notes <textarea name="notes" placeholder="Use this for shot list notes, fallback locations, or vendor context."></textarea></label>
+              <label>
+                Active
+                <select name="active">
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </label>
+              <div class="toolbar">
+                <button class="button" type="submit">Save Event</button>
+                <button class="button button--light" type="button" data-reset-event>Clear</button>
+              </div>
+              <p class="status" id="eventStatus"></p>
+            </form>
           </div>
         </section>
       </section>

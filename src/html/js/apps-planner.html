@@ -8,6 +8,10 @@
   const plannerSummaryEl = document.querySelector("#plannerSummary");
   const plannerSyncStatusEl = document.querySelector("#plannerSyncStatus");
   const rsvpListEl = document.querySelector("#rsvpList");
+  const personModal = document.querySelector("#personModal");
+  const openPersonModalButton = document.querySelector("#openPersonModal");
+  const eventModal = document.querySelector("#eventModal");
+  const openEventModalButton = document.querySelector("#openEventModal");
   const personForm = document.querySelector("#personForm");
   const eventForm = document.querySelector("#eventForm");
   const peopleListEl = document.querySelector("#peopleList");
@@ -17,6 +21,7 @@
   const rsvpStatusEl = document.querySelector("#rsvpStatus");
   const guestsListEl = document.querySelector("#guestsList");
   const guestsStatusEl = document.querySelector("#guestsStatus");
+  const guestTypeFilterEl = document.querySelector("#guestTypeFilter");
   const refreshRsvpsButton = document.querySelector("#refreshRsvps");
   const routeLinks = Array.from(document.querySelectorAll("[data-route-link]"));
   const routedViews = Array.from(document.querySelectorAll("[data-view]"));
@@ -26,14 +31,14 @@
 
   const STORAGE_KEYS = {
     auth: "hope-caleb-dashboard-authenticated",
-    people: "hope-caleb-dashboard-people",
-    events: "hope-caleb-dashboard-events"
+    authHash: "hope-caleb-dashboard-auth-hash"
   };
 
   let cachedPeople = [];
   let cachedEvents = [];
   let cachedRsvps = [];
   let cachedGuests = [];
+  let selectedGuestType = "";
   let rsvpFeedConnected = false;
   let currentView = getRequestedView();
   let viewerProfile = {
@@ -120,6 +125,56 @@
     });
   }
 
+  function clearPersonForm() {
+    personForm.reset();
+    personForm.elements.namedItem("id").value = "";
+    setStatus(personStatusEl, "", "");
+  }
+
+  function openPersonModal(title, values = {}) {
+    clearPersonForm();
+    fillForm(personForm, values);
+    personModal.querySelector("#personModalTitle").textContent = title;
+    personModal.hidden = false;
+    personModal.setAttribute("aria-hidden", "false");
+    const firstField = personForm.elements.namedItem("name");
+    if (firstField) {
+      firstField.focus();
+    }
+  }
+
+  function closePersonModal() {
+    personModal.hidden = true;
+    personModal.setAttribute("aria-hidden", "true");
+    clearPersonForm();
+  }
+
+  function clearEventForm() {
+    eventForm.reset();
+    eventForm.elements.namedItem("id").value = "";
+    eventForm.elements.namedItem("active").value = "true";
+    eventForm.elements.namedItem("reminderMinutes").value = "15";
+    setStatus(eventStatusEl, "", "");
+  }
+
+  function openEventModal(title, values = {}) {
+    clearEventForm();
+    fillForm(eventForm, values);
+    eventModal.querySelector("#eventModalTitle").textContent = title;
+    eventModal.hidden = false;
+    eventModal.setAttribute("aria-hidden", "false");
+    const firstField = eventForm.elements.namedItem("title");
+    if (firstField) {
+      firstField.focus();
+    }
+  }
+
+  function closeEventModal() {
+    eventModal.hidden = true;
+    eventModal.setAttribute("aria-hidden", "true");
+    clearEventForm();
+  }
+
   function renderPeople() {
     if (!cachedPeople.length) {
       peopleListEl.innerHTML = '<p class="meta">No people yet. Add your wedding party, family, vendors, or helpers here.</p>';
@@ -190,6 +245,7 @@
 
   function renderGuests() {
     if (!cachedGuests.length) {
+      renderGuestTypeFilter([]);
       guestsListEl.innerHTML = rsvpFeedConnected
         ? '<p class="meta">No guest rows found yet in the `Guests` sheet.</p>'
         : '<p class="meta">No guests feed loaded yet. Connect the spreadsheet feed to display this tab.</p>';
@@ -198,29 +254,133 @@
 
     const columns = cachedGuests.reduce((allColumns, row) => {
       Object.keys(row).forEach((key) => {
-        if (!allColumns.includes(key)) {
+        if (!allColumns.includes(key) && !shouldHideGuestColumn(key)) {
           allColumns.push(key);
         }
       });
       return allColumns;
     }, []);
 
+    const visibleGuests = cachedGuests
+      .map((row) => sanitizeGuestRow(row, columns))
+      .filter(Boolean);
+
+    const guestTypes = collectGuestTypes(visibleGuests);
+    renderGuestTypeFilter(guestTypes);
+
+    const filteredGuests = selectedGuestType
+      ? visibleGuests.filter((guest) => guest.type === selectedGuestType)
+      : visibleGuests;
+
+    if (!filteredGuests.length) {
+      guestsListEl.innerHTML = selectedGuestType
+        ? `<p class="meta">No guest rows match the "${escapeHtml(selectedGuestType)}" type.</p>`
+        : '<p class="meta">No guest rows found yet in the `Guests` sheet.</p>';
+      return;
+    }
+
     guestsListEl.innerHTML = `
-      <div class="guest-table-wrap">
-        <table class="guest-table">
-          <thead>
-            <tr>${columns.map((column) => `<th scope="col">${escapeHtml(column)}</th>`).join("")}</tr>
-          </thead>
-          <tbody>
-            ${cachedGuests.map((row) => `
-              <tr>
-                ${columns.map((column) => `<td>${escapeHtml(row[column] || "") || '<span class="meta">-</span>'}</td>`).join("")}
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
+      <div class="guest-accordion">
+        ${filteredGuests.map((guest) => `
+          <details class="guest-card">
+            <summary>
+              <span>${escapeHtml(guest.title)}</span>
+              <span class="guest-card__meta">${escapeHtml(guest.meta || "Open details")}</span>
+            </summary>
+            <div class="guest-card__body">
+              <div class="guest-card__grid">
+                ${guest.fields.map((field) => `
+                  <div class="guest-card__field">
+                    <span>${escapeHtml(field.label)}</span>
+                    <strong>${escapeHtml(field.value)}</strong>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+          </details>
+        `).join("")}
       </div>
     `;
+  }
+
+  function shouldHideGuestColumn(column) {
+    const normalized = String(column || "").trim().toLowerCase();
+    return !normalized || normalized === "table number";
+  }
+
+  function sanitizeGuestRow(row, columns) {
+    const titleColumn = findGuestTitleColumn(columns);
+    const title = String(row[titleColumn] || "").trim();
+
+    if (!title || /^total:?$/i.test(title) || /^\d+$/.test(title)) {
+      return null;
+    }
+
+    const fields = columns
+      .filter((column) => column !== titleColumn)
+      .map((column) => ({
+        label: column,
+        value: String(row[column] || "").trim()
+      }))
+      .filter((field) => field.value && field.value !== "-");
+
+    if (!fields.length) {
+      return {
+        title,
+        meta: "",
+        fields: []
+      };
+    }
+
+    return {
+      title,
+      type: getGuestType(row),
+      meta: summarizeGuestFields(fields),
+      fields
+    };
+  }
+
+  function getGuestType(row) {
+    const match = Object.entries(row).find(([key]) => String(key || "").trim().toLowerCase() === "type");
+    return String(match?.[1] || "").trim();
+  }
+
+  function collectGuestTypes(guests) {
+    return Array.from(new Set(
+      guests
+        .map((guest) => guest.type)
+        .filter(Boolean)
+    )).sort((a, b) => a.localeCompare(b));
+  }
+
+  function renderGuestTypeFilter(types) {
+    if (!guestTypeFilterEl) {
+      return;
+    }
+
+    const normalizedTypes = Array.isArray(types) ? types : [];
+    if (selectedGuestType && !normalizedTypes.includes(selectedGuestType)) {
+      selectedGuestType = "";
+    }
+
+    guestTypeFilterEl.innerHTML = `
+      <option value="">All types</option>
+      ${normalizedTypes.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join("")}
+    `;
+    guestTypeFilterEl.value = selectedGuestType;
+    guestTypeFilterEl.disabled = normalizedTypes.length === 0;
+  }
+
+  function findGuestTitleColumn(columns) {
+    return columns.find((column) => /name/i.test(column)) || columns[0] || "Guest";
+  }
+
+  function summarizeGuestFields(fields) {
+    return fields
+      .filter((field) => /type|rsvp|email|phone/i.test(field.label))
+      .slice(0, 2)
+      .map((field) => `${field.label}: ${field.value}`)
+      .join(" | ");
   }
 
   function renderSummary() {
@@ -256,36 +416,63 @@
     `;
   }
 
-  function loadCollection(key) {
-    try {
-      const raw = window.localStorage.getItem(key);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (_) {
-      return [];
-    }
-  }
-
-  function saveCollection(key, items) {
-    window.localStorage.setItem(key, JSON.stringify(items));
-  }
-
-  function createId(prefix) {
-    return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
-  }
-
   function sortByUpdated(items, key) {
     return [...items].sort((left, right) => String(right[key] || "").localeCompare(String(left[key] || "")));
   }
 
-  function refreshData() {
-    cachedPeople = sortByUpdated(loadCollection(STORAGE_KEYS.people), "updatedAt");
-    cachedEvents = sortByUpdated(loadCollection(STORAGE_KEYS.events), "updatedAt");
+  function renderPlannerData() {
     renderPeople();
     renderEvents();
     renderRsvps();
     renderGuests();
     renderSummary();
+  }
+
+  function getRpcUrl() {
+    const scriptBaseUrl = String(window.PLANNER_CTX.scriptBaseUrl || "").trim();
+    if (scriptBaseUrl && !scriptBaseUrl.startsWith("<?")) {
+      return scriptBaseUrl;
+    }
+    return String(window.PLANNER_CTX.rsvpFeedUrl || "").trim();
+  }
+
+  async function rpcRequest(method, payload) {
+    const rpcUrl = getRpcUrl();
+    const passwordHash = String(window.sessionStorage.getItem(STORAGE_KEYS.authHash) || "").trim();
+
+    if (!rpcUrl) {
+      throw new Error("Planner backend URL is not configured yet.");
+    }
+
+    const response = await fetch(rpcUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
+      body: JSON.stringify({
+        method,
+        payload,
+        passwordHash
+      })
+    });
+
+    const result = await response.json();
+    if (!result?.ok) {
+      throw new Error(result?.error || "Planner request failed.");
+    }
+
+    return result.data;
+  }
+
+  async function refreshPlannerCollections() {
+    const [people, events] = await Promise.all([
+      rpcRequest("listPeople", {}),
+      rpcRequest("listEvents", {})
+    ]);
+
+    cachedPeople = sortByUpdated(Array.isArray(people) ? people : [], "updatedAt");
+    cachedEvents = sortByUpdated(Array.isArray(events) ? events : [], "updatedAt");
+    renderPlannerData();
   }
 
   function refreshViewer() {
@@ -305,7 +492,15 @@
       return;
     }
 
-    refreshData();
+    try {
+      await refreshPlannerCollections();
+      setStatus(plannerSyncStatusEl, "Planner data synced from Google Sheets.", "success");
+    } catch (error) {
+      cachedPeople = [];
+      cachedEvents = [];
+      renderPlannerData();
+      setStatus(plannerSyncStatusEl, error.message || "Unable to load planner data.", "error");
+    }
     await refreshRsvps();
     plannerContentEl.hidden = false;
   }
@@ -442,6 +637,7 @@
     }
 
     window.sessionStorage.setItem(STORAGE_KEYS.auth, "true");
+    window.sessionStorage.setItem(STORAGE_KEYS.authHash, actualHash);
     refreshViewer();
     await maybeLoadPlannerData();
   }
@@ -538,7 +734,7 @@
       renderSummary();
       setStatus(rsvpStatusEl, "No RSVP feed URL configured yet.", "error");
       setStatus(guestsStatusEl, "No Guests feed URL configured yet.", "error");
-      setStatus(plannerSyncStatusEl, "Using local dashboard storage. Spreadsheet feed is not connected yet.", "error");
+      setStatus(plannerSyncStatusEl, "Planner sheets are not connected because the Apps Script URL is missing.", "error");
       return;
     }
 
@@ -552,7 +748,7 @@
       renderSummary();
       setStatus(rsvpStatusEl, `Loaded ${cachedRsvps.length} RSVP entries.`, "success");
       setStatus(guestsStatusEl, `Loaded ${cachedGuests.length} rows from Guests.`, "success");
-      setStatus(plannerSyncStatusEl, "Spreadsheet feed connected. People and events still save locally on this device.", "success");
+      setStatus(plannerSyncStatusEl, "Spreadsheet feed connected. People and events sync through the planner backend.", "success");
     } catch (error) {
       rsvpFeedConnected = false;
       cachedRsvps = [];
@@ -581,6 +777,7 @@
 
   plannerSignOutButton.addEventListener("click", () => {
     window.sessionStorage.removeItem(STORAGE_KEYS.auth);
+    window.sessionStorage.removeItem(STORAGE_KEYS.authHash);
     refreshViewer();
     renderRoute();
     setStatus(plannerLoginStatusEl, "Dashboard locked.", "success");
@@ -592,24 +789,20 @@
     try {
       requirePlannerAccess();
       const data = Object.fromEntries(new FormData(personForm).entries());
-      const id = String(data.id || "").trim() || createId("person");
-      const now = new Date().toISOString();
-      const nextPeople = cachedPeople.filter((item) => item.id !== id);
-      nextPeople.unshift({
-        id,
+      await rpcRequest("savePerson", {
+        id: String(data.id || "").trim(),
         name: String(data.name || "").trim(),
         phone: String(data.phone || "").trim(),
         role: String(data.role || "").trim(),
         groupName: String(data.groupName || "").trim(),
         consentStatus: String(data.consentStatus || "").trim(),
-        notes: String(data.notes || "").trim(),
-        createdAt: cachedPeople.find((item) => item.id === id)?.createdAt || now,
-        updatedAt: now
+        notes: String(data.notes || "").trim()
       });
-      saveCollection(STORAGE_KEYS.people, nextPeople);
-      personForm.reset();
-      refreshData();
-      setStatus(personStatusEl, "Person saved.", "success");
+      await refreshPlannerCollections();
+      setStatus(personStatusEl, "Person saved to Google Sheets.", "success");
+      window.setTimeout(() => {
+        closePersonModal();
+      }, 300);
     } catch (error) {
       setStatus(personStatusEl, error.message || "Unable to save person.", "error");
     }
@@ -621,11 +814,8 @@
     try {
       requirePlannerAccess();
       const data = Object.fromEntries(new FormData(eventForm).entries());
-      const id = String(data.id || "").trim() || createId("event");
-      const now = new Date().toISOString();
-      const nextEvents = cachedEvents.filter((item) => item.id !== id);
-      nextEvents.unshift({
-        id,
+      await rpcRequest("saveEvent", {
+        id: String(data.id || "").trim(),
         title: String(data.title || "").trim(),
         startsAt: String(data.startsAt || "").trim(),
         location: String(data.location || "").trim(),
@@ -633,15 +823,13 @@
         reminderMinutes: Number(data.reminderMinutes || 15),
         messageTemplate: String(data.messageTemplate || "").trim(),
         notes: String(data.notes || "").trim(),
-        active: String(data.active || "true") !== "false",
-        updatedAt: now
+        active: String(data.active || "true") !== "false"
       });
-      saveCollection(STORAGE_KEYS.events, nextEvents);
-      eventForm.reset();
-      eventForm.elements.namedItem("active").value = "true";
-      eventForm.elements.namedItem("reminderMinutes").value = "15";
-      refreshData();
-      setStatus(eventStatusEl, "Event saved.", "success");
+      await refreshPlannerCollections();
+      setStatus(eventStatusEl, "Event saved to Google Sheets.", "success");
+      window.setTimeout(() => {
+        closeEventModal();
+      }, 300);
     } catch (error) {
       setStatus(eventStatusEl, error.message || "Unable to save event.", "error");
     }
@@ -657,16 +845,37 @@
     }
   });
 
+  guestTypeFilterEl?.addEventListener("change", (event) => {
+    selectedGuestType = String(event.target.value || "");
+    renderGuests();
+  });
+
+  openPersonModalButton.addEventListener("click", () => {
+    openPersonModal("Add Person");
+  });
+
+  openEventModalButton.addEventListener("click", () => {
+    openEventModal("Add Event");
+  });
+
   document.querySelector("[data-reset-person]").addEventListener("click", () => {
-    personForm.reset();
-    setStatus(personStatusEl, "", "");
+    clearPersonForm();
+  });
+
+  document.querySelectorAll("[data-close-person-modal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      closePersonModal();
+    });
   });
 
   document.querySelector("[data-reset-event]").addEventListener("click", () => {
-    eventForm.reset();
-    eventForm.elements.namedItem("active").value = "true";
-    eventForm.elements.namedItem("reminderMinutes").value = "15";
-    setStatus(eventStatusEl, "", "");
+    clearEventForm();
+  });
+
+  document.querySelectorAll("[data-close-event-modal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      closeEventModal();
+    });
   });
 
   peopleListEl.addEventListener("click", (event) => {
@@ -674,7 +883,7 @@
     if (!button) return;
     const person = cachedPeople.find((item) => item.id === button.dataset.editPerson);
     if (!person) return;
-    fillForm(personForm, person);
+    openPersonModal("Edit Person", person);
     setStatus(personStatusEl, `Editing ${person.name}.`, "success");
   });
 
@@ -683,7 +892,7 @@
     if (!button) return;
     const eventItem = cachedEvents.find((item) => item.id === button.dataset.editEvent);
     if (!eventItem) return;
-    fillForm(eventForm, {
+    openEventModal("Edit Event", {
       ...eventItem,
       startsAt: eventItem.startsAt,
       active: eventItem.active ? "true" : "false"
@@ -704,6 +913,17 @@
     currentView = getRequestedView();
     renderRoute();
     maybeLoadPlannerData();
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !personModal.hidden) {
+      closePersonModal();
+      return;
+    }
+
+    if (event.key === "Escape" && !eventModal.hidden) {
+      closeEventModal();
+    }
   });
 
   window.addEventListener("load", async () => {
