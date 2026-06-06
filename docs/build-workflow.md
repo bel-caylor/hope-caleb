@@ -35,8 +35,8 @@ Source files:
 
 Generated outputs:
 
-- `dist/` from `npm run build`
-- `dist-standalone/dashboard.html` from `npm run build:standalone`
+- `dist/` from `npm run build:core`
+- `dist-standalone/dashboard.html` from `npm run build`
 
 Use this path when changing:
 
@@ -57,7 +57,7 @@ Apps Script source of truth:
 - `dist/` is an intermediate build folder
 - `dist-standalone/` is the final standalone frontend folder
 
-`build:standalone` depends on `dist/`, then assembles the standalone output.
+`npm run build` now does both steps: it builds `dist/` first, then assembles the standalone output.
 
 ## Safe Editing Checklist
 
@@ -70,13 +70,13 @@ Before editing:
 If viewing `dashboard.html` or `http://localhost:5173`:
 
 1. Edit `src/html/index.html`
-2. Run `npm run build:standalone`
+2. Run `npm run build`
 3. Refresh the page
 
 If changing Apps Script behavior:
 
 1. Edit `src/**/*.ts`
-2. Run `npm run build`
+2. Run `npm run build:core`
 3. Run `npm run deploy`
 4. Update the Apps Script web app deployment to the latest version if needed
 

@@ -26,7 +26,7 @@
       <section class="hero-copy">
         <p class="eyebrow">Wedding</p>
         <h1>Hope & Caleb</h1>
-        <p class="hero-date">Friday, January 8, 2024</p>
+        <p class="hero-date" data-wedding-date>Friday, January 8, 2027</p>
         <div class="hero-actions">
           <a class="button" href="#rsvp">RSVP</a>
         </div>
@@ -44,6 +44,42 @@
     </nav>
 
     <main>
+      <section class="section section--highlight" id="countdown">
+        <p class="eyebrow">Wedding Countdown</p>
+        <h2>Counting down to the next main moment.</h2>
+        <div class="grid grid--two">
+          <article class="countdown-card">
+            <p class="countdown-card__label">Time until the ceremony</p>
+            <div class="countdown" role="timer" aria-live="polite">
+              <div class="countdown__item">
+                <span data-countdown-days>0</span>
+                <small>Days</small>
+              </div>
+              <div class="countdown__item">
+                <span data-countdown-hours>0</span>
+                <small>Hours</small>
+              </div>
+              <div class="countdown__item">
+                <span data-countdown-minutes>0</span>
+                <small>Minutes</small>
+              </div>
+              <div class="countdown__item">
+                <span data-countdown-seconds>0</span>
+                <small>Seconds</small>
+              </div>
+            </div>
+            <p class="countdown-card__summary" data-countdown-summary>Counting down to Friday, January 8, 2027.</p>
+          </article>
+          <article class="countdown-card countdown-card--event">
+            <p class="countdown-card__label">Next main event</p>
+            <h3 data-next-event-title>Ceremony begins</h3>
+            <p class="countdown-card__meta" data-next-event-datetime>Friday, January 8, 2027 at 4:00 PM</p>
+            <p data-next-event-location>South Texas venue details coming soon.</p>
+            <a class="button button--ghost" href="#schedule">View schedule</a>
+          </article>
+        </div>
+      </section>
+
       <section class="section" id="story">
         <p class="eyebrow">Our Story</p>
         <h2>Met at UTSA.</h2>
@@ -104,7 +140,7 @@
         <div class="grid grid--two">
           <article class="card">
             <strong>Date</strong>
-            <p>Friday, January 8, 2027</p>
+            <p data-wedding-date>Friday, January 8, 2027</p>
           </article>
           <article class="card">
             <strong>Location</strong>

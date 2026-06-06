@@ -12,7 +12,7 @@ Use this table before editing anything:
 | What you want to change | Edit this source file | Rebuild / serve from |
 | --- | --- | --- |
 | Root wedding landing page at `/` | `index.html`, `site.css`, `site.js` | Root files directly |
-| Dashboard/public shell at `/dashboard.html` or local standalone dev | `src/html/index.html` and `src/html/js/*` | `dist-standalone/` via `npm run build:standalone` |
+| Dashboard/public shell at `/dashboard.html` or local standalone dev | `src/html/index.html` and `src/html/js/*` | `dist-standalone/` via `npm run build` |
 | Preserved celebration page | `celebration.html`, `styles.css`, `script.js` | Root files directly |
 | TV slideshow | `slideshow.html`, `slideshow.css`, `slideshow.js` | Root files directly |
 
@@ -24,12 +24,12 @@ These two folders are not interchangeable:
 
 - `dist/`
   - Intermediate build output
-  - Produced by `npm run build`
+  - Produced by `npm run build:core`
   - Contains copied `src/html/**/*.html`, built Apps Script code from `src/http.ts`, and JSON assets
   - Used as an input to the standalone assembly step
 - `dist-standalone/`
   - Final standalone frontend output
-  - Produced by `npm run build:standalone`
+  - Produced by `npm run build`
   - Contains the files you actually serve for local standalone/dashboard work
   - Most important generated file: `dist-standalone/dashboard.html`
 
@@ -38,13 +38,13 @@ These two folders are not interchangeable:
 For dashboard or planner work:
 
 1. Edit `src/html/index.html` or `src/html/js/*`
-2. Run `npm run build:standalone`
+2. Run `npm run build`
 3. Open or refresh the page served from `dist-standalone/`
 
 For Apps Script backend work:
 
 1. Edit `src/**/*.ts` or `src/appsscript.json`
-2. Run `npm run build`
+2. Run `npm run build:core`
 3. Run `npm run deploy`
 4. Update the Apps Script web app deployment to the latest version if your `/exec` URL is versioned
 
@@ -64,6 +64,8 @@ For root static site work:
 ## Common Mistake To Avoid
 
 If the page you are viewing is `dashboard.html` or coming from `http://localhost:5173`, do not edit the top-level `index.html` and expect that page to change. In that case, the source of truth is `src/html/index.html`, and the rendered output lives in `dist-standalone/dashboard.html`.
+
+The default `npm run build` now regenerates that standalone dashboard output automatically so the served page stays in sync.
 
 ## Edit Party Details
 
@@ -126,8 +128,8 @@ Current dashboard pieces:
 The dashboard currently includes:
 
 - `RSVPs` loaded from the public RSVP Apps Script feed
-- `People` stored locally in the browser for planning contacts
-- `Events` stored locally in the browser for the timeline and assignments
+- `People` synced through Apps Script to the `People` sheet
+- `Events` synced through Apps Script to the `Events` sheet
 
 The public celebration site remains in the root HTML/CSS/JS files and is not replaced by the dashboard scaffold.
 
@@ -141,7 +143,10 @@ For UI development, you can run the dashboard locally without Google Sign-In.
 ```powershell
 $env:DASHBOARD_PASSWORD = "choose-a-strong-shared-password"
 $env:PUBLIC_RSVP_FEED_URL = "https://script.google.com/macros/s/YOUR_RSVP_DEPLOYMENT_ID/exec"
+$env:PLANNER_PROXY_URL = "https://hope-caleb-wedding-planner-proxy.your-subdomain.workers.dev"
 ```
+
+To let the backend accept the same password for planner RPC calls, also set the Apps Script script property `DASHBOARD_PASSWORD_HASH` to the SHA-256 hash of that password.
 
 3. Build the standalone page:
 

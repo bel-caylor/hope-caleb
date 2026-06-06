@@ -3,12 +3,19 @@
 
   window.PLANNER_CTX = {
     dashboardPasswordHash: plannerMeta("planner-dashboard-password-hash"),
-    rsvpFeedUrl: plannerMeta("planner-rsvp-feed-url")
+    rsvpFeedUrl: plannerMeta("planner-rsvp-feed-url"),
+    scriptBaseUrl: plannerMeta("planner-script-base-url")
   };
 
   function setStatus(element, message, tone) {
+    if (!element) return;
     element.textContent = message || "";
     element.className = `status ${tone || ""}`.trim();
+    if (tone) {
+      element.dataset.tone = tone;
+    } else {
+      delete element.dataset.tone;
+    }
   }
 
   function escapeHtml(value) {

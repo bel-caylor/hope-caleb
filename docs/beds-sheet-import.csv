@@ -1,0 +1,17 @@
+Id,Lodging,Room,BedLabel,BedType,Capacity,Thursday,Friday,Notes
+bed_house_master_king,House,Master Bedroom,King Bed,King,2,,,1 king
+bed_house_guest_1_queen,House,Guest Bedroom 1,Queen Bed,Queen,2,,,1 queen
+bed_house_guest_2_bunk,House,Guest Bedroom 2,Bunk Bed,Bunk,2,,,Part of room that sleeps 4 total
+bed_house_guest_2_trundle,House,Guest Bedroom 2,Trundle Bed,Trundle,1,,,Part of room that sleeps 4 total
+bed_house_guest_2_single_sofa,House,Guest Bedroom 2,Single Sofa Bed,Sofa Bed,1,,,Part of room that sleeps 4 total
+bed_cabin_2_queen,Cabin #2,Bedroom,Queen Bed,Queen,2,,,Queen bed in separate room
+bed_cabin_2_sleeper,Cabin #2,Living Room,Queen Sleeper Sofa,Sleeper Sofa,2,,,Queen sleeper sofa in separate room
+bed_cabin_3_queen,Cabin #3,Bedroom,Queen Bed,Queen,2,,,Queen bed in separate room
+bed_cabin_3_sleeper,Cabin #3,Living Room,Queen Sleeper Sofa,Sleeper Sofa,2,,,Queen sleeper sofa in separate room
+bed_cabin_4_queen,Cabin #4,Bedroom,Queen Bed,Queen,2,,,Queen bed in separate room
+bed_cabin_4_sleeper,Cabin #4,Living Room,Queen Sleeper Sofa,Sleeper Sofa,2,,,Queen sleeper sofa in separate room
+bed_cabin_5_king,Cabin #5,Bedroom,King Bed,King,2,,,King bed in separate room
+bed_cabin_5_sleeper,Cabin #5,Living Room,Queen Sleeper Sofa,Sleeper Sofa,2,,,Queen sleeper sofa in separate room
+bed_cabin_6_king,Cabin #6,Bedroom,King Bed,King,2,,,1 king
+bed_cabin_9_king,Cabin #9,Bedroom,King Bed,King,2,,,King bed in separate room
+bed_cabin_9_sleeper,Cabin #9,Living Room,Queen Sleeper Sofa,Sleeper Sofa,2,,,Queen sleeper sofa in separate room

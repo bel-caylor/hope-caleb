@@ -1,9 +1,21 @@
-import { ADMIN_HEADERS, ADMIN_SHEET, GOOGLE_CLIENT_ID_PROPERTY_KEY } from "./constants";
+import {
+  ADMIN_HEADERS,
+  ADMIN_SHEET,
+  DASHBOARD_PASSWORD_HASH_PROPERTY_KEY,
+  GOOGLE_CLIENT_ID_PROPERTY_KEY
+} from "./constants";
 import { ensureSheet, readRows } from "./util/sheets";
 
-declare const global: { __REQUEST_AUTH_TOKEN__?: string };
+type RequestState = {
+  __REQUEST_AUTH_TOKEN__?: string;
+  __REQUEST_PASSWORD_HASH__?: string;
+};
 
 const GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo?id_token=";
+
+function getRequestState(): RequestState {
+  return globalThis as typeof globalThis & RequestState;
+}
 
 type VerifiedUser = {
   email: string;
@@ -13,6 +25,12 @@ type VerifiedUser = {
 
 export function getGoogleClientId() {
   return String(PropertiesService.getScriptProperties().getProperty(GOOGLE_CLIENT_ID_PROPERTY_KEY) || "").trim();
+}
+
+export function getDashboardPasswordHash() {
+  return String(PropertiesService.getScriptProperties().getProperty(DASHBOARD_PASSWORD_HASH_PROPERTY_KEY) || "")
+    .trim()
+    .toLowerCase();
 }
 
 function decodeJwtPayload(token: string) {
@@ -84,7 +102,7 @@ function verifyGoogleIdToken(token: string): VerifiedUser | null {
 }
 
 export function getViewerProfile() {
-  const token = String(global.__REQUEST_AUTH_TOKEN__ || "").trim();
+  const token = String(getRequestState().__REQUEST_AUTH_TOKEN__ || "").trim();
   if (!token) {
     return {
       signedIn: false,
@@ -125,4 +143,20 @@ export function requireAdmin() {
     throw new Error("Your account is not listed in the Admins sheet yet.");
   }
   return viewer;
+}
+
+export function requirePlannerAccess() {
+  const passwordHash = String(getRequestState().__REQUEST_PASSWORD_HASH__ || "").trim().toLowerCase();
+  const expectedHash = getDashboardPasswordHash();
+
+  if (expectedHash && passwordHash === expectedHash) {
+    return {
+      signedIn: true,
+      email: "",
+      name: "Dashboard session",
+      isAdmin: true
+    };
+  }
+
+  return requireAdmin();
 }

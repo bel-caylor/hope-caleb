@@ -1,3 +1,82 @@
+const HOME_EVENT = {
+  weddingDateLabel: "Friday, January 8, 2027",
+  countdownTargetIso: "2027-01-08T16:00:00-06:00",
+  nextMainEvent: {
+    title: "Ceremony begins",
+    dateTimeLabel: "Friday, January 8, 2027 at 4:00 PM",
+    location: "South Texas venue details coming soon."
+  }
+};
+
+document.querySelectorAll("[data-wedding-date]").forEach((element) => {
+  element.textContent = HOME_EVENT.weddingDateLabel;
+});
+
+const nextEventTitle = document.querySelector("[data-next-event-title]");
+const nextEventDateTime = document.querySelector("[data-next-event-datetime]");
+const nextEventLocation = document.querySelector("[data-next-event-location]");
+
+if (nextEventTitle) {
+  nextEventTitle.textContent = HOME_EVENT.nextMainEvent.title;
+}
+
+if (nextEventDateTime) {
+  nextEventDateTime.textContent = HOME_EVENT.nextMainEvent.dateTimeLabel;
+}
+
+if (nextEventLocation) {
+  nextEventLocation.textContent = HOME_EVENT.nextMainEvent.location;
+}
+
+const countdownEls = {
+  days: document.querySelector("[data-countdown-days]"),
+  hours: document.querySelector("[data-countdown-hours]"),
+  minutes: document.querySelector("[data-countdown-minutes]"),
+  seconds: document.querySelector("[data-countdown-seconds]"),
+  summary: document.querySelector("[data-countdown-summary]")
+};
+
+const countdownTarget = new Date(HOME_EVENT.countdownTargetIso);
+
+function updateCountdown() {
+  if (!countdownEls.days || Number.isNaN(countdownTarget.getTime())) {
+    return;
+  }
+
+  const diffMs = countdownTarget.getTime() - Date.now();
+
+  if (diffMs <= 0) {
+    countdownEls.days.textContent = "0";
+    countdownEls.hours.textContent = "0";
+    countdownEls.minutes.textContent = "0";
+    countdownEls.seconds.textContent = "0";
+
+    if (countdownEls.summary) {
+      countdownEls.summary.textContent = `${HOME_EVENT.nextMainEvent.title} is here.`;
+    }
+
+    return;
+  }
+
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  countdownEls.days.textContent = String(days);
+  countdownEls.hours.textContent = String(hours).padStart(2, "0");
+  countdownEls.minutes.textContent = String(minutes).padStart(2, "0");
+  countdownEls.seconds.textContent = String(seconds).padStart(2, "0");
+
+  if (countdownEls.summary) {
+    countdownEls.summary.textContent = `${days} days until ${HOME_EVENT.nextMainEvent.title.toLowerCase()} on ${HOME_EVENT.weddingDateLabel}.`;
+  }
+}
+
+updateCountdown();
+window.setInterval(updateCountdown, 1000);
+
 const storySliders = Array.from(document.querySelectorAll("[data-slider]"));
 
 storySliders.forEach((slider) => {

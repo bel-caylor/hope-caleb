@@ -97,6 +97,7 @@ function main() {
   });
 
   const rsvpFeedUrl = process.env.PUBLIC_RSVP_FEED_URL || localEnv.PUBLIC_RSVP_FEED_URL || "";
+  const plannerScriptBaseUrl = process.env.PLANNER_PROXY_URL || localEnv.PLANNER_PROXY_URL || rsvpFeedUrl;
   const dashboardPassword = process.env.DASHBOARD_PASSWORD || localEnv.DASHBOARD_PASSWORD || "";
   const dashboardPasswordHash = (process.env.DASHBOARD_PASSWORD_HASH || localEnv.DASHBOARD_PASSWORD_HASH || hashPassword(dashboardPassword)).trim();
 
@@ -107,6 +108,10 @@ function main() {
   html = html.replace(
     /content="<\?= rsvpFeedUrl \?>"/g,
     `content="${escapeHtml(rsvpFeedUrl)}"`
+  );
+  html = html.replace(
+    /content="<\?= scriptBaseUrl \?>"/g,
+    `content="${escapeHtml(plannerScriptBaseUrl)}"`
   );
 
   fs.rmSync(OUT_DIR, { recursive: true, force: true });
@@ -124,6 +129,9 @@ function main() {
   }
   if (!rsvpFeedUrl) {
     console.warn("[standalone] PUBLIC_RSVP_FEED_URL is empty. The dashboard can still work, but the RSVP panel will stay disconnected.");
+  }
+  if (!plannerScriptBaseUrl) {
+    console.warn("[standalone] PLANNER_PROXY_URL is empty. Planner RPC calls will use the same URL as the RSVP feed.");
   }
 }
 

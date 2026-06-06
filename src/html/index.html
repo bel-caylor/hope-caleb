@@ -458,6 +458,220 @@
         gap: 1rem;
       }
 
+      .planner-shell {
+        width: 100%;
+        margin: 0;
+        min-height: 100vh;
+        min-height: 100svh;
+        padding: 2rem 0 0;
+      }
+
+      .planner-shell__layout {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        gap: 0;
+        align-items: stretch;
+        min-height: calc(100vh - 7.5rem);
+        min-height: calc(100svh - 7.5rem);
+        padding: 0 1rem;
+      }
+
+      .planner-shell .planner-banner {
+        width: 100%;
+        margin: 0;
+      }
+
+      .planner-shell__intro {
+        margin-bottom: 1.25rem;
+        padding: 0 1rem 1rem;
+        border: 0;
+        border-bottom: 1px solid rgba(89, 0, 0, 0.14);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .planner-banner__titlebar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .planner-shell__intro .planner-summary,
+      .planner-shell__intro .status {
+        display: none;
+      }
+
+      .planner-sidebar {
+        position: sticky;
+        top: 1rem;
+        display: grid;
+        gap: 0.75rem;
+        width: max-content;
+        justify-self: start;
+      }
+
+      .planner-summary-grid {
+        width: 100%;
+        margin: 0;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+      }
+
+      .planner-home-card {
+        min-width: 0;
+        padding: 1rem 1.1rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 8px;
+        background:
+          linear-gradient(135deg, rgba(111, 29, 42, 0.04), rgba(255, 255, 255, 0.92)),
+          rgba(255, 255, 255, 0.9);
+      }
+
+      .planner-home-card__label {
+        display: block;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .planner-home-card h3 {
+        margin: 0.4rem 0 0;
+      }
+
+      .planner-home-card__meta,
+      .planner-home-card__summary {
+        margin: 0.55rem 0 0;
+        color: var(--muted);
+      }
+
+      .planner-countdown {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.6rem;
+        margin-top: 0.85rem;
+      }
+
+      .planner-countdown__item {
+        padding: 0.8rem 0.6rem;
+        border: 1px solid rgba(89, 0, 0, 0.08);
+        border-radius: 8px;
+        background: rgba(255, 250, 247, 0.9);
+        text-align: center;
+      }
+
+      .planner-countdown__item strong {
+        display: block;
+        color: #6f1d2a;
+        font-size: clamp(1.4rem, 3vw, 2.1rem);
+        line-height: 1;
+      }
+
+      .planner-countdown__item span {
+        display: block;
+        margin-top: 0.35rem;
+        color: var(--muted);
+        font-size: 0.74rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .planner-sections {
+        display: inline-grid;
+        justify-items: start;
+        gap: 0.2rem;
+        padding: 0;
+        width: 8.75rem;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .planner-section-button {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        position: relative;
+        padding: 0.45rem 0.8rem 0.45rem 0.7rem;
+        border: 1px solid transparent;
+        border-radius: 0.85rem 0 0 0.85rem;
+        background: transparent;
+        color: var(--muted);
+        text-align: left;
+        cursor: pointer;
+        transition: color 160ms ease, transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+      }
+
+      .planner-section-button svg {
+        width: 0.95rem;
+        height: 0.95rem;
+        flex: 0 0 auto;
+        color: #6f1d2a;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.85;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .planner-section-button strong {
+        font-size: 0.98rem;
+        font-weight: 700;
+      }
+
+      .planner-section-button:hover,
+      .planner-section-button.is-active {
+        color: var(--ink);
+        transform: translateX(2px);
+      }
+
+      .planner-section-button.is-active strong {
+        text-decoration: none;
+      }
+
+      .planner-section-button.is-active {
+        background: #6f1d2a;
+        color: #fffaf7;
+        border-color: rgba(89, 0, 0, 0.3);
+        box-shadow: 0 2px 5px rgba(89, 0, 0, 0.06);
+        z-index: 1;
+      }
+
+      .planner-section-button.is-active svg {
+        color: #fffaf7;
+      }
+
+      .planner-stage {
+        min-width: 0;
+        display: grid;
+        align-self: stretch;
+        min-height: 100%;
+      }
+
+      .planner-home {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .planner-panel {
+        min-width: 0;
+        min-height: 100%;
+        border: 0;
+        border-left: 1px solid rgba(89, 0, 0, 0.14);
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .planner-panel[hidden] {
+        display: none !important;
+      }
+
       .panel {
         padding: 1.25rem;
       }
@@ -523,6 +737,33 @@
         border-radius: 999px;
       }
 
+      .planner-filter-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.85rem 1rem;
+        margin: 0.75rem 0 1rem;
+      }
+
+      .planner-filter-row label {
+        display: grid;
+        gap: 0.35rem;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .planner-filter-row select {
+        width: 100%;
+        padding: 0.75rem 0.85rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 10px;
+        background: #fffdf9;
+        color: var(--ink);
+        font: inherit;
+      }
+
       .card {
         padding: 0.95rem 1rem;
         border-radius: 8px;
@@ -537,6 +778,49 @@
 
       .card p {
         margin-top: 0.35rem;
+      }
+
+      #eventsList.list {
+        max-height: none;
+        overflow: visible;
+      }
+
+      .event-card {
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .event-card--main {
+        border-color: rgba(111, 29, 42, 0.28);
+        box-shadow: inset 0 0 0 1px rgba(111, 29, 42, 0.06);
+      }
+
+      .event-card__header {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .event-card__header h3 {
+        flex: 1 1 auto;
+      }
+
+      .event-card__edit {
+        flex: 0 0 auto;
+        min-width: 2rem;
+        min-height: 2rem;
+        padding: 0.3rem;
+      }
+
+      .event-card__edit svg {
+        width: 1rem;
+        height: 1rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.9;
+        stroke-linecap: round;
+        stroke-linejoin: round;
       }
 
       .dashboard-entry {
@@ -586,6 +870,67 @@
         border-bottom: 0;
       }
 
+      .bed-table__cell-input {
+        min-width: 8.75rem;
+        min-height: 2.2rem;
+        padding: 0.45rem 0.65rem;
+        font-size: 0.92rem;
+      }
+
+      .bed-table__cell-input--unassigned {
+        background: #eef8ea;
+        border-color: rgba(95, 111, 58, 0.28);
+      }
+
+      .bed-table__cell-input--question {
+        background: #fdecef;
+        border-color: rgba(153, 85, 102, 0.28);
+      }
+
+      #bedsList {
+        height: calc(100vh - 12.5rem);
+        max-height: none;
+        overflow: hidden;
+      }
+
+      .bed-table-wrap {
+        height: 100%;
+      }
+
+      .bed-table th,
+      .bed-table td {
+        padding: 0.45rem 0.65rem;
+      }
+
+      .bed-table td {
+        vertical-align: middle;
+      }
+
+      .bed-table__bed {
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .bed-table__group-body td {
+        border-bottom: 1px solid rgba(89, 0, 0, 0.12);
+      }
+
+      .bed-table__group-body tr:first-child td {
+        border-top: 3px solid rgba(111, 29, 42, 0.5);
+      }
+
+      .bed-table__group-body td:first-child {
+        border-left: 3px solid rgba(111, 29, 42, 0.5);
+      }
+
+      .bed-table__group-body td:last-child {
+        border-right: 3px solid rgba(111, 29, 42, 0.5);
+      }
+
+      .bed-table__group-body tr:last-child td {
+        border-bottom: 3px solid rgba(111, 29, 42, 0.5);
+      }
+
       .guest-accordion {
         display: grid;
         gap: 0.75rem;
@@ -613,6 +958,59 @@
         background: #fffdf9;
         color: var(--ink);
         font: inherit;
+      }
+
+      .type-options {
+        margin: 0;
+        padding: 0;
+        border: 0;
+      }
+
+      .type-options legend {
+        margin-bottom: 0.45rem;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .type-options__grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem 0.8rem;
+      }
+
+      label.type-option {
+        display: flex;
+        align-items: center;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 0.75rem;
+        padding: 0.7rem 0.85rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 10px;
+        background: #fffdf9;
+        color: var(--ink);
+        font-size: 0.92rem;
+        font-weight: 700;
+        text-transform: none;
+        letter-spacing: 0;
+        cursor: pointer;
+      }
+
+      label.type-option input {
+        flex: 0 0 auto;
+        width: 1rem;
+        height: 1rem;
+        margin: 0;
+      }
+
+      label.type-option span {
+        flex: 1 1 auto;
+        display: inline-flex;
+        align-items: center;
+        line-height: 1.2;
       }
 
       .guest-card {
@@ -673,14 +1071,213 @@
         display: block;
         color: var(--muted);
         font-size: 0.82rem;
-        font-weight: 800;
+        font-weight: 500;
         text-transform: uppercase;
       }
 
       .guest-card__field strong {
         display: block;
-        margin-top: 0.2rem;
+        margin-top: 0.08rem;
         font-size: 0.96rem;
+      }
+
+      .event-accordion {
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .event-accordion .guest-card summary {
+        align-items: center;
+        gap: 1rem;
+        padding: 0.8rem 0.95rem;
+        background: #efdadd;
+        color: #561d28;
+      }
+
+      .event-accordion .guest-card {
+        background: #fcf4f5;
+      }
+
+      .event-accordion .guest-card[open] summary {
+        border-bottom: 1px solid rgba(111, 29, 42, 0.14);
+      }
+
+      .event-accordion .guest-card summary::after {
+        content: none;
+      }
+
+      .event-accordion__summary-main {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.7rem;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+
+      .event-accordion__toggle {
+        flex: 0 0 auto;
+        width: 0.9rem;
+        text-align: center;
+        font-size: 1.15rem;
+        font-weight: 800;
+      }
+
+      .event-accordion__time {
+        flex: 0 0 auto;
+        font-size: 0.9rem;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .event-accordion__title {
+        min-width: 0;
+      }
+
+      .event-accordion__date {
+        flex: 0 0 auto;
+        margin-left: auto;
+        text-align: right;
+        font-size: 0.9rem;
+        color: rgba(86, 29, 40, 0.9);
+        white-space: nowrap;
+      }
+
+      .event-accordion .guest-card[open] .event-accordion__toggle {
+        font-size: 1.2rem;
+      }
+
+      .event-accordion .guest-card[open] .event-accordion__toggle::before {
+        content: "−";
+      }
+
+      .event-accordion .guest-card:not([open]) .event-accordion__toggle::before {
+        content: "+";
+      }
+
+      .event-accordion .guest-card__body {
+        gap: 0.65rem;
+        padding: 0.75rem 0.95rem 0.85rem;
+        background: #fff8f9;
+      }
+
+      .event-accordion__toolbar {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .event-accordion__toolbar .button {
+        min-width: 0;
+      }
+
+      .event-accordion .guest-card__grid {
+        display: block;
+        column-count: 2;
+        column-gap: 1.25rem;
+      }
+
+      .event-accordion .guest-card__field {
+        display: inline-grid;
+        width: 100%;
+        gap: 0.06rem;
+        margin-bottom: 0.75rem;
+        break-inside: avoid;
+      }
+
+      .event-accordion .guest-card__field--full {
+        column-span: all;
+      }
+
+      .table-control-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(18rem, 28rem);
+        align-items: start;
+        gap: 0.85rem 1rem;
+        margin-top: 0.75rem;
+      }
+
+      .table-control-row .meta {
+        margin: 0;
+      }
+
+      .table-control-row .guest-card__field {
+        min-width: 0;
+      }
+
+      .table-add-guest-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .table-add-guest-row span {
+        flex: 0 0 auto;
+        margin: 0;
+        white-space: nowrap;
+      }
+
+      .table-add-guest-row select {
+        flex: 1 1 auto;
+      }
+
+      .table-control-row__title {
+        display: grid;
+        gap: 0.35rem;
+        min-width: 0;
+      }
+
+      .table-control-row__title h3 {
+        margin: 0;
+      }
+
+      .table-control-row__details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem 1rem;
+      }
+
+      .table-assignment-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .table-assignment-row strong {
+        margin: 0;
+      }
+
+      .table-remove-button {
+        min-width: 1.9rem;
+        min-height: 1.9rem;
+        padding: 0.25rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+      }
+
+      .table-remove-button svg {
+        width: 0.9rem;
+        height: 0.9rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.9;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .table-assignment-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem 1rem;
+        margin-top: 0.9rem;
+      }
+
+      .table-assignment-list .dashboard-entry {
+        padding-top: 0;
+        margin-top: 0;
+        border-top: 0;
       }
 
       form {
@@ -727,7 +1324,46 @@
 
       .status {
         min-height: 1.2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        font-size: 0.96rem;
+        line-height: 1.4;
         color: var(--muted);
+      }
+
+      .status::before {
+        content: "";
+        width: 0;
+        height: 0;
+        flex: 0 0 auto;
+        opacity: 0;
+        transition: opacity 180ms ease, transform 180ms ease;
+      }
+
+      .status.pending {
+        min-height: 3rem;
+        padding: 0.7rem 0.9rem;
+        border: 1px solid color-mix(in srgb, var(--planner-accent) 28%, transparent);
+        border-radius: 16px;
+        background:
+          radial-gradient(circle at top left, rgba(223, 158, 89, 0.22), transparent 48%),
+          linear-gradient(135deg, rgba(255, 247, 237, 0.96), rgba(251, 241, 228, 0.9));
+        color: var(--planner-text);
+        box-shadow: 0 10px 24px rgba(98, 67, 39, 0.12);
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+
+      .status.pending::before {
+        width: 1.1rem;
+        height: 1.1rem;
+        border-radius: 50%;
+        border: 3px solid rgba(130, 92, 56, 0.2);
+        border-top-color: var(--planner-accent-strong);
+        border-right-color: var(--planner-accent);
+        opacity: 1;
+        animation: plannerStatusSpin 0.8s linear infinite;
       }
 
       .status.error {
@@ -736,6 +1372,12 @@
 
       .status.success {
         color: var(--planner-success);
+      }
+
+      @keyframes plannerStatusSpin {
+        to {
+          transform: rotate(360deg);
+        }
       }
 
       .modal[hidden] {
@@ -783,8 +1425,27 @@
         .story,
         .future,
         .story-gallery-grid,
-        .planner-grid {
+        .planner-grid,
+        .planner-shell__layout {
           grid-template-columns: 1fr;
+        }
+
+        .planner-shell {
+          width: 100%;
+        }
+
+        .planner-banner__titlebar {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .planner-sidebar {
+          position: static;
+          width: auto;
+        }
+
+        .planner-summary-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
         .story-slider,
@@ -827,6 +1488,26 @@
           grid-template-columns: 1fr;
         }
 
+        .event-accordion .guest-card__grid {
+          column-count: 1;
+        }
+
+        .planner-filter-row {
+          grid-template-columns: 1fr;
+        }
+
+        .table-control-row {
+          grid-template-columns: 1fr;
+        }
+
+        .type-options__grid {
+          grid-template-columns: 1fr;
+        }
+
+        .table-assignment-list {
+          grid-template-columns: 1fr;
+        }
+
         .list-header {
           align-items: center;
           flex-direction: row;
@@ -838,6 +1519,14 @@
         .planner-summary {
           flex-direction: column;
           align-items: stretch;
+        }
+
+        .planner-summary-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .planner-countdown {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
     </style>
@@ -998,39 +1687,82 @@
         </div>
       </section>
 
-      <section class="planner-banner section" data-view="planner" hidden aria-labelledby="planner-heading">
-        <p class="eyebrow">Protected View</p>
-        <h2 id="planner-heading">Wedding Planner Dashboard</h2>
-        <p class="meta">Private coordination tools for RSVPs, people, vendors, family, and your event timeline.</p>
-        <div class="planner-summary" id="plannerGate">
-          <div id="plannerGateMessage" class="meta">Enter the dashboard password to continue.</div>
-          <button class="button button--light" type="button" id="plannerSignOut" hidden>Lock Dashboard</button>
-        </div>
-        <p class="status" id="plannerSyncStatus"></p>
-      </section>
-
-      <section class="planner-banner section" data-view="planner" hidden id="plannerLocked" aria-labelledby="planner-locked-heading">
-        <h3 id="planner-locked-heading">Unlock Dashboard</h3>
-        <p class="meta">Use one shared password for the planner dashboard on this device.</p>
-        <form id="plannerLoginForm">
-          <label>Password <input id="plannerPassword" name="password" type="password" autocomplete="current-password" required></label>
-          <div class="toolbar">
-            <button class="button" type="submit">Unlock</button>
+      <section class="planner-shell" data-view="planner" hidden aria-labelledby="planner-heading">
+        <section class="planner-banner planner-shell__intro" aria-labelledby="planner-heading">
+          <div class="planner-banner__titlebar">
+            <h2 id="planner-heading">Wedding Planner Dashboard</h2>
+            <button class="button button--light" type="button" id="plannerSignOut" hidden>Lock Dashboard</button>
           </div>
-          <p class="status" id="plannerLoginStatus"></p>
-        </form>
-      </section>
+          <div class="planner-summary" id="plannerGate">
+            <div id="plannerGateMessage" class="meta">Enter the dashboard password to continue.</div>
+          </div>
+          <p class="status" id="plannerSyncStatus"></p>
+        </section>
 
-      <section class="summary-grid" data-view="planner" hidden id="plannerUnlocked">
-        <div id="plannerSummary" class="summary-grid"></div>
-      </section>
+        <div class="planner-shell__layout">
+          <aside class="planner-sidebar">
+            <section class="planner-banner" id="plannerLocked" aria-labelledby="planner-locked-heading">
+              <h3 id="planner-locked-heading">Unlock Dashboard</h3>
+              <p class="meta">Use one shared password for the planner dashboard on this device.</p>
+              <form id="plannerLoginForm">
+                <label>Password <input id="plannerPassword" name="password" type="password" autocomplete="current-password" required></label>
+                <div class="toolbar">
+                  <button class="button" type="submit">Unlock</button>
+                </div>
+                <p class="status" id="plannerLoginStatus"></p>
+              </form>
+            </section>
 
-      <section class="planner-grid" data-view="planner" hidden id="plannerContent">
-        <section class="panel">
+            <div id="plannerUnlocked" hidden>
+              <nav class="planner-sections" aria-label="Dashboard sections">
+                <button class="planner-section-button is-active" type="button" data-planner-section="home">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path></svg>
+                  <strong>Home</strong>
+                </button>
+                <button class="planner-section-button" type="button" data-planner-section="rsvps">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"></path><path d="m4 7 8 6 8-6"></path></svg>
+                  <strong>RSVP</strong>
+                </button>
+                <button class="planner-section-button" type="button" data-planner-section="guests">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M20 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16.5 4.2a3 3 0 0 1 0 5.6"></path></svg>
+                  <strong>Guests</strong>
+                </button>
+                <button class="planner-section-button" type="button" data-planner-section="tables">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"></path><path d="M4 10h16"></path><path d="M10 10v9"></path></svg>
+                  <strong>Tables</strong>
+                </button>
+                <button class="planner-section-button" type="button" data-planner-section="people">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"></circle><circle cx="17" cy="7" r="2.5"></circle><path d="M3.5 20a4.5 4.5 0 0 1 9 0"></path><path d="M13.5 19.5a4 4 0 0 1 7 0"></path></svg>
+                  <strong>P &amp; V</strong>
+                </button>
+                <button class="planner-section-button" type="button" data-planner-section="events">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path></svg>
+                  <strong>Timeline</strong>
+                </button>
+                <button class="planner-section-button" type="button" data-planner-section="todos">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-4"></path><path d="M21 12c0 4.97-4.03 9-9 9S3 16.97 3 12 7.03 3 12 3c1.74 0 3.37.49 4.75 1.34"></path></svg>
+                  <strong>Todo</strong>
+                </button>
+                <button class="planner-section-button" type="button" data-planner-section="beds">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11V7h8a4 4 0 0 1 4 4"></path><path d="M3 11h18v6"></path><path d="M3 17v3"></path><path d="M21 17v3"></path><path d="M15 9h3a3 3 0 0 1 3 3"></path></svg>
+                  <strong>Beds</strong>
+                </button>
+              </nav>
+            </div>
+          </aside>
+
+          <section class="planner-stage" hidden id="plannerContent">
+            <section class="panel planner-panel" data-planner-panel="home">
+              <div class="planner-home">
+                <div id="plannerSummary" class="planner-summary-grid"></div>
+              </div>
+            </section>
+
+            <section class="panel planner-panel" data-planner-panel="rsvps" hidden>
           <div class="toolbar">
             <div>
               <h3>RSVPs</h3>
-              <p class="meta">Read-only RSVP feed from your public celebration form.</p>
+              <p class="meta">Read-only RSVP summary from the `Guests` tab in your planning spreadsheet.</p>
             </div>
             <button class="button button--light" type="button" id="refreshRsvps">Refresh Feed</button>
           </div>
@@ -1038,9 +1770,9 @@
             <p class="meta">No RSVP feed loaded yet.</p>
           </div>
           <p class="status" id="rsvpStatus"></p>
-        </section>
+            </section>
 
-        <section class="panel">
+            <section class="panel planner-panel" data-planner-panel="guests" hidden>
           <h3>Guests</h3>
           <p class="meta">Read-only rows from the `Guests` tab in your planning spreadsheet.</p>
           <div class="guest-filter">
@@ -1053,9 +1785,22 @@
             <p class="meta">No guests feed loaded yet.</p>
           </div>
           <p class="status" id="guestsStatus"></p>
-        </section>
+            </section>
 
-        <section class="panel">
+            <section class="panel planner-panel" data-planner-panel="tables" hidden>
+          <div class="list-header">
+            <div class="list-header__copy">
+              <h3>Tables</h3>
+            </div>
+            <button class="button button--icon" type="button" id="openTableModal" aria-label="Add table">+</button>
+          </div>
+          <p class="status" id="tableStatus"></p>
+          <div class="list" id="tablesList">
+            <p class="meta">No tables loaded yet.</p>
+          </div>
+            </section>
+
+            <section class="panel planner-panel" data-planner-panel="people" hidden>
           <div class="list-header">
             <div class="list-header__copy">
               <h3>People/Vendors</h3>
@@ -1065,7 +1810,53 @@
           <div class="list" id="peopleList">
             <p class="meta">No people loaded yet.</p>
           </div>
-        </section>
+            </section>
+
+            <section class="panel planner-panel" data-planner-panel="beds" hidden>
+          <div class="list" id="bedsList">
+            <p class="meta">No beds loaded yet.</p>
+          </div>
+          <p class="status" id="bedsInlineStatus"></p>
+            </section>
+
+            <section class="panel planner-panel" data-planner-panel="events" hidden>
+          <div class="list-header">
+            <div class="list-header__copy">
+              <h3>Events</h3>
+            </div>
+            <button class="button button--icon" type="button" id="openEventModal" aria-label="Add event">+</button>
+          </div>
+          <div class="planner-filter-row">
+            <label>Date
+              <select id="eventDateFilter">
+                <option value="">All dates</option>
+              </select>
+            </label>
+            <label>Assigned To
+              <select id="eventAssignedToFilter">
+                <option value="">All assignees</option>
+              </select>
+            </label>
+          </div>
+          <div class="list" id="eventsList">
+            <p class="meta">No events loaded yet.</p>
+          </div>
+            </section>
+
+            <section class="panel planner-panel" data-planner-panel="todos" hidden>
+          <div class="list-header">
+            <div class="list-header__copy">
+              <h3>Todo</h3>
+              <p class="meta">Track wedding tasks, due dates, assignees, reminders, and SMS copy from the `Todo` sheet.</p>
+            </div>
+            <button class="button button--icon" type="button" id="openTodoModal" aria-label="Add task">+</button>
+          </div>
+          <div class="list" id="todosList">
+            <p class="meta">No tasks loaded yet.</p>
+          </div>
+            </section>
+          </section>
+        </div>
 
         <section class="modal" id="personModal" hidden aria-hidden="true">
           <div class="modal__backdrop" data-close-person-modal></div>
@@ -1098,39 +1889,37 @@
           </div>
         </section>
 
-        <section class="panel">
-          <div class="list-header">
-            <div class="list-header__copy">
-              <h3>Events</h3>
-            </div>
-            <button class="button button--icon" type="button" id="openEventModal" aria-label="Add event">+</button>
-          </div>
-          <div class="list" id="eventsList">
-            <p class="meta">No events loaded yet.</p>
-          </div>
-        </section>
-
         <section class="modal" id="eventModal" hidden aria-hidden="true">
           <div class="modal__backdrop" data-close-event-modal></div>
           <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle">
             <div class="toolbar">
               <div>
                 <h3 id="eventModalTitle">Add Event</h3>
-                <p class="meta">Timeline entries with location, audience, and reminder timing.</p>
+                <p class="meta">Use this for the wedding-day schedule, invitations, showers, reminders, and any other date-based item.</p>
               </div>
               <button class="button button--light" type="button" data-close-event-modal>Close</button>
             </div>
             <form id="eventForm">
               <input type="hidden" name="id">
-              <label>Title <input name="title" required placeholder="Family photos"></label>
               <div class="split">
-                <label>Start Time <input name="startsAt" type="datetime-local" required></label>
+                <label>Title <input name="title" required placeholder="Family photos"></label>
+                <label>
+                  Main Event
+                  <select name="main">
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                  </select>
+                </label>
+              </div>
+              <div class="split">
+                <label>Date <input name="date" type="date"></label>
+                <label>Start Time <input name="startsAt" type="time"></label>
+              </div>
+              <div class="split">
                 <label>Location <input name="location" placeholder="Courtyard"></label>
-              </div>
-              <div class="split">
                 <label>Assigned To <input name="assignedTo" placeholder="Bridesmaids, Parents"></label>
-                <label>Reminder Minutes <input name="reminderMinutes" type="number" min="0" value="15"></label>
               </div>
+              <label>Reminder Minutes <input name="reminderMinutes" type="number" min="0" value="15"></label>
               <label>Message Template <textarea name="messageTemplate" placeholder="Hope & Caleb update: Family photos at 3:15 PM in the courtyard. Please head there by 3:00 PM."></textarea></label>
               <label>Notes <textarea name="notes" placeholder="Use this for shot list notes, fallback locations, or vendor context."></textarea></label>
               <label>
@@ -1145,6 +1934,170 @@
                 <button class="button button--light" type="button" data-reset-event>Clear</button>
               </div>
               <p class="status" id="eventStatus"></p>
+            </form>
+          </div>
+        </section>
+
+        <section class="modal" id="bedModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-bed-modal></div>
+          <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="bedModalTitle">
+            <div class="toolbar">
+              <div>
+                <h3 id="bedModalTitle">Edit Bed</h3>
+                <p class="meta">Assign one sleeping space at a time for Thursday and Friday separately.</p>
+              </div>
+              <button class="button button--light" type="button" data-close-bed-modal>Close</button>
+            </div>
+            <form id="bedForm">
+              <input type="hidden" name="id">
+              <div class="split">
+                <label>Lodging <input name="lodging" required placeholder="Cabin #2"></label>
+                <label>Room <input name="room" required placeholder="Bedroom"></label>
+              </div>
+              <div class="split">
+                <label>Bed Label <input name="bedLabel" required placeholder="Queen Bed"></label>
+                <label>Bed Type <input name="bedType" placeholder="Queen"></label>
+              </div>
+              <div class="split">
+                <label>Capacity <input name="capacity" type="number" min="1" value="2"></label>
+                <label>Thursday <input name="thursday" placeholder="Jane Doe, John Doe"></label>
+              </div>
+              <label>Friday <input name="friday" placeholder="Jane Doe, John Doe"></label>
+              <label>Notes <textarea name="notes" placeholder="Separate room, trundle, shared bunk, or any lodging notes."></textarea></label>
+              <div class="toolbar">
+                <button class="button" type="submit">Save Bed</button>
+                <button class="button button--light" type="button" data-reset-bed>Clear</button>
+              </div>
+              <p class="status" id="bedStatus"></p>
+            </form>
+          </div>
+        </section>
+
+        <section class="modal" id="todoModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-todo-modal></div>
+          <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="todoModalTitle">
+            <div class="toolbar">
+              <div>
+                <h3 id="todoModalTitle">Add Task</h3>
+                <p class="meta">Save a wedding task with dates, assignee, notes, image link, complete status, and SMS message.</p>
+              </div>
+              <button class="button button--light" type="button" data-close-todo-modal>Close</button>
+            </div>
+            <form id="todoForm">
+              <input type="hidden" name="id">
+              <div class="split">
+                <label>Title <input name="title" required placeholder="Mail invitations"></label>
+                <label>Assigned To <input name="assignedTo" placeholder="Hope"></label>
+              </div>
+              <div class="split">
+                <label>Start Date <input name="startDate" type="date"></label>
+                <label>Due Date <input name="dueDate" type="date"></label>
+              </div>
+              <div class="split">
+                <label>
+                  Priority
+                  <select name="priority">
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </label>
+                <label>
+                  Status
+                  <select name="status">
+                    <option value="Not Started">Not Started</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Waiting">Waiting</option>
+                    <option value="Done">Done</option>
+                  </select>
+                </label>
+              </div>
+              <div class="split">
+                <label>
+                  Complete
+                  <select name="isComplete">
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                  </select>
+                </label>
+                <label>Reminder Date <input name="reminderDate" type="date"></label>
+              </div>
+              <div class="split">
+                <label>Category <input name="category" placeholder="Stationery"></label>
+                <label>Tags <input name="tags" placeholder="mailing, guests"></label>
+              </div>
+              <label>Image URL <input name="imageUrl" placeholder="https://..."></label>
+              <label>SMS Message <textarea name="smsMessage" placeholder="Reminder: invitations need to go in the mail by Friday."></textarea></label>
+              <label>Notes <textarea name="notes" placeholder="Any details, links, vendor notes, or next steps."></textarea></label>
+              <div class="toolbar">
+                <button class="button" type="submit">Save Task</button>
+                <button class="button button--light" type="button" data-reset-todo>Clear</button>
+              </div>
+              <p class="status" id="todoStatus"></p>
+            </form>
+          </div>
+        </section>
+
+        <section class="modal" id="tableModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-table-modal></div>
+          <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="tableModalTitle">
+            <div class="toolbar">
+              <div>
+                <h3 id="tableModalTitle">Add Table</h3>
+              </div>
+              <button class="button button--light" type="button" data-close-table-modal>Close</button>
+            </div>
+            <form id="tableForm" class="guest-filter">
+              <label>Table Name <input name="tableName" type="text" required></label>
+              <fieldset class="type-options">
+                <legend>Type</legend>
+                <div id="tableTypeOptions" class="type-options__grid"></div>
+              </fieldset>
+              <label>Count
+                <select name="count" required>
+                  <option value="">Select seat count</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  <option value="10">10</option>
+                  <option value="11">11</option>
+                  <option value="12">12</option>
+                </select>
+              </label>
+              <div class="toolbar">
+                <button class="button" type="submit">Add Table</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="modal" id="addGuestModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-add-guest-modal></div>
+          <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="addGuestModalTitle">
+            <div class="toolbar">
+              <div>
+                <h3 id="addGuestModalTitle">Add Guest</h3>
+              </div>
+              <button class="button button--light" type="button" data-close-add-guest-modal>Close</button>
+            </div>
+            <form id="addGuestForm">
+              <input type="hidden" name="tableId">
+              <input type="hidden" name="tableName">
+              <label>Guest
+                <select name="guestRowNumber" required>
+                  <option value="">Select guest</option>
+                </select>
+              </label>
+              <div class="toolbar">
+                <button class="button" type="submit">Add Guest</button>
+              </div>
+              <p class="status" id="addGuestStatus"></p>
             </form>
           </div>
         </section>

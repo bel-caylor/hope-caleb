@@ -1,27 +1,43 @@
-import { getGoogleClientId } from "./auth";
+import { getDashboardPasswordHash, getGoogleClientId } from "./auth";
 import { listPublicFeed, savePublicSubmission } from "./features/feed";
+import { syncGuestSummarySheets } from "./features/feed";
+import { initializeBedsSheet } from "./features/planner";
 import { rpc } from "./rpc";
 
-declare const global: { __REQUEST_AUTH_TOKEN__?: string };
+type RequestState = {
+  __REQUEST_AUTH_TOKEN__?: string;
+  __REQUEST_PASSWORD_HASH__?: string;
+};
+
+function getRequestState(): RequestState {
+  return globalThis as typeof globalThis & RequestState;
+}
 
 function include(filename: string) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 export function doGet(e?: GoogleAppsScript.Events.DoGet) {
+  if (isRpcGetRequest(e)) {
+    return handleRpcGet(e);
+  }
+
   if (shouldServePublicFeed(e)) {
     return publicFeedResponse(listPublicFeed(), e);
   }
 
   const tpl = HtmlService.createTemplateFromFile("index");
-  tpl.googleClientId = getGoogleClientId();
-  tpl.scriptBaseUrl = (() => {
+  const scriptBaseUrl = (() => {
     try {
       return ScriptApp.getService().getUrl() || "";
     } catch (_) {
       return "";
     }
   })();
+  tpl.googleClientId = getGoogleClientId();
+  tpl.dashboardPasswordHash = getDashboardPasswordHash();
+  tpl.rsvpFeedUrl = scriptBaseUrl;
+  tpl.scriptBaseUrl = scriptBaseUrl;
   tpl.include = include;
   return tpl.evaluate().setTitle("Hope & Caleb Planner");
 }
@@ -32,7 +48,7 @@ export function doPost(e?: GoogleAppsScript.Events.DoPost) {
   }
 
   const body = e?.postData?.contents || "";
-  let parsed: { method?: string; payload?: unknown; authToken?: string } = {};
+  let parsed: { method?: string; payload?: unknown; authToken?: string; passwordHash?: string } = {};
 
   try {
     parsed = body ? JSON.parse(body) : {};
@@ -40,7 +56,8 @@ export function doPost(e?: GoogleAppsScript.Events.DoPost) {
     return jsonResponse({ ok: false, error: "Invalid JSON payload." });
   }
 
-  global.__REQUEST_AUTH_TOKEN__ = String(parsed.authToken || "").trim();
+  getRequestState().__REQUEST_AUTH_TOKEN__ = String(parsed.authToken || "").trim();
+  getRequestState().__REQUEST_PASSWORD_HASH__ = String(parsed.passwordHash || "").trim();
 
   try {
     const method = String(parsed.method || "").trim();
@@ -53,12 +70,35 @@ export function doPost(e?: GoogleAppsScript.Events.DoPost) {
     const message = error instanceof Error ? error.message : String(error);
     return jsonResponse({ ok: false, error: message }, e);
   } finally {
-    global.__REQUEST_AUTH_TOKEN__ = "";
+    getRequestState().__REQUEST_AUTH_TOKEN__ = "";
+    getRequestState().__REQUEST_PASSWORD_HASH__ = "";
   }
 }
 
 export function doOptions(e?: GoogleAppsScript.Events.DoPost) {
   return jsonResponse("", e);
+}
+
+function handleRpcGet(e?: GoogleAppsScript.Events.DoGet) {
+  const method = String(e?.parameter?.method || "").trim();
+  const payload = parseRpcPayload(String(e?.parameter?.payload || ""));
+
+  getRequestState().__REQUEST_AUTH_TOKEN__ = String(e?.parameter?.authToken || "").trim();
+  getRequestState().__REQUEST_PASSWORD_HASH__ = String(e?.parameter?.passwordHash || "").trim();
+
+  try {
+    if (!method) {
+      throw new Error("Missing RPC method.");
+    }
+    const data = rpc({ method, payload });
+    return publicFeedResponse({ ok: true, data }, e);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return publicFeedResponse({ ok: false, error: message }, e);
+  } finally {
+    getRequestState().__REQUEST_AUTH_TOKEN__ = "";
+    getRequestState().__REQUEST_PASSWORD_HASH__ = "";
+  }
 }
 
 function jsonResponse(payload: unknown, e?: GoogleAppsScript.Events.DoPost) {
@@ -104,6 +144,23 @@ function shouldServePublicFeed(e?: GoogleAppsScript.Events.DoGet) {
   return Boolean(callback) || format === "json" || feed === "public";
 }
 
+function isRpcGetRequest(e?: GoogleAppsScript.Events.DoGet) {
+  return String(e?.parameter?.method || "").trim().length > 0;
+}
+
+function parseRpcPayload(payload: string) {
+  const raw = String(payload || "").trim();
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch (_) {
+    throw new Error("Invalid RPC payload.");
+  }
+}
+
 function isRpcRequest(e?: GoogleAppsScript.Events.DoPost) {
   const body = String(e?.postData?.contents || "").trim();
 
@@ -144,4 +201,22 @@ function getOrigin(e?: GoogleAppsScript.Events.DoPost) {
   doGet?: typeof doGet;
   doPost?: typeof doPost;
   doOptions?: typeof doOptions;
+  initializeBedsSheet?: typeof initializeBedsSheet;
+  syncGuestSummarySheets?: typeof syncGuestSummarySheets;
 }).doOptions = doOptions;
+
+(globalThis as typeof globalThis & {
+  doGet?: typeof doGet;
+  doPost?: typeof doPost;
+  doOptions?: typeof doOptions;
+  initializeBedsSheet?: typeof initializeBedsSheet;
+  syncGuestSummarySheets?: typeof syncGuestSummarySheets;
+}).initializeBedsSheet = initializeBedsSheet;
+
+(globalThis as typeof globalThis & {
+  doGet?: typeof doGet;
+  doPost?: typeof doPost;
+  doOptions?: typeof doOptions;
+  initializeBedsSheet?: typeof initializeBedsSheet;
+  syncGuestSummarySheets?: typeof syncGuestSummarySheets;
+}).syncGuestSummarySheets = syncGuestSummarySheets;
