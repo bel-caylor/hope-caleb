@@ -5,6 +5,7 @@
   const plannerPasswordInput = document.querySelector("#plannerPassword");
   const plannerLoginStatusEl = document.querySelector("#plannerLoginStatus");
   const plannerSignOutButton = document.querySelector("#plannerSignOut");
+  const plannerMenuToggleButton = document.querySelector("#plannerMenuToggle");
   const plannerSummaryEl = document.querySelector("#plannerSummary");
   const plannerSyncStatusEl = document.querySelector("#plannerSyncStatus");
   const rsvpListEl = document.querySelector("#rsvpList");
@@ -12,6 +13,8 @@
   const openPersonModalButton = document.querySelector("#openPersonModal");
   const eventModal = document.querySelector("#eventModal");
   const openEventModalButton = document.querySelector("#openEventModal");
+  const shotModal = document.querySelector("#shotModal");
+  const openShotModalButton = document.querySelector("#openShotModal");
   const bedModal = document.querySelector("#bedModal");
   const todoModal = document.querySelector("#todoModal");
   const tableModal = document.querySelector("#tableModal");
@@ -22,19 +25,29 @@
   const tableTypeOptionsEl = document.querySelector("#tableTypeOptions");
   const personForm = document.querySelector("#personForm");
   const eventForm = document.querySelector("#eventForm");
+  const eventAssignedTypeOptionsEl = document.querySelector("#eventAssignedTypeOptions");
+  const shotForm = document.querySelector("#shotForm");
   const bedForm = document.querySelector("#bedForm");
   const todoForm = document.querySelector("#todoForm");
   const addGuestForm = document.querySelector("#addGuestForm");
   const peopleListEl = document.querySelector("#peopleList");
   const eventsListEl = document.querySelector("#eventsList");
+  const shotsListEl = document.querySelector("#shotsList");
   const eventDateFilterEl = document.querySelector("#eventDateFilter");
+  const eventAssignedToDropdownEl = document.querySelector("#eventAssignedToDropdown");
   const eventAssignedToFilterEl = document.querySelector("#eventAssignedToFilter");
+  const eventAssignedToFilterSummaryEl = document.querySelector("#eventAssignedToFilterSummary");
+  const eventDetailShellEl = document.querySelector("#eventDetailShell");
+  const eventDetailBackButton = document.querySelector("#eventDetailBackButton");
   const bedsListEl = document.querySelector("#bedsList");
   const tablesListEl = document.querySelector("#tablesList");
   const todosListEl = document.querySelector("#todosList");
   const bedsInlineStatusEl = document.querySelector("#bedsInlineStatus");
   const personStatusEl = document.querySelector("#personStatus");
   const eventStatusEl = document.querySelector("#eventStatus");
+  const eventDetailStatusEl = document.querySelector("#eventDetailStatus");
+  const shotStatusEl = document.querySelector("#shotStatus");
+  const shotFormStatusEl = document.querySelector("#shotFormStatus");
   const bedStatusEl = document.querySelector("#bedStatus");
   const tableStatusEl = document.querySelector("#tableStatus");
   const todoStatusEl = document.querySelector("#todoStatus");
@@ -46,11 +59,13 @@
   const refreshRsvpsButton = document.querySelector("#refreshRsvps");
   const routeLinks = Array.from(document.querySelectorAll("[data-route-link]"));
   const routedViews = Array.from(document.querySelectorAll("[data-view]"));
+  const plannerLayoutEl = document.querySelector("#plannerLayout");
   const plannerContentEl = document.querySelector("#plannerContent");
   const plannerLockedEl = document.querySelector("#plannerLocked");
   const plannerUnlockedEl = document.querySelector("#plannerUnlocked");
   const plannerSectionButtons = Array.from(document.querySelectorAll("[data-planner-section]"));
   const plannerPanels = Array.from(document.querySelectorAll("[data-planner-panel]"));
+  const plannerSidebarMediaQuery = window.matchMedia("(max-width: 860px)");
 
   const STORAGE_KEYS = {
     auth: "hope-caleb-dashboard-authenticated",
@@ -59,6 +74,7 @@
 
   let cachedPeople = [];
   let cachedEvents = [];
+  let cachedShots = [];
   let cachedBeds = [];
   let cachedTables = [];
   let cachedTodos = [];
@@ -69,17 +85,129 @@
   const bedSaveChains = new Map();
   let selectedGuestType = "";
   let selectedEventDate = "";
-  let selectedEventAssignedTo = "";
+  let selectedEventAssignedTo = [];
+  let selectedEventDetailId = "";
+  const eventAiPlans = new Map();
+  const eventAiDrafts = new Map();
+  let addGuestModalReturnFocusEl = null;
   let rsvpFeedConnected = false;
   let plannerCountdownTimer = null;
   let currentView = getRequestedView();
   let activePlannerPanel = "home";
+  let plannerSidebarOpen = false;
+  let activeTableDrag = null;
   let viewerProfile = {
     signedIn: false,
     email: "Dashboard session",
     isAdmin: false
   };
   let activeTableForGuestModal = null;
+
+  function createClientId(prefix) {
+    return `${String(prefix || "item").trim()}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  function sortBeds(items) {
+    return [...items].sort((left, right) => {
+      const orderDelta = Number(left.sortOrder || 0) - Number(right.sortOrder || 0);
+      if (orderDelta !== 0) {
+        return orderDelta;
+      }
+      return `${left.lodging || ""} ${left.room || ""} ${left.bedLabel || ""}`.localeCompare(
+        `${right.lodging || ""} ${right.room || ""} ${right.bedLabel || ""}`
+      );
+    });
+  }
+
+  function upsertItemById(items, nextItem) {
+    const nextId = String(nextItem?.id || "").trim();
+    if (!nextId) {
+      return [...items];
+    }
+
+    const nextItems = [...items];
+    const existingIndex = nextItems.findIndex((item) => String(item?.id || "").trim() === nextId);
+    if (existingIndex >= 0) {
+      nextItems[existingIndex] = nextItem;
+      return nextItems;
+    }
+
+    nextItems.unshift(nextItem);
+    return nextItems;
+  }
+
+  function rerenderPeopleData() {
+    renderPeople();
+    renderEventAssignedTypeOptions(collectEventAssignedToFormValue());
+  }
+
+  function rerenderEventData() {
+    renderEvents();
+    renderShots();
+    renderEventDetail();
+    renderEventAssignedTypeOptions(collectEventAssignedToFormValue());
+    renderSummary();
+  }
+
+  function rerenderShotData() {
+    renderShots();
+    renderEventDetail();
+    renderSummary();
+  }
+
+  function rerenderBedData() {
+    renderBedsTable();
+    renderSummary();
+  }
+
+  function rerenderTodoData() {
+    renderTodos();
+    renderSummary();
+  }
+
+  function rerenderTableData() {
+    renderTables();
+    renderTableTypeOptions();
+    renderSummary();
+  }
+
+  function upsertCachedPerson(person) {
+    cachedPeople = sortByUpdated(upsertItemById(cachedPeople, person), "updatedAt");
+    rerenderPeopleData();
+  }
+
+  function upsertCachedEvent(event) {
+    cachedEvents = sortEvents(upsertItemById(cachedEvents, event));
+    cachedShots = sortShots(cachedShots);
+    rerenderEventData();
+  }
+
+  function upsertCachedShot(shot) {
+    cachedShots = sortShots(upsertItemById(cachedShots, shot));
+    rerenderShotData();
+  }
+
+  function upsertCachedBed(bed, options = {}) {
+    cachedBeds = sortBeds(upsertItemById(cachedBeds, bed));
+    if (options.render !== false) {
+      rerenderBedData();
+    }
+  }
+
+  function upsertCachedTodo(todo) {
+    cachedTodos = sortTodos(upsertItemById(cachedTodos, todo));
+    rerenderTodoData();
+  }
+
+  function upsertCachedTable(table) {
+    cachedTables = sortTables(upsertItemById(cachedTables, table));
+    rerenderTableData();
+  }
+
+  function getTableById(tableId) {
+    const targetId = String(tableId || "").trim();
+    return cachedTables.find((table) => String(table.id || "").trim() === targetId) || null;
+  }
 
   function getRequestedView() {
     const pathname = String(window.location.pathname || "").toLowerCase();
@@ -123,10 +251,12 @@
     });
 
     const showPlanner = currentView === "planner";
+    plannerMenuToggleButton.hidden = !showPlanner || !viewerProfile.isAdmin;
     plannerLockedEl.hidden = !showPlanner || viewerProfile.isAdmin;
     plannerUnlockedEl.hidden = !showPlanner || !viewerProfile.isAdmin;
     plannerContentEl.hidden = !showPlanner || !viewerProfile.isAdmin;
     setActivePlannerPanel(activePlannerPanel);
+    syncPlannerSidebar();
     updateViewerState();
   }
 
@@ -138,9 +268,10 @@
     }
 
     activePlannerPanel = nextPanel;
+    const navPanel = nextPanel === "event-detail" ? "events" : nextPanel;
 
     plannerSectionButtons.forEach((button) => {
-      const isActive = button.dataset.plannerSection === nextPanel;
+      const isActive = button.dataset.plannerSection === navPanel;
       button.classList.toggle("is-active", isActive);
       button.setAttribute("aria-pressed", isActive ? "true" : "false");
     });
@@ -148,6 +279,29 @@
     plannerPanels.forEach((panel) => {
       panel.hidden = panel.dataset.plannerPanel !== nextPanel;
     });
+  }
+
+  function syncPlannerSidebar() {
+    const showPlanner = currentView === "planner";
+    const isMobileSidebar = plannerSidebarMediaQuery.matches;
+    const shouldOpen = showPlanner && (!isMobileSidebar || !viewerProfile.isAdmin || plannerSidebarOpen);
+    plannerLayoutEl.classList.toggle("is-sidebar-open", shouldOpen);
+    plannerMenuToggleButton.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+  }
+
+  function openPlannerSidebar() {
+    plannerSidebarOpen = true;
+    syncPlannerSidebar();
+  }
+
+  function closePlannerSidebar() {
+    plannerSidebarOpen = false;
+    syncPlannerSidebar();
+  }
+
+  function togglePlannerSidebar() {
+    plannerSidebarOpen = !plannerSidebarOpen;
+    syncPlannerSidebar();
   }
 
   function updateViewerState() {
@@ -160,7 +314,7 @@
     }
 
     viewerStateEl.textContent = "Dashboard unlocked on this device.";
-    plannerGateMessageEl.textContent = "Planner unlocked. Use the nav to move between Home, RSVPs, Guests, Tables, P & V, Timeline, Todo, and Beds.";
+    plannerGateMessageEl.textContent = "Planner unlocked. Use the nav to move between Home, RSVPs, Guests, Tables, P & V, Timeline, Shot List, Todo, and Beds.";
   }
 
   function toLocalInputValue(isoString) {
@@ -232,6 +386,10 @@
 
   function getEventAssignedToFilterValue(event) {
     return String(event?.assignedTo || "").trim();
+  }
+
+  function getEventAssignedToTokens(event) {
+    return dedupeTokens(getTypeTokens(getEventAssignedToFilterValue(event)));
   }
 
   function parseEventDateTime(event) {
@@ -410,12 +568,14 @@
     eventForm.elements.namedItem("main").value = "false";
     eventForm.elements.namedItem("active").value = "true";
     eventForm.elements.namedItem("reminderMinutes").value = "15";
+    renderEventAssignedTypeOptions();
     setStatus(eventStatusEl, "", "");
   }
 
   function openEventModal(title, values = {}) {
     clearEventForm();
     fillForm(eventForm, values);
+    renderEventAssignedTypeOptions(values.assignedTo);
     eventModal.querySelector("#eventModalTitle").textContent = title;
     eventModal.hidden = false;
     eventModal.setAttribute("aria-hidden", "false");
@@ -429,6 +589,57 @@
     eventModal.hidden = true;
     eventModal.setAttribute("aria-hidden", "true");
     clearEventForm();
+  }
+
+  function renderShotEventOptions(selectedEventId = "") {
+    const eventField = shotForm?.elements?.namedItem("eventId");
+    if (!eventField) {
+      return;
+    }
+
+    const mainEvents = cachedEvents.filter((event) => event.main);
+    eventField.innerHTML = `
+      <option value="">${mainEvents.length ? "Select event" : "No main events yet"}</option>
+      ${mainEvents.map((event) => `
+        <option value="${escapeHtml(String(event.id || "").trim())}">
+          ${escapeHtml([event.title || "Untitled event", formatEventSchedule(event)].filter(Boolean).join(" | "))}
+        </option>
+      `).join("")}
+    `;
+    const normalizedSelectedEventId = String(selectedEventId || "").trim();
+    eventField.value = mainEvents.some((event) => String(event.id || "").trim() === normalizedSelectedEventId)
+      ? normalizedSelectedEventId
+      : "";
+    eventField.disabled = mainEvents.length === 0;
+  }
+
+  function clearShotForm() {
+    shotForm.reset();
+    shotForm.elements.namedItem("id").value = "";
+    shotForm.elements.namedItem("priority").value = "Medium";
+    shotForm.elements.namedItem("sortOrder").value = "0";
+    shotForm.elements.namedItem("isComplete").value = "false";
+    renderShotEventOptions();
+    setStatus(shotFormStatusEl, "", "");
+  }
+
+  function openShotModal(title, values = {}) {
+    clearShotForm();
+    renderShotEventOptions(values.eventId);
+    fillForm(shotForm, values);
+    shotModal.querySelector("#shotModalTitle").textContent = title;
+    shotModal.hidden = false;
+    shotModal.setAttribute("aria-hidden", "false");
+    const firstField = shotForm.elements.namedItem("eventId");
+    if (firstField) {
+      firstField.focus();
+    }
+  }
+
+  function closeShotModal() {
+    shotModal.hidden = true;
+    shotModal.setAttribute("aria-hidden", "true");
+    clearShotForm();
   }
 
   function clearBedForm() {
@@ -534,9 +745,10 @@
     guestField.disabled = eligibleGuests.length === 0;
   }
 
-  function openAddGuestModal(table) {
+  function openAddGuestModal(table, options = {}) {
     clearAddGuestForm();
     activeTableForGuestModal = table;
+    addGuestModalReturnFocusEl = options.returnFocusEl instanceof HTMLElement ? options.returnFocusEl : null;
     addGuestForm.elements.namedItem("tableId").value = String(table.id || "").trim();
     addGuestForm.elements.namedItem("tableName").value = String(table.tableName || "").trim();
     addGuestModal.querySelector("#addGuestModalTitle").textContent = `Add Guest to ${table.tableName || "Table"}`;
@@ -550,9 +762,19 @@
   }
 
   function closeAddGuestModal() {
+    const returnFocusEl = addGuestModalReturnFocusEl;
+    if (document.activeElement instanceof HTMLElement && addGuestModal.contains(document.activeElement)) {
+      if (returnFocusEl && document.contains(returnFocusEl) && !returnFocusEl.disabled) {
+        returnFocusEl.focus();
+      } else {
+        tablesListEl?.focus?.();
+      }
+    }
+
     addGuestModal.hidden = true;
     addGuestModal.setAttribute("aria-hidden", "true");
     clearAddGuestForm();
+    addGuestModalReturnFocusEl = null;
   }
 
   function renderPeople() {
@@ -588,7 +810,7 @@
 
     const filteredEvents = getFilteredEvents();
     if (!filteredEvents.length) {
-      const activeFilters = [selectedEventDate ? "date" : "", selectedEventAssignedTo ? "Assigned To" : ""].filter(Boolean).join(" + ");
+      const activeFilters = [selectedEventDate ? "date" : "", selectedEventAssignedTo.length ? "Assigned To" : ""].filter(Boolean).join(" + ");
       eventsListEl.innerHTML = `<p class="meta">No events match the current ${escapeHtml(activeFilters || "filters")}.</p>`;
       return;
     }
@@ -599,15 +821,42 @@
           const schedule = formatEventSchedule(event);
           const timeLabel = formatEventTime(event.startsAt);
           const dateLabel = formatEventDate(event.date) || "No date";
+          const shotCount = cachedShots.filter((shot) => String(shot.eventId || "").trim() === String(event.id || "").trim()).length;
           return `
             <details class="guest-card ${event.main ? "event-card--main" : ""}">
               <summary>
-                <span class="event-accordion__summary-main">
-                  <span class="event-accordion__toggle" aria-hidden="true"></span>
+                <span class="accordion-summary__main">
+                  <span class="accordion-toggle" aria-hidden="true"></span>
                   ${timeLabel ? `<span class="event-accordion__time">${escapeHtml(timeLabel)}</span>` : ""}
-                  <span class="event-accordion__title">${escapeHtml(event.title || "Untitled event")}</span>
+                  <span class="event-accordion__title-main">
+                    <span class="accordion-title">${escapeHtml(event.title || "Untitled event")}</span>
+                    <button
+                      class="button button--icon button--light event-card__edit event-accordion__title-edit"
+                      type="button"
+                      data-edit-event="${escapeHtml(event.id)}"
+                      aria-label="Edit ${escapeHtml(event.title || "event")}">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M12 20h9"/>
+                        <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/>
+                      </svg>
+                    </button>
+                    <button
+                      class="button button--icon button--light event-card__edit event-accordion__title-edit"
+                      type="button"
+                      data-open-event-workspace="${escapeHtml(String(event.id || ""))}"
+                      aria-label="Open event workspace for ${escapeHtml(event.title || "event")}">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M8 6h13"></path>
+                        <path d="M8 12h13"></path>
+                        <path d="M8 18h13"></path>
+                        <path d="M3 6h.01"></path>
+                        <path d="M3 12h.01"></path>
+                        <path d="M3 18h.01"></path>
+                      </svg>
+                    </button>
+                  </span>
                 </span>
-                <span class="event-accordion__date">${escapeHtml(dateLabel)}</span>
+                <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(dateLabel)}</span>
               </summary>
               <div class="guest-card__body">
                 <div class="guest-card__grid">
@@ -635,21 +884,685 @@
                   ` : ""}
                 </div>
                 <div class="event-accordion__toolbar">
-                  <button
-                    class="button button--icon button--light event-card__edit"
-                    type="button"
-                    data-edit-event="${escapeHtml(event.id)}"
-                    aria-label="Edit ${escapeHtml(event.title || "event")}">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                      <path d="M12 20h9"/>
-                      <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/>
-                    </svg>
-                  </button>
+                  <span class="meta">${escapeHtml(`${shotCount} linked shot${shotCount === 1 ? "" : "s"}`)}</span>
                 </div>
               </div>
             </details>
           `;
         }).join("")}
+      </div>
+    `;
+  }
+
+  function getEventById(eventId) {
+    const normalizedEventId = String(eventId || "").trim();
+    return cachedEvents.find((event) => String(event.id || "").trim() === normalizedEventId) || null;
+  }
+
+  function getShotsForEvent(eventId) {
+    const normalizedEventId = String(eventId || "").trim();
+    return cachedShots.filter((shot) => String(shot.eventId || "").trim() === normalizedEventId);
+  }
+
+  function buildEventAiPrompt(eventItem, options = {}) {
+    if (!eventItem) {
+      return "";
+    }
+
+    const planningNotes = String(options.planningNotes || "").trim();
+    const goals = Array.isArray(options.goals) ? options.goals : [];
+    const relatedShots = getShotsForEvent(eventItem.id);
+    const goalSentence = goals.length
+      ? goals.join(", ")
+      : "todo items, shopping or packing lists, and photo shot ideas";
+    const existingShotsText = relatedShots.length
+      ? relatedShots.map((shot, index) => `${index + 1}. ${shot.title || "Untitled shot"}${shot.description ? ` - ${shot.description}` : ""}`).join("\n")
+      : "None yet.";
+
+    return [
+      `Help me plan this event and turn my notes into ${goalSentence}.`,
+      "",
+      "Event context:",
+      `- Event: ${eventItem.title || "Untitled event"}`,
+      `- Schedule: ${formatEventSchedule(eventItem) || "Not scheduled yet"}`,
+      `- Location: ${eventItem.location || "No location yet"}`,
+      `- Assigned to: ${eventItem.assignedTo || "No assignee yet"}`,
+      `- Reminder: ${eventItem.reminderMinutes || 15} minutes before`,
+      `- Event notes: ${eventItem.notes || "None yet"}`,
+      "",
+      "What I'm thinking:",
+      planningNotes || "I will add my planning notes here before sending this to AI.",
+      "",
+      "Existing photo shots already in the planner:",
+      existingShotsText,
+      "",
+      "Please respond with these sections in Markdown:",
+      "1. A short event summary and assumptions you made.",
+      goals.includes("todo items")
+        ? "2. A todo list with owner suggestions, due timing, and any prep dependencies."
+        : "2. Skip todo items unless they are truly needed.",
+      goals.includes("shopping or packing lists")
+        ? "3. A shopping or packing checklist grouped by section with suggested quantities when obvious."
+        : "3. Skip shopping or packing lists unless they are truly needed.",
+      goals.includes("photo shot ideas")
+        ? "4. Optional photo shot ideas that would fit this event."
+        : "4. Skip photo shot ideas unless they are truly needed.",
+      "5. Questions I should answer before finalizing the plan.",
+      "",
+      "Keep the output practical and easy to copy into my planner."
+    ].join("\n");
+  }
+
+  function updateEventPromptActions() {
+    const eventItem = getEventById(selectedEventDetailId);
+    if (!eventItem || !eventDetailShellEl) {
+      return;
+    }
+
+    const planningNotesField = eventDetailShellEl.querySelector("[data-event-workspace-note]");
+    const promptOutputField = eventDetailShellEl.querySelector("[data-event-workspace-output]");
+    const copyButton = eventDetailShellEl.querySelector("[data-event-workspace-copy]");
+    const goals = Array.from(eventDetailShellEl.querySelectorAll("[data-event-workspace-goal]:checked"))
+      .map((input) => String(input.value || "").trim())
+      .filter(Boolean);
+
+    if (!planningNotesField || !promptOutputField) {
+      return;
+    }
+
+    setEventAiDraft(eventItem.id, {
+      planningNotes: planningNotesField.value,
+      goals
+    });
+
+    promptOutputField.value = buildEventAiPrompt(eventItem, {
+      planningNotes: planningNotesField.value,
+      goals
+    });
+
+    if (copyButton) {
+      copyButton.disabled = !String(promptOutputField.value || "").trim();
+    }
+  }
+
+  async function copyEventPromptToClipboard() {
+    if (!eventDetailShellEl) {
+      return;
+    }
+
+    const promptOutputField = eventDetailShellEl.querySelector("[data-event-workspace-output]");
+    if (!promptOutputField || !String(promptOutputField.value || "").trim()) {
+      setStatus(eventDetailStatusEl, "There is no AI prompt to copy yet.", "error");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(promptOutputField.value);
+      setStatus(eventDetailStatusEl, "AI prompt copied. Paste it into ChatGPT when you're ready.", "success");
+    } catch (error) {
+      promptOutputField.focus();
+      promptOutputField.select();
+      setStatus(eventDetailStatusEl, "Clipboard access was blocked. The prompt has been selected so you can copy it manually.", "pending");
+    }
+  }
+
+  function getEventAiPlan(eventId) {
+    const normalizedEventId = String(eventId || "").trim();
+    return normalizedEventId ? (eventAiPlans.get(normalizedEventId) || null) : null;
+  }
+
+  function getEventAiDraft(eventId) {
+    const normalizedEventId = String(eventId || "").trim();
+    if (!normalizedEventId) {
+      return {
+        planningNotes: "",
+        goals: ["todo items", "shopping or packing lists"]
+      };
+    }
+
+    return eventAiDrafts.get(normalizedEventId) || {
+      planningNotes: "",
+      goals: ["todo items", "shopping or packing lists"]
+    };
+  }
+
+  function setEventAiDraft(eventId, patch = {}) {
+    const normalizedEventId = String(eventId || "").trim();
+    if (!normalizedEventId) {
+      return;
+    }
+
+    const current = getEventAiDraft(normalizedEventId);
+    eventAiDrafts.set(normalizedEventId, {
+      ...current,
+      ...patch
+    });
+  }
+
+  function renderAiPlanSection(plan) {
+    if (!plan) {
+      return `
+        <div class="event-detail-empty">
+          <p class="meta">Generate an in-app AI plan to see suggested todos, shopping lists, and follow-up questions here.</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="event-ai-plan">
+        <div class="event-ai-plan__section">
+          <h4>Summary</h4>
+          <p>${escapeHtml(plan.summary || "No summary yet.")}</p>
+        </div>
+        <div class="event-ai-plan__section">
+          <h4>Assumptions</h4>
+          ${Array.isArray(plan.assumptions) && plan.assumptions.length ? `
+            <ul class="event-ai-plan__list">
+              ${plan.assumptions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+            </ul>
+          ` : '<p class="meta">No assumptions returned.</p>'}
+        </div>
+        <div class="event-ai-plan__section">
+          <h4>Suggested Todos</h4>
+          ${Array.isArray(plan.todos) && plan.todos.length ? `
+            <div class="event-ai-plan__cards">
+              ${plan.todos.map((todo) => `
+                <article class="event-ai-plan__card">
+                  <strong>${escapeHtml(todo.title || "Untitled todo")}</strong>
+                  <p class="meta">${escapeHtml([todo.ownerSuggestion, todo.dueTiming].filter(Boolean).join(" | ") || "No owner or timing suggested")}</p>
+                  ${todo.notes ? `<p>${escapeHtml(todo.notes)}</p>` : ""}
+                </article>
+              `).join("")}
+            </div>
+          ` : '<p class="meta">No todo suggestions returned.</p>'}
+        </div>
+        <div class="event-ai-plan__section">
+          <h4>Suggested Lists</h4>
+          ${Array.isArray(plan.checklists) && plan.checklists.length ? `
+            <div class="event-ai-plan__cards">
+              ${plan.checklists.map((list) => `
+                <article class="event-ai-plan__card">
+                  <strong>${escapeHtml(list.title || "Checklist")}</strong>
+                  <p class="meta">${escapeHtml(list.type || "checklist")}</p>
+                  ${Array.isArray(list.items) && list.items.length ? `
+                    <ul class="event-ai-plan__list">
+                      ${list.items.map((item) => `
+                        <li>${escapeHtml([item.item, item.quantity ? `(${item.quantity})` : "", item.notes ? `- ${item.notes}` : ""].filter(Boolean).join(" "))}</li>
+                      `).join("")}
+                    </ul>
+                  ` : '<p class="meta">No items returned.</p>'}
+                </article>
+              `).join("")}
+            </div>
+          ` : '<p class="meta">No shopping or packing suggestions returned.</p>'}
+        </div>
+        <div class="event-ai-plan__section">
+          <h4>Shot Ideas</h4>
+          ${Array.isArray(plan.shotIdeas) && plan.shotIdeas.length ? `
+            <div class="event-ai-plan__cards">
+              ${plan.shotIdeas.map((idea) => `
+                <article class="event-ai-plan__card">
+                  <strong>${escapeHtml(idea.title || "Shot idea")}</strong>
+                  ${idea.reason ? `<p>${escapeHtml(idea.reason)}</p>` : ""}
+                </article>
+              `).join("")}
+            </div>
+          ` : '<p class="meta">No new shot ideas returned.</p>'}
+        </div>
+        <div class="event-ai-plan__section">
+          <h4>Questions</h4>
+          ${Array.isArray(plan.questions) && plan.questions.length ? `
+            <ul class="event-ai-plan__list">
+              ${plan.questions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+            </ul>
+          ` : '<p class="meta">No follow-up questions returned.</p>'}
+        </div>
+      </div>
+    `;
+  }
+
+  async function generateEventPlanInApp() {
+    const eventItem = getEventById(selectedEventDetailId);
+    if (!eventItem || !eventDetailShellEl) {
+      return;
+    }
+
+    const planningNotesField = eventDetailShellEl.querySelector("[data-event-workspace-note]");
+    const generateButton = eventDetailShellEl.querySelector("[data-event-workspace-generate]");
+    const goals = Array.from(eventDetailShellEl.querySelectorAll("[data-event-workspace-goal]:checked"))
+      .map((input) => String(input.value || "").trim())
+      .filter(Boolean);
+    const planningNotes = String(planningNotesField?.value || "").trim();
+
+    setEventAiDraft(eventItem.id, {
+      planningNotes,
+      goals
+    });
+
+    try {
+      requirePlannerAccess();
+      if (generateButton) {
+        generateButton.disabled = true;
+      }
+      setStatus(eventDetailStatusEl, "Generating event plan...", "pending");
+      const plan = await rpcRequest("generateEventPlan", {
+        eventId: String(eventItem.id || "").trim(),
+        title: String(eventItem.title || "").trim(),
+        date: String(eventItem.date || "").trim(),
+        startsAt: String(eventItem.startsAt || "").trim(),
+        location: String(eventItem.location || "").trim(),
+        assignedTo: String(eventItem.assignedTo || "").trim(),
+        reminderMinutes: Number(eventItem.reminderMinutes || 15),
+        notes: String(eventItem.notes || "").trim(),
+        planningNotes,
+        goals,
+        existingShots: getShotsForEvent(eventItem.id).map((shot) => ({
+          title: String(shot.title || "").trim(),
+          description: String(shot.description || "").trim(),
+          notes: String(shot.notes || "").trim()
+        }))
+      });
+      eventAiPlans.set(String(eventItem.id || "").trim(), plan);
+      renderEventDetail();
+      setStatus(eventDetailStatusEl, plan?.error ? `Plan generated with fallback content. ${plan.error}` : "Event plan generated in the app.", plan?.error ? "pending" : "success");
+    } catch (error) {
+      setStatus(eventDetailStatusEl, error.message || "Unable to generate event plan.", "error");
+    } finally {
+      if (generateButton) {
+        generateButton.disabled = false;
+      }
+    }
+  }
+
+  function renderEventDetail() {
+    if (!eventDetailShellEl) {
+      return;
+    }
+
+    const eventItem = getEventById(selectedEventDetailId);
+    if (!eventItem) {
+      eventDetailShellEl.innerHTML = `
+        <div class="event-detail-empty">
+          <h4>Select an event</h4>
+          <p class="meta">Open any timeline event to see its details, related shots, and an AI planning prompt composer.</p>
+        </div>
+      `;
+      if (!selectedEventDetailId) {
+        setStatus(eventDetailStatusEl, "", "");
+      }
+      return;
+    }
+
+    const relatedShots = getShotsForEvent(eventItem.id);
+    const aiPlan = getEventAiPlan(eventItem.id);
+    const aiDraft = getEventAiDraft(eventItem.id);
+    eventDetailShellEl.innerHTML = `
+      <div class="event-detail-header">
+        <div class="event-detail-header__copy">
+          <span class="meta">Event workspace</span>
+          <h3>${escapeHtml(eventItem.title || "Untitled event")}</h3>
+          <p class="meta">${escapeHtml(formatEventSchedule(eventItem) || "No schedule yet")}</p>
+        </div>
+        <div class="event-detail-actions">
+          <button class="button button--light" type="button" data-event-workspace-edit="${escapeHtml(String(eventItem.id || ""))}">Edit Event</button>
+          <button class="button" type="button" data-event-workspace-add-shot="${escapeHtml(String(eventItem.id || ""))}">Add Shot</button>
+        </div>
+      </div>
+
+      <div class="event-detail-stats">
+        <div class="event-detail-stat">
+          <span>Shots</span>
+          <strong>${escapeHtml(String(relatedShots.length))}</strong>
+        </div>
+        <div class="event-detail-stat">
+          <span>Todos</span>
+          <strong>0</strong>
+        </div>
+        <div class="event-detail-stat">
+          <span>Lists</span>
+          <strong>0</strong>
+        </div>
+      </div>
+
+      <div class="event-detail-grid">
+        <div class="event-detail-main">
+          <section class="event-detail-card">
+            <div class="event-detail-section__header">
+              <h4>Event Overview</h4>
+              <p class="meta">This will become the planning hub for the event.</p>
+            </div>
+            <div class="event-detail-meta">
+              <div class="guest-card__field">
+                <span>Date & Time</span>
+                <strong>${escapeHtml(formatEventSchedule(eventItem) || "No schedule yet")}</strong>
+              </div>
+              <div class="guest-card__field">
+                <span>Location</span>
+                <strong>${escapeHtml(eventItem.location || "No location yet")}</strong>
+              </div>
+              <div class="guest-card__field">
+                <span>Assigned To</span>
+                <strong>${escapeHtml(eventItem.assignedTo || "No assignee yet")}</strong>
+              </div>
+              <div class="guest-card__field">
+                <span>Reminder</span>
+                <strong>${escapeHtml(`Remind ${eventItem.reminderMinutes || 15} minutes ahead`)}</strong>
+              </div>
+              <div class="guest-card__field guest-card__field--full">
+                <span>Notes</span>
+                <strong>${escapeHtml(eventItem.notes || "No notes yet")}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="event-detail-card">
+            <div class="event-detail-section__header">
+              <h4>AI Planner</h4>
+              <p class="meta">Describe what you have in mind and generate a planning draft inside the app.</p>
+            </div>
+            <div class="event-detail-ai-form">
+              <label>
+                What are you thinking about this event?
+                <textarea
+                  data-event-workspace-note
+                  placeholder="Example: Family breakfast for about 18 people at the main house. We want a casserole, fruit, coffee, juice, paper goods, simple setup, and a quick cleanup plan.">${escapeHtml(aiDraft.planningNotes || "")}</textarea>
+              </label>
+              <div class="event-detail-ai-options">
+                <label class="event-detail-ai-option">
+                  <input type="checkbox" data-event-workspace-goal value="todo items" ${aiDraft.goals.includes("todo items") ? "checked" : ""}>
+                  <span>Todo items</span>
+                </label>
+                <label class="event-detail-ai-option">
+                  <input type="checkbox" data-event-workspace-goal value="shopping or packing lists" ${aiDraft.goals.includes("shopping or packing lists") ? "checked" : ""}>
+                  <span>Shopping list</span>
+                </label>
+                <label class="event-detail-ai-option">
+                  <input type="checkbox" data-event-workspace-goal value="photo shot ideas" ${aiDraft.goals.includes("photo shot ideas") ? "checked" : ""}>
+                  <span>Shot ideas</span>
+                </label>
+              </div>
+            </div>
+            <div class="event-detail-prompt-output">
+              <h4>Prompt Draft</h4>
+              <textarea data-event-workspace-output></textarea>
+              <div class="toolbar">
+                <button class="button" type="button" data-event-workspace-generate>Generate In App</button>
+                <button class="button button--light" type="button" data-event-workspace-copy>Copy Prompt</button>
+                <a class="button" href="https://chatgpt.com/" target="_blank" rel="noreferrer">Open ChatGPT</a>
+              </div>
+            </div>
+          </section>
+
+          <section class="event-detail-card">
+            <div class="event-detail-section__header">
+              <h4>AI Plan Draft</h4>
+              <p class="meta">Review this before we turn it into real planner records.</p>
+            </div>
+            ${renderAiPlanSection(aiPlan)}
+          </section>
+        </div>
+
+        <aside class="event-detail-side">
+          <section class="event-detail-card">
+            <div class="event-detail-section__header">
+              <h4>Linked Shot List</h4>
+              <p class="meta">Existing shots tied to this event.</p>
+            </div>
+            <div class="event-detail-shot-list">
+              ${relatedShots.length ? relatedShots.map((shot) => {
+                const priority = getShotPriorityMeta(shot.priority);
+                return `
+                  <article class="card shot-card ${shot.isComplete ? "shot-card--complete" : "shot-card--pending"}">
+                    <div class="shot-card__title-row">
+                      <span class="shot-card__title-main event-detail-shot-title">
+                        <h4>${escapeHtml(shot.title || "Untitled shot")}</h4>
+                        <button
+                          class="button button--icon button--light event-detail-shot-delete"
+                          type="button"
+                          data-delete-event-shot="${escapeHtml(String(shot.id || ""))}"
+                          aria-label="Delete ${escapeHtml(shot.title || "shot")}">
+                          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M3 6h18"></path>
+                            <path d="M8 6V4h8v2"></path>
+                            <path d="M19 6l-1 14H6L5 6"></path>
+                            <path d="M10 11v6"></path>
+                            <path d="M14 11v6"></path>
+                          </svg>
+                        </button>
+                      </span>
+                      <span class="shot-card__priority ${priority.className}">
+                        <span class="shot-card__priority-icon" aria-hidden="true"></span>
+                        ${escapeHtml(priority.label)}
+                      </span>
+                    </div>
+                    ${shot.description ? `<p>${escapeHtml(shot.description)}</p>` : ""}
+                    ${shot.notes ? `<p class="meta">${escapeHtml(shot.notes)}</p>` : ""}
+                  </article>
+                `;
+              }).join("") : `
+                <div class="event-detail-empty">
+                  <p class="meta">No shots are linked to this event yet. Use "Add Shot" when you are ready.</p>
+                </div>
+              `}
+            </div>
+          </section>
+
+          <section class="event-detail-card">
+            <div class="event-detail-section__header">
+              <h4>Event Todos</h4>
+              <p class="meta">Next step</p>
+            </div>
+            <div class="event-detail-empty">
+              <p class="meta">Event-linked todo items will live here once we add the event-to-todo relationship.</p>
+            </div>
+          </section>
+
+          <section class="event-detail-card">
+            <div class="event-detail-section__header">
+              <h4>Shopping / Packing Lists</h4>
+              <p class="meta">Next step</p>
+            </div>
+            <div class="event-detail-empty">
+              <p class="meta">This section is reserved for shopping, packing, and setup lists generated from your event plan.</p>
+            </div>
+          </section>
+        </aside>
+      </div>
+    `;
+
+    eventDetailShellEl.querySelector("[data-event-workspace-note]")?.addEventListener("input", () => {
+      updateEventPromptActions();
+    });
+    eventDetailShellEl.querySelectorAll("[data-event-workspace-goal]").forEach((input) => {
+      input.addEventListener("change", () => {
+        updateEventPromptActions();
+      });
+    });
+    eventDetailShellEl.querySelector("[data-event-workspace-copy]")?.addEventListener("click", async () => {
+      await copyEventPromptToClipboard();
+    });
+    eventDetailShellEl.querySelector("[data-event-workspace-generate]")?.addEventListener("click", async () => {
+      await generateEventPlanInApp();
+    });
+    eventDetailShellEl.querySelector("[data-event-workspace-edit]")?.addEventListener("click", (event) => {
+      const button = event.currentTarget;
+      const detailEvent = getEventById(button.dataset.eventWorkspaceEdit);
+      if (!detailEvent) return;
+      openEventModal("Edit Event", {
+        ...detailEvent,
+        date: String(detailEvent.date || "").trim(),
+        startsAt: String(detailEvent.startsAt || "").trim(),
+        main: detailEvent.main ? "true" : "false",
+        active: detailEvent.active ? "true" : "false"
+      });
+      setStatus(eventDetailStatusEl, `Editing ${detailEvent.title}.`, "success");
+    });
+    eventDetailShellEl.querySelector("[data-event-workspace-add-shot]")?.addEventListener("click", (event) => {
+      const button = event.currentTarget;
+      const detailEvent = getEventById(button.dataset.eventWorkspaceAddShot);
+      if (!detailEvent) return;
+      openShotModal("Add Shot", {
+        eventId: String(detailEvent.id || "").trim()
+      });
+      setStatus(eventDetailStatusEl, `Adding a shot to ${detailEvent.title}.`, "success");
+    });
+    eventDetailShellEl.querySelectorAll("[data-delete-event-shot]").forEach((button) => {
+      button.addEventListener("click", async (event) => {
+        const shotId = String(event.currentTarget.dataset.deleteEventShot || "").trim();
+        const shot = cachedShots.find((item) => String(item.id || "").trim() === shotId);
+        if (!shotId || !shot) {
+          return;
+        }
+
+        const previousShots = cachedShots;
+        try {
+          requirePlannerAccess();
+          setStatus(eventDetailStatusEl, `Deleting ${shot.title || "shot"}...`, "pending");
+          cachedShots = cachedShots.filter((item) => String(item.id || "").trim() !== shotId);
+          renderEventDetail();
+          rerenderShotData();
+          await rpcRequest("deleteShot", { id: shotId });
+          setStatus(eventDetailStatusEl, `${shot.title || "Shot"} deleted.`, "success");
+        } catch (error) {
+          cachedShots = previousShots;
+          renderEventDetail();
+          rerenderShotData();
+          setStatus(eventDetailStatusEl, error.message || "Unable to delete shot.", "error");
+        }
+      });
+    });
+
+    updateEventPromptActions();
+  }
+
+  function openEventWorkspace(eventId) {
+    const eventItem = getEventById(eventId);
+    if (!eventItem) {
+      setStatus(eventDetailStatusEl, "That event could not be found.", "error");
+      return;
+    }
+
+    selectedEventDetailId = String(eventItem.id || "").trim();
+    setActivePlannerPanel("event-detail");
+    renderEventDetail();
+    setStatus(eventDetailStatusEl, `Viewing ${eventItem.title}.`, "success");
+  }
+
+  function getShotEvent(shot) {
+    return cachedEvents.find((event) => event.id === String(shot?.eventId || "").trim()) || null;
+  }
+
+  function getShotPriorityRank(priority) {
+    switch (String(priority || "").trim().toLowerCase()) {
+      case "high":
+        return 0;
+      case "medium":
+        return 1;
+      case "low":
+        return 2;
+      default:
+        return 3;
+    }
+  }
+
+  function getShotPriorityMeta(priority) {
+    const normalized = String(priority || "Medium").trim().toLowerCase();
+    if (normalized === "high") {
+      return { label: "High", className: "shot-card__priority--high" };
+    }
+    if (normalized === "low") {
+      return { label: "Low", className: "shot-card__priority--low" };
+    }
+    return { label: "Medium", className: "shot-card__priority--medium" };
+  }
+
+  function renderShots() {
+    if (!cachedShots.length) {
+      shotsListEl.innerHTML = '<p class="meta">No shot requests yet. Add photographer instructions tied to specific events here.</p>';
+      return;
+    }
+
+    const groups = [];
+    const seenGroups = new Map();
+
+    cachedShots.forEach((shot) => {
+      const shotEvent = getShotEvent(shot);
+      const groupKey = String(shot.eventId || "").trim() || "__unassigned__";
+
+      if (!seenGroups.has(groupKey)) {
+        const schedule = shotEvent ? formatEventSchedule(shotEvent) : "";
+        const nextGroup = {
+          key: groupKey,
+          title: shotEvent?.title || "Unassigned Event",
+          schedule: schedule || (shotEvent ? "Date or time still needs to be added." : "Attach this shot to an event when you can."),
+          items: []
+        };
+        seenGroups.set(groupKey, nextGroup);
+        groups.push(nextGroup);
+      }
+
+      seenGroups.get(groupKey).items.push(shot);
+    });
+
+    shotsListEl.innerHTML = `
+      <div class="shot-groups">
+        ${groups.map((group) => `
+          <details class="shot-group">
+            <summary>
+              <span class="shot-group__toggle" aria-hidden="true"></span>
+              <span class="shot-group__summary-main">
+                <h3>${escapeHtml(group.title)}</h3>
+                <p class="meta">${escapeHtml(group.schedule)}</p>
+              </span>
+            </summary>
+            <div class="shot-group__list">
+              ${group.items.map((shot) => {
+                const priority = getShotPriorityMeta(shot.priority);
+                return `
+                <article class="card shot-card ${shot.isComplete ? "shot-card--complete" : "shot-card--pending"}">
+                  <div class="shot-card__header">
+                    <button
+                      class="button button--light shot-card__check"
+                      type="button"
+                      data-toggle-shot-complete="${escapeHtml(String(shot.id || ""))}"
+                      aria-pressed="${shot.isComplete ? "true" : "false"}"
+                      aria-label="${shot.isComplete ? "Mark incomplete" : "Mark complete"}: ${escapeHtml(shot.title || "shot")}">
+                      ${shot.isComplete ? "✓" : ""}
+                    </button>
+                    <div class="shot-card__title">
+                      <div class="shot-card__title-row">
+                        <span class="shot-card__title-main">
+                          <h4>${escapeHtml(shot.title || "Untitled shot")}</h4>
+                          <button
+                            class="button button--icon button--light event-card__edit shot-card__title-edit"
+                            type="button"
+                            data-edit-shot="${escapeHtml(String(shot.id || ""))}"
+                            aria-label="Edit ${escapeHtml(shot.title || "shot")}">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                              <path d="M12 20h9"/>
+                              <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/>
+                            </svg>
+                          </button>
+                        </span>
+                        <span class="shot-card__priority ${priority.className}">
+                          <span class="shot-card__priority-icon" aria-hidden="true"></span>
+                          ${escapeHtml(priority.label)}
+                        </span>
+                      </div>
+                      ${shot.description ? `<p>${escapeHtml(shot.description)}</p>` : ""}
+                    </div>
+                  </div>
+                  <div class="shot-card__meta">
+                    ${shot.peopleNeeded ? `<span>${escapeHtml(`People: ${shot.peopleNeeded}`)}</span>` : ""}
+                    ${Number(shot.sortOrder || 0) ? `<span>${escapeHtml(`Order: ${shot.sortOrder}`)}</span>` : ""}
+                  </div>
+                  ${shot.notes ? `<p class="meta">${escapeHtml(shot.notes)}</p>` : ""}
+                </article>
+              `;
+              }).join("")}
+            </div>
+          </details>
+        `).join("")}
       </div>
     `;
   }
@@ -660,31 +1573,73 @@
       return;
     }
 
-    todosListEl.innerHTML = cachedTodos.map((todo) => {
-      const schedule = [formatEventDate(todo.startDate), formatEventDate(todo.dueDate)].filter(Boolean).join(" to ");
-      return `
-        <article class="card event-card ${todo.isComplete ? "event-card--main" : ""}">
-          <div class="event-card__header">
-            <h3>${escapeHtml(todo.title || "Untitled task")}</h3>
-            <button
-              class="button button--icon button--light event-card__edit"
-              type="button"
-              data-edit-todo="${escapeHtml(todo.id)}"
-              aria-label="Edit ${escapeHtml(todo.title || "task")}">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M12 20h9"/>
-                <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/>
-              </svg>
-            </button>
-          </div>
-          <p>${escapeHtml([todo.category || "General", todo.priority || "Medium", todo.status || "Not Started"].filter(Boolean).join(" | "))}</p>
-          ${schedule ? `<p class="meta">${escapeHtml(schedule)}</p>` : ""}
-          <p class="meta">${escapeHtml(todo.assignedTo || "No assignee")}${todo.reminderDate ? ` | Reminder ${formatEventDate(todo.reminderDate)}` : ""}</p>
-          ${todo.notes ? `<p class="meta">${escapeHtml(todo.notes)}</p>` : ""}
-          ${todo.smsMessage ? `<p class="meta">${escapeHtml(`SMS: ${todo.smsMessage}`)}</p>` : ""}
-        </article>
-      `;
-    }).join("");
+    todosListEl.innerHTML = `
+      <div class="event-accordion todo-accordion">
+        ${cachedTodos.map((todo) => {
+          const schedule = [formatEventDate(todo.startDate), formatEventDate(todo.dueDate)].filter(Boolean).join(" to ");
+          const summaryLabel = [todo.category || "General", todo.status || "Not Started"].filter(Boolean).join(" | ");
+          const dueLabel = formatEventDate(todo.dueDate) || formatEventDate(todo.startDate) || "No date";
+          const reminderLabel = todo.reminderDate ? formatEventDate(todo.reminderDate) : "";
+
+          return `
+            <details class="guest-card ${todo.isComplete ? "event-card--main" : ""}">
+              <summary>
+                <span class="accordion-summary__main">
+                  <span class="accordion-toggle" aria-hidden="true"></span>
+                  <span class="event-accordion__time">${escapeHtml(summaryLabel)}</span>
+                  <span class="event-accordion__title-main">
+                    <span class="accordion-title">${escapeHtml(todo.title || "Untitled task")}</span>
+                    <button
+                      class="button button--icon button--light event-card__edit event-accordion__title-edit"
+                      type="button"
+                      data-edit-todo="${escapeHtml(todo.id)}"
+                      aria-label="Edit ${escapeHtml(todo.title || "task")}">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M12 20h9"/>
+                        <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/>
+                      </svg>
+                    </button>
+                  </span>
+                </span>
+                <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(dueLabel)}</span>
+              </summary>
+              <div class="guest-card__body">
+                <div class="guest-card__grid">
+                  <div class="guest-card__field">
+                    <span>Schedule</span>
+                    <strong>${escapeHtml(schedule || "No schedule yet")}</strong>
+                  </div>
+                  <div class="guest-card__field">
+                    <span>Assigned To</span>
+                    <strong>${escapeHtml(todo.assignedTo || "No assignee")}</strong>
+                  </div>
+                  <div class="guest-card__field">
+                    <span>Priority</span>
+                    <strong>${escapeHtml(todo.priority || "Medium")}</strong>
+                  </div>
+                  <div class="guest-card__field">
+                    <span>Reminder</span>
+                    <strong>${escapeHtml(reminderLabel || "No reminder")}</strong>
+                  </div>
+                  ${todo.notes ? `
+                    <div class="guest-card__field guest-card__field--full">
+                      <span>Notes</span>
+                      <strong>${escapeHtml(todo.notes)}</strong>
+                    </div>
+                  ` : ""}
+                  ${todo.smsMessage ? `
+                    <div class="guest-card__field guest-card__field--full">
+                      <span>SMS Copy</span>
+                      <strong>${escapeHtml(todo.smsMessage)}</strong>
+                    </div>
+                  ` : ""}
+                </div>
+              </div>
+            </details>
+          `;
+        }).join("")}
+      </div>
+    `;
   }
 
   function renderBeds() {
@@ -774,7 +1729,7 @@
     }
 
     setStatus(bedsInlineStatusEl, "Saving bed assignment...", "pending");
-    await rpcRequest("saveBed", {
+    return rpcRequest("saveBed", {
       id: String(bed.id || "").trim(),
       lodging: String(bed.lodging || "").trim(),
       room: String(bed.room || "").trim(),
@@ -840,11 +1795,19 @@
     const previousChain = bedSaveChains.get(key) || Promise.resolve();
     const nextChain = previousChain.finally(async () => {
       setStatus(bedsInlineStatusEl, "Saving bed assignment...", "");
-      await saveBedInlineAssignment(bedId, field, nextValue);
-      input.dataset.bedValue = nextValue;
       setCachedBedField(bedId, field, nextValue);
       applyBedInputAppearance(input);
+      const savedBed = await saveBedInlineAssignment(bedId, field, nextValue);
+      upsertCachedBed(savedBed, { render: false });
+      input.dataset.bedValue = String(savedBed?.[field] || "").trim();
+      input.value = String(savedBed?.[field] || "").trim();
+      applyBedInputAppearance(input);
       setStatus(bedsInlineStatusEl, "Bed assignments saved.", "success");
+    }).catch((error) => {
+      setCachedBedField(bedId, field, previousValue);
+      input.value = previousValue;
+      applyBedInputAppearance(input);
+      throw error;
     });
 
     bedSaveChains.set(key, nextChain.catch(() => {}));
@@ -939,7 +1902,7 @@
     renderGuestTypeFilter(guestTypes);
 
     const filteredGuests = selectedGuestType
-      ? visibleGuests.filter((guest) => guest.type === selectedGuestType)
+      ? visibleGuests.filter((guest) => getTypeTokens(guest.type).includes(selectedGuestType))
       : visibleGuests;
 
     if (!filteredGuests.length) {
@@ -952,10 +1915,13 @@
     guestsListEl.innerHTML = `
       <div class="guest-accordion">
         ${filteredGuests.map((guest) => `
-          <details class="guest-card">
+          <details class="guest-card guest-card--${escapeHtml(guest.statusTone)}">
             <summary>
-              <span>${escapeHtml(guest.title)}</span>
-              <span class="guest-card__meta">${escapeHtml(guest.meta || "Open details")}</span>
+              <span class="accordion-summary__main">
+                <span class="accordion-toggle" aria-hidden="true"></span>
+                <span class="accordion-title">${escapeHtml(guest.title)}</span>
+              </span>
+              <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(guest.type || "No type")}</span>
             </summary>
             <div class="guest-card__body">
               <div class="guest-card__grid">
@@ -979,15 +1945,20 @@
       return;
     }
 
-    tablesListEl.innerHTML = cachedTables.map((table) => {
+    const groupedTables = groupTablesForLayout(cachedTables);
+    tablesListEl.innerHTML = groupedTables.map((group) => {
+      const cards = group.tables.map((table) => {
       const assignedGuests = getAssignedGuestByTableName(String(table.tableName || "").trim());
-      const eligibleGuests = getEligibleGuestsForTable(table);
+      const seatCount = getRenderableSeatCountForTable(table, assignedGuests);
       return `
         <article class="card">
           <div class="table-control-row">
             <div class="table-control-row__title">
-              <h3>${escapeHtml(table.tableName || "Untitled Table")} <span class="meta">(${escapeHtml(table.type || "No type")})</span></h3>
+              <h3>${escapeHtml(table.tableName || "Untitled Table")}</h3>
               <div class="table-control-row__details">
+                <p class="meta">${escapeHtml(getTableLayoutLabel(table))}</p>
+                ${Number.isFinite(getTableLayoutOrder(table)) ? `<p class="meta">Order ${escapeHtml(String(getTableLayoutOrder(table)))}</p>` : ""}
+                ${getTableGuestTypeValue(table) ? `<p class="meta">${escapeHtml(getTableGuestTypeValue(table))}</p>` : ""}
                 <p class="meta">${Number(table.count || 0)} seats</p>
                 <p class="meta">${assignedGuests.length} assigned</p>
               </div>
@@ -996,29 +1967,27 @@
               <button class="button button--icon" type="button" data-open-add-guest-modal data-table-id="${escapeHtml(table.id)}" aria-label="Add guest to ${escapeHtml(table.tableName || "table")}" ${assignedGuests.length >= Number(table.count || 0) ? "disabled" : ""}>+</button>
             </div>
           </div>
-          ${assignedGuests.length ? `
-            <div class="table-assignment-list">
-              ${assignedGuests.map((guest, index) => `
-                <div class="dashboard-entry">
-                  <div class="table-assignment-row">
-                    <strong>${escapeHtml(`#${guest.tableOrder || index + 1} ${guest.name}`)}</strong>
-                    <button class="button button--light table-remove-button" type="button" data-remove-table-guest data-row-number="${escapeHtml(String(guest.rowNumber || ""))}" data-table-name="${escapeHtml(table.tableName || "")}" aria-label="Remove ${escapeHtml(guest.name)} from ${escapeHtml(table.tableName || "table")}">
-                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                        <path d="M3 6h18"></path>
-                        <path d="M8 6V4h8v2"></path>
-                        <path d="M19 6l-1 14H6L5 6"></path>
-                        <path d="M10 11v6"></path>
-                        <path d="M14 11v6"></path>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              `).join("")}
-            </div>
-          ` : '<p class="meta">No one assigned yet.</p>'}
+          <div class="table-assignment-list ${assignedGuests.length ? "" : "table-assignment-list--empty"}" data-table-drop-list data-table-name="${escapeHtml(String(table.tableName || "").trim())}">
+            ${renderTableSeatGrid(table, assignedGuests, seatCount)}
+          </div>
         </article>
       `;
+      }).join("");
+
+      return `
+        <section class="table-side-group table-side-group--${escapeHtml(group.key)}" aria-labelledby="tables-group-${escapeHtml(group.key)}">
+          <div class="table-side-group__header">
+            <h4 id="tables-group-${escapeHtml(group.key)}">${escapeHtml(group.label)}</h4>
+            <p class="meta">${group.tables.length ? `${group.tables.length} tables` : "No tables yet"}</p>
+          </div>
+          <div class="table-side-group__list">
+            ${cards || '<p class="meta">No tables in this section yet.</p>'}
+          </div>
+        </section>
+      `;
     }).join("");
+
+    syncTableDragUi();
   }
 
   function shouldHideGuestColumn(column) {
@@ -1036,6 +2005,7 @@
 
     const fields = columns
       .filter((column) => column !== titleColumn)
+      .filter((column) => !/^description$/i.test(String(column || "").trim()))
       .map((column) => ({
         label: column,
         value: String(row[column] || "").trim()
@@ -1043,17 +2013,22 @@
       .filter((field) => field.value && field.value !== "-");
 
     if (!fields.length) {
+      const rsvp = getGuestRsvpLabel(row);
       return {
         title,
-        meta: "",
+        type: getGuestType(row),
+        rsvp,
+        statusTone: getGuestStatusTone(rsvp),
         fields: []
       };
     }
 
+    const rsvp = getGuestRsvpLabel(row);
     return {
       title,
       type: getGuestType(row),
-      meta: summarizeGuestFields(fields),
+      rsvp,
+      statusTone: getGuestStatusTone(rsvp),
       fields
     };
   }
@@ -1063,11 +2038,36 @@
     return String(match?.[1] || "").trim();
   }
 
+  function getGuestStatusTone(rsvp) {
+    return getRsvpGroup(rsvp) === "yes" ? "attending" : "pending";
+  }
+
+  function getTypeTokens(value) {
+    return String(value || "")
+      .split(",")
+      .map((token) => token.trim())
+      .filter(Boolean);
+  }
+
+  function dedupeTokens(tokens) {
+    const seen = new Set();
+    return (Array.isArray(tokens) ? tokens : [])
+      .map((token) => String(token || "").trim())
+      .filter(Boolean)
+      .filter((token) => {
+        const key = token.toLowerCase();
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+  }
+
   function collectGuestTypes(guests) {
     return Array.from(new Set(
       guests
-        .map((guest) => guest.type)
-        .filter(Boolean)
+        .flatMap((guest) => getTypeTokens(guest.type))
     )).sort((a, b) => a.localeCompare(b));
   }
 
@@ -1092,7 +2092,9 @@
   function collectEventDateOptions(events) {
     const normalizedEvents = Array.isArray(events) ? events : [];
     const parsedDates = normalizedEvents
+      .filter((event) => !isFalseLike(event?.active))
       .map((event) => ({
+        event,
         value: getEventDateFilterValue(event),
         parsed: parseEventDateTime({ date: getEventDateFilterValue(event), startsAt: "00:00" })
       }))
@@ -1102,26 +2104,50 @@
       return [];
     }
 
-    const sortedDates = parsedDates
-      .map((item) => item.parsed)
-      .sort((left, right) => right.getTime() - left.getTime());
+    const ceremonyDateValue = parsedDates.find((item) => /ceremony/i.test(String(item.event?.title || "")))?.value || "";
+    const mainDateCounts = parsedDates.reduce((counts, item) => {
+      if (!isTrueLike(item.event?.main)) {
+        return counts;
+      }
 
-    const latestDate = sortedDates[0];
-    const latestDateValue = `${latestDate.getFullYear()}-${String(latestDate.getMonth() + 1).padStart(2, "0")}-${String(latestDate.getDate()).padStart(2, "0")}`;
-    const priorCutoff = new Date(latestDate);
+      counts.set(item.value, (counts.get(item.value) || 0) + 1);
+      return counts;
+    }, new Map());
+
+    const fallbackDateValue = parsedDates
+      .map((item) => item.value)
+      .sort((left, right) => right.localeCompare(left))[0];
+
+    const primaryDateValue = ceremonyDateValue
+      || [...mainDateCounts.entries()]
+        .sort((left, right) => {
+          const countDelta = right[1] - left[1];
+          if (countDelta !== 0) {
+            return countDelta;
+          }
+          return right[0].localeCompare(left[0]);
+        })[0]?.[0]
+      || fallbackDateValue;
+
+    const primaryDate = parseEventDateTime({ date: primaryDateValue, startsAt: "00:00" });
+    if (!primaryDate) {
+      return [];
+    }
+
+    const priorCutoff = new Date(primaryDate);
     priorCutoff.setDate(priorCutoff.getDate() - 1);
     const priorCutoffValue = `${priorCutoff.getFullYear()}-${String(priorCutoff.getMonth() + 1).padStart(2, "0")}-${String(priorCutoff.getDate()).padStart(2, "0")}`;
 
     return [
-      { value: latestDateValue, label: formatEventDateShort(latestDateValue) },
-      { value: `before:${latestDateValue}`, label: `${formatEventDateShort(priorCutoffValue)} or before` }
+      { value: primaryDateValue, label: formatEventDateShort(primaryDateValue) },
+      { value: `before:${primaryDateValue}`, label: `${formatEventDateShort(priorCutoffValue)} or before` }
     ];
   }
 
   function collectEventAssignedToOptions(events) {
     return Array.from(new Set(
       (Array.isArray(events) ? events : [])
-        .map((event) => getEventAssignedToFilterValue(event))
+        .flatMap((event) => getEventAssignedToTokens(event))
         .filter(Boolean)
     )).sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }));
   }
@@ -1150,16 +2176,88 @@
     }
 
     const normalizedAssignees = Array.isArray(assignees) ? assignees : [];
-    if (selectedEventAssignedTo && !normalizedAssignees.includes(selectedEventAssignedTo)) {
-      selectedEventAssignedTo = "";
+    const assigneeLookup = new Set(normalizedAssignees.map((assignee) => assignee.toLowerCase()));
+    selectedEventAssignedTo = selectedEventAssignedTo.filter((assignee) => assigneeLookup.has(String(assignee || "").toLowerCase()));
+    updateEventAssignedToFilterSummary();
+
+    if (!normalizedAssignees.length) {
+      eventAssignedToFilterEl.innerHTML = '<span class="planner-filter-checklist--empty">All assignees</span>';
+      return;
     }
 
-    eventAssignedToFilterEl.innerHTML = `
-      <option value="">All assignees</option>
-      ${normalizedAssignees.map((assignedTo) => `<option value="${escapeHtml(assignedTo)}">${escapeHtml(assignedTo)}</option>`).join("")}
-    `;
-    eventAssignedToFilterEl.value = selectedEventAssignedTo;
-    eventAssignedToFilterEl.disabled = normalizedAssignees.length === 0;
+    const selectedLookup = new Set(selectedEventAssignedTo.map((assignee) => String(assignee || "").toLowerCase()));
+    eventAssignedToFilterEl.innerHTML = normalizedAssignees.map((assignedTo) => `
+      <label class="planner-filter-checklist__option">
+        <input type="checkbox" value="${escapeHtml(assignedTo)}" data-event-assigned-to-filter ${selectedLookup.has(assignedTo.toLowerCase()) ? "checked" : ""}>
+        <span>${escapeHtml(assignedTo)}</span>
+      </label>
+    `).join("");
+  }
+
+  function updateEventAssignedToFilterSummary() {
+    if (!eventAssignedToFilterSummaryEl) {
+      return;
+    }
+
+    if (!selectedEventAssignedTo.length) {
+      eventAssignedToFilterSummaryEl.textContent = "All assignees";
+      eventAssignedToFilterSummaryEl.title = "All assignees";
+      return;
+    }
+
+    const summaryText = selectedEventAssignedTo.length <= 2
+      ? selectedEventAssignedTo.join(", ")
+      : `${selectedEventAssignedTo.length} selected`;
+    eventAssignedToFilterSummaryEl.textContent = summaryText;
+    eventAssignedToFilterSummaryEl.title = selectedEventAssignedTo.join(", ");
+  }
+
+  function getGuestTypeOptions() {
+    return collectGuestTypes(
+      cachedGuests
+        .map((row) => ({ type: getGuestTypeValue(row) }))
+        .filter((item) => item.type)
+    );
+  }
+
+  function collectEventAssignedToFormValue() {
+    if (!eventForm) {
+      return "";
+    }
+
+    const formData = new FormData(eventForm);
+    const selectedTypes = formData.getAll("assignedToType");
+    const extraTypes = getTypeTokens(formData.get("assignedToExtra"));
+    return dedupeTokens([...selectedTypes, ...extraTypes]).join(", ");
+  }
+
+  function renderEventAssignedTypeOptions(selectedAssignedTo = "") {
+    if (!eventAssignedTypeOptionsEl || !eventForm) {
+      return;
+    }
+
+    const types = getGuestTypeOptions();
+    const selectedTokens = getTypeTokens(selectedAssignedTo);
+    const selectedLookup = new Set(selectedTokens.map((token) => token.toLowerCase()));
+    const typeLookup = new Set(types.map((type) => type.toLowerCase()));
+    const extraField = eventForm.elements.namedItem("assignedToExtra");
+    const extraTypes = selectedTokens.filter((token) => !typeLookup.has(token.toLowerCase()));
+
+    if (extraField) {
+      extraField.value = extraTypes.join(", ");
+    }
+
+    if (!types.length) {
+      eventAssignedTypeOptionsEl.innerHTML = '<p class="meta">No guest types loaded yet.</p>';
+      return;
+    }
+
+    eventAssignedTypeOptionsEl.innerHTML = types.map((type) => `
+      <label class="type-option">
+        <input type="checkbox" name="assignedToType" value="${escapeHtml(type)}" ${selectedLookup.has(type.toLowerCase()) ? "checked" : ""}>
+        <span>${escapeHtml(type)}</span>
+      </label>
+    `).join("");
   }
 
   function getFilteredEvents() {
@@ -1179,8 +2277,11 @@
         }
       }
 
-      if (selectedEventAssignedTo && getEventAssignedToFilterValue(event) !== selectedEventAssignedTo) {
-        return false;
+      if (selectedEventAssignedTo.length) {
+        const eventAssignees = new Set(getEventAssignedToTokens(event).map((token) => token.toLowerCase()));
+        if (!selectedEventAssignedTo.some((assignee) => eventAssignees.has(String(assignee || "").toLowerCase()))) {
+          return false;
+        }
       }
 
       return true;
@@ -1192,11 +2293,7 @@
       return;
     }
 
-    const types = collectGuestTypes(
-      cachedGuests
-        .map((row) => ({ type: getGuestTypeValue(row) }))
-        .filter((item) => item.type)
-    );
+    const types = getGuestTypeOptions();
 
     if (!types.length) {
       tableTypeOptionsEl.innerHTML = '<p class="meta">No guest types loaded yet.</p>';
@@ -1235,11 +2332,102 @@
     return String(typeColumn ? row[typeColumn] || "" : "").trim();
   }
 
+  function findTableColumn(table, matcher) {
+    return Object.keys(table || {}).find((column) => matcher.test(String(column || "").trim()));
+  }
+
+  function getTableColumnValue(table, matcher) {
+    const column = findTableColumn(table, matcher);
+    return String(column ? table[column] || "" : "").trim();
+  }
+
+  function isTableLayoutSideToken(value) {
+    const normalized = String(value || "").trim().toLowerCase();
+    return normalized.includes("bar")
+      || normalized.includes("food")
+      || normalized.includes("head")
+      || normalized.includes("center");
+  }
+
   function getTableTypes(table) {
-    return String(table.type || "")
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean);
+    return getTypeTokens(String(table?.type || "").trim());
+  }
+
+  function tableAcceptsAnyGuest(table) {
+    return getTableTypes(table).length === 0;
+  }
+
+  function getTableGuestTypeValue(table) {
+    const typeValue = String(table?.type || "").trim();
+    return isTableLayoutSideToken(typeValue) ? "" : typeValue;
+  }
+
+  function getTableLayoutSideValue(table) {
+    const raw = String(
+      table?.location
+      || getTableColumnValue(table, /^location$/i)
+      || (isTableLayoutSideToken(table?.type) ? table?.type : "")
+      || ""
+    ).trim().toLowerCase();
+    if (!raw) {
+      return "head";
+    }
+    if (raw.includes("bar")) {
+      return "bar";
+    }
+    if (raw.includes("food")) {
+      return "food";
+    }
+    if (raw.includes("head") || raw.includes("center")) {
+      return "head";
+    }
+    return "head";
+  }
+
+  function getTableLayoutOrder(table) {
+    const raw = String(table?.order || getTableColumnValue(table, /^order$/i) || "").trim();
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : Infinity;
+  }
+
+  function getTableLayoutLabel(table) {
+    return String(
+      table?.location
+      || getTableColumnValue(table, /^location$/i)
+      || (isTableLayoutSideToken(table?.type) ? table?.type : "")
+      || "Center"
+    ).trim() || "Center";
+  }
+
+  function sortTablesForLayout(items) {
+    return [...items].sort((left, right) => {
+      const orderDelta = getTableLayoutOrder(left) - getTableLayoutOrder(right);
+      if (orderDelta !== 0) {
+        return orderDelta;
+      }
+      return compareTableNumbers(String(left.tableName || ""), String(right.tableName || ""));
+    });
+  }
+
+  function groupTablesForLayout(items) {
+    const groups = [
+      { key: "head", label: "Head", tables: [] },
+      { key: "food", label: "Food Side", tables: [] },
+      { key: "bar", label: "Bar Side", tables: [] }
+    ];
+    const groupMap = new Map(groups.map((group) => [group.key, group]));
+
+    items.forEach((table) => {
+      const side = getTableLayoutSideValue(table);
+      const targetGroup = groupMap.get(side) || groupMap.get("head");
+      targetGroup.tables.push(table);
+    });
+
+    groups.forEach((group) => {
+      group.tables = sortTablesForLayout(group.tables);
+    });
+
+    return groups;
   }
 
   function getGuestTableNumber(row) {
@@ -1295,14 +2483,6 @@
     return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: "base" });
   }
 
-  function summarizeGuestFields(fields) {
-    return fields
-      .filter((field) => /type|rsvp|email|phone/i.test(field.label))
-      .slice(0, 2)
-      .map((field) => `${field.label}: ${field.value}`)
-      .join(" | ");
-  }
-
   function renderSummary() {
     const dashboardRsvps = getDashboardRsvps();
     const yesCount = dashboardRsvps.filter((item) => getRsvpGroup(item.attending) === "yes").length;
@@ -1339,12 +2519,12 @@
     `;
 
     plannerSummaryEl.innerHTML = `
-      <article class="planner-home-card">
+      <article class="planner-home-card planner-home-card--countdown">
         <span class="planner-home-card__label">Countdown</span>
         <h3>${nextMainEvent ? "Time until the next main event" : "Countdown will appear here"}</h3>
         ${countdownMarkup}
       </article>
-      <article class="planner-home-card">
+      <article class="planner-home-card planner-home-card--next-event">
         <span class="planner-home-card__label">Next Main Event</span>
         <h3>${nextMainEventTitle}</h3>
         <p class="planner-home-card__meta">${nextMainEventSchedule}</p>
@@ -1375,6 +2555,10 @@
         <strong>${cachedEvents.length}</strong>
       </article>
       <article class="summary-card">
+        <span>Shots</span>
+        <strong>${cachedShots.length}</strong>
+      </article>
+      <article class="summary-card">
         <span>Todo</span>
         <strong>${cachedTodos.length}</strong>
       </article>
@@ -1385,6 +2569,10 @@
       <article class="summary-card">
         <span>Done Tasks</span>
         <strong>${completedTodoCount}</strong>
+      </article>
+      <article class="summary-card">
+        <span>Captured Shots</span>
+        <strong>${cachedShots.filter((item) => item.isComplete).length}</strong>
       </article>
       <article class="summary-card">
         <span>Maybe / No</span>
@@ -1436,15 +2624,50 @@
     });
   }
 
+  function sortShots(items) {
+    const eventOrder = new Map(cachedEvents.map((event, index) => [String(event.id || "").trim(), index]));
+    return [...items].sort((left, right) => {
+      const leftComplete = Number(Boolean(left.isComplete));
+      const rightComplete = Number(Boolean(right.isComplete));
+      if (leftComplete !== rightComplete) {
+        return leftComplete - rightComplete;
+      }
+
+      const leftEventOrder = eventOrder.has(String(left.eventId || "").trim())
+        ? eventOrder.get(String(left.eventId || "").trim())
+        : Number.MAX_SAFE_INTEGER;
+      const rightEventOrder = eventOrder.has(String(right.eventId || "").trim())
+        ? eventOrder.get(String(right.eventId || "").trim())
+        : Number.MAX_SAFE_INTEGER;
+      if (leftEventOrder !== rightEventOrder) {
+        return leftEventOrder - rightEventOrder;
+      }
+
+      const orderDelta = Number(left.sortOrder || 0) - Number(right.sortOrder || 0);
+      if (orderDelta !== 0) {
+        return orderDelta;
+      }
+
+      const priorityDelta = getShotPriorityRank(left.priority) - getShotPriorityRank(right.priority);
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+
+      return String(left.title || "").localeCompare(String(right.title || ""));
+    });
+  }
+
   function renderPlannerData() {
     renderPeople();
     renderEvents();
+    renderShots();
     renderTodos();
     renderBedsTable();
     renderRsvps();
     renderGuests();
     renderTables();
     renderTableTypeOptions();
+    renderEventAssignedTypeOptions(collectEventAssignedToFormValue());
     renderSummary();
   }
 
@@ -1478,6 +2701,9 @@
 
     const result = await response.json();
     if (!result?.ok) {
+      if (passwordHash && /Please sign in first\./i.test(String(result?.error || ""))) {
+        throw new Error("Planner backend password mismatch. This dashboard page unlocked, but the Apps Script deployment is using a different DASHBOARD_PASSWORD_HASH.");
+      }
       throw new Error(result?.error || "Planner request failed.");
     }
 
@@ -1485,9 +2711,17 @@
   }
 
   async function refreshPlannerCollections() {
-    const [people, events, beds, todos, tables] = await Promise.all([
+    const [people, events, shots, beds, todos, tables] = await Promise.all([
       rpcRequest("listPeople", {}),
       rpcRequest("listEvents", {}),
+      rpcRequest("listShots", {}).catch((error) => {
+        const message = String(error?.message || "");
+        if (/Unknown RPC method:\s*listShots/i.test(message)) {
+          setStatus(shotStatusEl, "Shot List is hidden until the latest planner backend is deployed.", "pending");
+          return [];
+        }
+        throw error;
+      }),
       rpcRequest("listBeds", {}),
       rpcRequest("listTodos", {}),
       rpcRequest("listTables", {})
@@ -1495,15 +2729,8 @@
 
     cachedPeople = sortByUpdated(Array.isArray(people) ? people : [], "updatedAt");
     cachedEvents = sortEvents(Array.isArray(events) ? events : []);
-    cachedBeds = [...(Array.isArray(beds) ? beds : [])].sort((left, right) => {
-      const orderDelta = Number(left.sortOrder || 0) - Number(right.sortOrder || 0);
-      if (orderDelta !== 0) {
-        return orderDelta;
-      }
-      return `${left.lodging || ""} ${left.room || ""} ${left.bedLabel || ""}`.localeCompare(
-        `${right.lodging || ""} ${right.room || ""} ${right.bedLabel || ""}`
-      );
-    });
+    cachedShots = sortShots(Array.isArray(shots) ? shots : []);
+    cachedBeds = sortBeds(Array.isArray(beds) ? beds : []);
     cachedTodos = sortTodos(Array.isArray(todos) ? todos : []);
     cachedTables = sortTables(Array.isArray(tables) ? tables : []);
     renderPlannerData();
@@ -1532,6 +2759,7 @@
     } catch (error) {
       cachedPeople = [];
       cachedEvents = [];
+      cachedShots = [];
       cachedBeds = [];
       cachedTables = [];
       cachedTodos = [];
@@ -1738,12 +2966,22 @@
       .filter((item) => item && Object.keys(item).length);
   }
 
-  function sortTables(items) {
-    return [...items].sort((left, right) => {
-      const nameDelta = String(left.tableName || "").localeCompare(String(right.tableName || ""), undefined, { numeric: true, sensitivity: "base" });
-      if (nameDelta !== 0) {
-        return nameDelta;
-      }
+function sortTables(items) {
+  return [...items].sort((left, right) => {
+    const locationDelta = String(left.location || "").localeCompare(String(right.location || ""), undefined, { sensitivity: "base" });
+    if (locationDelta !== 0) {
+      return locationDelta;
+    }
+
+    const orderDelta = Number(left.order || 0) - Number(right.order || 0);
+    if (orderDelta !== 0) {
+      return orderDelta;
+    }
+
+    const nameDelta = String(left.tableName || "").localeCompare(String(right.tableName || ""), undefined, { numeric: true, sensitivity: "base" });
+    if (nameDelta !== 0) {
+      return nameDelta;
+    }
 
       return String(left.type || "").localeCompare(String(right.type || ""), undefined, { sensitivity: "base" });
     });
@@ -1771,6 +3009,228 @@
       });
   }
 
+  function getTableByName(tableName) {
+    const targetName = String(tableName || "").trim();
+    return cachedTables.find((table) => String(table.tableName || "").trim() === targetName) || null;
+  }
+
+  function updateCachedTableReservedOpenSeats(tableId, reservedSeats) {
+    const table = getTableById(tableId);
+    if (!table) {
+      return null;
+    }
+
+    const normalizedReservedSeats = [...new Set((Array.isArray(reservedSeats) ? reservedSeats : [])
+      .map((seatNumber) => Number(seatNumber || 0))
+      .filter((seatNumber) => Number.isInteger(seatNumber) && seatNumber > 0))]
+      .sort((left, right) => left - right);
+
+    const updatedTable = {
+      ...table,
+      reservedOpenSeatPositions: normalizedReservedSeats.join(", "),
+      updatedAt: new Date().toISOString()
+    };
+    upsertCachedTable(updatedTable);
+    return updatedTable;
+  }
+
+  async function toggleReservedOpenSeat(tableId, seatNumber) {
+    const table = getTableById(tableId);
+    if (!table) {
+      throw new Error("Table not found.");
+    }
+
+    const numericSeatNumber = Number(seatNumber || 0);
+    if (!Number.isInteger(numericSeatNumber) || numericSeatNumber < 1 || numericSeatNumber > Number(table.count || 0)) {
+      throw new Error("That seat cannot be reserved.");
+    }
+
+    const currentReservedSeats = getReservedOpenSeatPositions(table);
+    const nextReservedSeats = currentReservedSeats.includes(numericSeatNumber)
+      ? currentReservedSeats.filter((item) => item !== numericSeatNumber)
+      : [...currentReservedSeats, numericSeatNumber].sort((left, right) => left - right);
+
+    const previousTables = cachedTables;
+    updateCachedTableReservedOpenSeats(tableId, nextReservedSeats);
+
+    try {
+      const savedTable = await rpcRequest("saveTableReservedOpenSeats", {
+        id: tableId,
+        reservedOpenSeatPositions: nextReservedSeats
+      });
+      upsertCachedTable(savedTable);
+      setStatus(tableStatusEl, currentReservedSeats.includes(numericSeatNumber) ? "Reserved open spot removed." : "Reserved open spot saved.", "success");
+    } catch (error) {
+      cachedTables = previousTables;
+      rerenderTableData();
+      throw error;
+    }
+  }
+
+  async function clearReservedOpenSeatIfNeeded(tableId, seatNumber) {
+    const table = getTableById(tableId);
+    const numericSeatNumber = Number(seatNumber || 0);
+    if (!table || !numericSeatNumber) {
+      return;
+    }
+
+    const currentReservedSeats = getReservedOpenSeatPositions(table);
+    if (!currentReservedSeats.includes(numericSeatNumber)) {
+      return;
+    }
+
+    const nextReservedSeats = currentReservedSeats.filter((item) => item !== numericSeatNumber);
+    const savedTable = await rpcRequest("saveTableReservedOpenSeats", {
+      id: tableId,
+      reservedOpenSeatPositions: nextReservedSeats
+    });
+    upsertCachedTable(savedTable);
+  }
+
+  function canGuestSitAtTable(guest, table) {
+    if (!guest || !table) {
+      return false;
+    }
+
+    if (getRsvpGroup(guest.attending) !== "yes") {
+      return false;
+    }
+
+    if (tableAcceptsAnyGuest(table)) {
+      return true;
+    }
+
+    const guestTypes = getTypeTokens(guest.type);
+    const tableTypes = getTableTypes(table);
+    return guestTypes.some((type) => tableTypes.includes(type));
+  }
+
+  function getAvailableSeatCount(tableName, ignoreRowNumber = 0) {
+    const table = getTableByName(tableName);
+    if (!table) {
+      return 0;
+    }
+
+    const assignedCount = getAssignedGuestByTableName(tableName)
+      .filter((guest) => Number(guest.rowNumber || 0) !== Number(ignoreRowNumber || 0))
+      .length;
+    return Math.max(0, Number(table.count || 0) - assignedCount);
+  }
+
+  function getRenderableSeatCountForTable(table, assignedGuests = []) {
+    const configuredSeatCount = Math.max(0, Number(table?.count || 0));
+    const maxAssignedSeat = assignedGuests.reduce((maxSeat, guest) => Math.max(maxSeat, Number(guest.tableOrder || 0)), 0);
+    return Math.max(configuredSeatCount, maxAssignedSeat);
+  }
+
+  function getReservedOpenSeatPositions(table) {
+    const seen = new Set();
+    return String(table?.reservedOpenSeatPositions || "")
+      .split(",")
+      .map((token) => Number(String(token || "").trim()))
+      .filter((seatNumber) => Number.isInteger(seatNumber) && seatNumber > 0)
+      .filter((seatNumber) => {
+        if (seen.has(seatNumber)) {
+          return false;
+        }
+        seen.add(seatNumber);
+        return true;
+      })
+      .sort((left, right) => left - right);
+  }
+
+  function isReservedOpenSeat(table, seatNumber) {
+    return getReservedOpenSeatPositions(table).includes(Number(seatNumber || 0));
+  }
+
+  function findFirstOpenSeat(tableName) {
+    const table = getTableByName(tableName);
+    const seatCount = Math.max(0, Number(table?.count || 0));
+    const reservedSeats = new Set(getReservedOpenSeatPositions(table));
+    const usedSeats = new Set(
+      getAssignedGuestByTableName(tableName)
+        .map((guest) => Number(guest.tableOrder || 0))
+        .filter((seatNumber) => seatNumber > 0)
+    );
+    for (let seatNumber = 1; seatNumber <= seatCount; seatNumber += 1) {
+      if (!usedSeats.has(seatNumber) && !reservedSeats.has(seatNumber)) {
+        return seatNumber;
+      }
+    }
+    return 0;
+  }
+
+  function renderTableSeatGrid(table, assignedGuests, seatCount) {
+    const tableName = String(table.tableName || "").trim();
+    if (!seatCount) {
+      return '<p class="meta">Set a seat count to start placing guests.</p>';
+    }
+
+    const assignedBySeat = new Map(
+      assignedGuests
+        .map((guest) => [Number(guest.tableOrder || 0), guest])
+        .filter(([seatNumber]) => seatNumber > 0)
+    );
+
+    return Array.from({ length: seatCount }, (_, index) => {
+      const seatNumber = index + 1;
+      return renderTableSeat(table, seatNumber, assignedBySeat.get(seatNumber) || null);
+    }).join("");
+  }
+
+  function renderTableSeat(table, seatNumber, guest = null) {
+    const tableName = String(table?.tableName || "").trim();
+    const tableId = String(table?.id || "").trim();
+    const reserved = !guest && isReservedOpenSeat(table, seatNumber);
+    const dropLabel = guest
+      ? `Move guest to seat ${seatNumber} at ${tableName}`
+      : `Place guest in open seat ${seatNumber} at ${tableName}`;
+    const isDragSource = guest && activeTableDrag && Number(activeTableDrag.rowNumber || 0) === Number(guest.rowNumber || 0);
+    return `
+      <div class="table-seat ${guest ? "table-seat--occupied" : "table-seat--empty"} ${reserved ? "table-seat--reserved" : ""} ${isDragSource ? "is-drag-source" : ""}" data-table-dropzone data-table-id="${escapeHtml(tableId)}" data-table-name="${escapeHtml(tableName)}" data-drop-seat="${escapeHtml(String(seatNumber))}" data-drop-enabled="false" role="button" tabindex="0" aria-label="${escapeHtml(dropLabel)}" aria-disabled="true">
+        ${guest ? activeTableDrag ? `<span class="table-seat__hint" aria-hidden="true">Drop here</span>` : "" : `<span class="table-seat__hint" aria-hidden="true">${reserved ? "Reserved spot" : "Open spot"}</span>`}
+        ${guest ? `
+          <div class="dashboard-entry" data-assigned-guest data-row-number="${escapeHtml(String(guest.rowNumber || ""))}" data-table-name="${escapeHtml(tableName)}">
+            <div class="table-assignment-row">
+              <div class="table-assignment-row__meta">
+                <button class="button button--light table-drag-handle" type="button" draggable="true" data-table-guest-handle data-row-number="${escapeHtml(String(guest.rowNumber || ""))}" aria-label="Move ${escapeHtml(guest.name)}">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M9 6h.01"></path>
+                    <path d="M9 12h.01"></path>
+                    <path d="M9 18h.01"></path>
+                    <path d="M15 6h.01"></path>
+                    <path d="M15 12h.01"></path>
+                    <path d="M15 18h.01"></path>
+                  </svg>
+                </button>
+                <strong>${escapeHtml(guest.name)}</strong>
+              </div>
+              <div class="table-assignment-row__actions">
+                <button class="button button--light table-remove-button" type="button" data-remove-table-guest data-row-number="${escapeHtml(String(guest.rowNumber || ""))}" data-table-name="${escapeHtml(tableName)}" aria-label="Remove ${escapeHtml(guest.name)} from ${escapeHtml(tableName || "table")}">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M3 6h18"></path>
+                    <path d="M8 6V4h8v2"></path>
+                    <path d="M19 6l-1 14H6L5 6"></path>
+                    <path d="M10 11v6"></path>
+                    <path d="M14 11v6"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        ` : `
+          <div class="table-seat__empty">
+            <strong>${reserved ? "Reserved open spot" : "Open spot"}</strong>
+            <span>${reserved ? "This seat is intentionally being kept open." : "Keep this seat available for a couple or late assignment."}</span>
+            <button class="button button--light table-seat__toggle" type="button" data-toggle-reserved-seat data-table-id="${escapeHtml(tableId)}" data-seat-number="${escapeHtml(String(seatNumber))}">
+              ${reserved ? "Unreserve" : "Reserve"}
+            </button>
+          </div>
+        `}
+      </div>
+    `;
+  }
+
   function getEligibleGuestsForTable(table) {
     return cachedGuests
       .map((row) => ({
@@ -1782,7 +3242,7 @@
         tableNumber: getGuestTableNumber(row)
       }))
       .filter((guest) => guest.rowNumber && guest.name)
-      .filter((guest) => getTableTypes(table).includes(guest.type))
+      .filter((guest) => canGuestSitAtTable(guest, table))
       .filter((guest) => getRsvpGroup(guest.attending) === "yes")
       .filter((guest) => !guest.tableNumber)
       .sort((left, right) => left.name.localeCompare(right.name));
@@ -1790,13 +3250,16 @@
 
   async function addGuestToTable(table, guestRowNumber) {
     const tableName = String(table.tableName || "").trim();
+    const tableId = String(table.id || "").trim();
     const nextRowNumber = Number(guestRowNumber || 0);
     if (!tableName || !nextRowNumber) {
       return;
     }
 
-    const existingAssignments = getAssignedGuestByTableName(tableName);
-    const nextOrder = (existingAssignments.reduce((maxOrder, guest) => Math.max(maxOrder, Number(guest.tableOrder || 0)), 0) || 0) + 1;
+    const nextOrder = findFirstOpenSeat(tableName);
+    if (!nextOrder) {
+      throw new Error("That table is already full.");
+    }
 
     await rpcRequest("saveGuestTableAssignment", {
       rowNumber: nextRowNumber,
@@ -1816,6 +3279,237 @@
       }
     }
 
+    await clearReservedOpenSeatIfNeeded(tableId, nextOrder);
+
+  }
+
+  function updateCachedGuestTableAssignment(rowNumber, tableName, tableOrder) {
+    const numericRowNumber = Number(rowNumber || 0);
+    if (!numericRowNumber) {
+      return;
+    }
+
+    const guest = cachedGuests.find((row) => getGuestRowNumber(row) === numericRowNumber);
+    if (!guest) {
+      return;
+    }
+
+    const guestTableColumn = findGuestColumn(guest, /^table\s*(number|#)?$/i);
+    const guestOrderColumn = findGuestColumn(guest, /^table\s*order$/i);
+    if (guestTableColumn) {
+      guest[guestTableColumn] = String(tableName || "").trim();
+    }
+    if (guestOrderColumn) {
+      guest[guestOrderColumn] = tableOrder ? String(tableOrder) : "";
+    }
+  }
+
+  async function syncTableAssignments(tableName, orderedRowNumbers) {
+    const normalizedTableName = String(tableName || "").trim();
+    if (!normalizedTableName) {
+      return;
+    }
+
+    const pendingAssignments = [];
+    for (let index = 0; index < orderedRowNumbers.length; index += 1) {
+      const rowNumber = Number(orderedRowNumbers[index] || 0);
+      if (!rowNumber) {
+        continue;
+      }
+
+      const guestRow = cachedGuests.find((row) => getGuestRowNumber(row) === rowNumber);
+      if (guestRow && getGuestTableNumber(guestRow) === normalizedTableName && getGuestTableOrder(guestRow) === index + 1) {
+        continue;
+      }
+
+      pendingAssignments.push({
+        rowNumber,
+        tableName: normalizedTableName,
+        tableOrder: index + 1
+      });
+    }
+
+    if (!pendingAssignments.length) {
+      return;
+    }
+
+    const savedAssignments = await rpcRequest("saveGuestTableAssignments", {
+      assignments: pendingAssignments
+    });
+
+    (Array.isArray(savedAssignments) ? savedAssignments : []).forEach((assignment) => {
+      updateCachedGuestTableAssignment(assignment.rowNumber, assignment.tableName, assignment.tableOrder);
+    });
+  }
+
+  function buildSeatRowNumbers(tableName) {
+    const table = getTableByName(tableName);
+    const seatCount = getRenderableSeatCountForTable(table, getAssignedGuestByTableName(tableName));
+    const seats = Array.from({ length: seatCount }, () => 0);
+    getAssignedGuestByTableName(tableName).forEach((guest) => {
+      const seatIndex = Number(guest.tableOrder || 0) - 1;
+      if (seatIndex >= 0 && seatIndex < seats.length) {
+        seats[seatIndex] = Number(guest.rowNumber || 0);
+      }
+    });
+    return seats;
+  }
+
+  async function moveGuestToTablePosition(rowNumber, targetTableName, targetIndex) {
+    const numericRowNumber = Number(rowNumber || 0);
+    const normalizedTargetTableName = String(targetTableName || "").trim();
+    const targetSeatNumber = Math.max(1, Number(targetIndex || 0));
+    const guestRow = cachedGuests.find((row) => getGuestRowNumber(row) === numericRowNumber);
+    if (!numericRowNumber || !normalizedTargetTableName || !guestRow) {
+      return;
+    }
+
+    const sourceTableName = getGuestTableNumber(guestRow);
+    const guest = {
+      rowNumber: numericRowNumber,
+      name: getGuestDisplayName(guestRow),
+      type: getGuestTypeValue(guestRow),
+      attending: getGuestRsvpLabel(guestRow),
+      tableNumber: sourceTableName,
+      tableOrder: getGuestTableOrder(guestRow)
+    };
+    const targetTable = getTableByName(normalizedTargetTableName);
+    if (!targetTable || !canGuestSitAtTable(guest, targetTable)) {
+      throw new Error("That guest cannot be assigned to the selected table.");
+    }
+
+    if (targetSeatNumber > Math.max(0, Number(targetTable.count || 0))) {
+      throw new Error("That seat is outside the selected table.");
+    }
+
+    if (sourceTableName !== normalizedTargetTableName && getAvailableSeatCount(normalizedTargetTableName, numericRowNumber) < 1) {
+      throw new Error("That table is already full.");
+    }
+
+    const currentSeatNumber = Math.max(1, Number(getGuestTableOrder(guestRow) || 0));
+    const currentIndex = currentSeatNumber - 1;
+    if (currentIndex < 0) {
+      return;
+    }
+
+    if (sourceTableName === normalizedTargetTableName) {
+      if (currentSeatNumber === targetSeatNumber) {
+        return;
+      }
+
+      const nextSeats = buildSeatRowNumbers(sourceTableName);
+      const targetSeatIndex = targetSeatNumber - 1;
+      nextSeats[currentIndex] = 0;
+      if (!nextSeats[targetSeatIndex]) {
+        nextSeats[targetSeatIndex] = numericRowNumber;
+      } else if (targetSeatIndex < currentIndex) {
+        for (let index = currentIndex - 1; index >= targetSeatIndex; index -= 1) {
+          nextSeats[index + 1] = nextSeats[index];
+        }
+        nextSeats[targetSeatIndex] = numericRowNumber;
+      } else {
+        for (let index = currentIndex + 1; index <= targetSeatIndex; index += 1) {
+          nextSeats[index - 1] = nextSeats[index];
+        }
+        nextSeats[targetSeatIndex] = numericRowNumber;
+      }
+      await syncTableAssignments(sourceTableName, nextSeats);
+      await clearReservedOpenSeatIfNeeded(String(targetTable.id || "").trim(), targetSeatNumber);
+      return;
+    }
+
+    const nextSourceSeats = buildSeatRowNumbers(sourceTableName);
+    const nextTargetSeats = buildSeatRowNumbers(normalizedTargetTableName);
+    const targetSeatIndex = targetSeatNumber - 1;
+    nextSourceSeats[currentIndex] = 0;
+
+    if (nextTargetSeats[targetSeatIndex]) {
+      const openSeatIndex = nextTargetSeats.findIndex((seatRowNumber) => !seatRowNumber);
+      if (openSeatIndex < 0) {
+        throw new Error("That table is already full.");
+      }
+      for (let index = openSeatIndex - 1; index >= targetSeatIndex; index -= 1) {
+        nextTargetSeats[index + 1] = nextTargetSeats[index];
+      }
+    }
+    nextTargetSeats[targetSeatIndex] = numericRowNumber;
+
+    await syncTableAssignments(sourceTableName, nextSourceSeats);
+    await syncTableAssignments(normalizedTargetTableName, nextTargetSeats);
+    await clearReservedOpenSeatIfNeeded(String(targetTable.id || "").trim(), targetSeatNumber);
+  }
+
+  function getActiveTableDragGuest() {
+    if (!activeTableDrag) {
+      return null;
+    }
+
+    const guestRow = cachedGuests.find((row) => getGuestRowNumber(row) === Number(activeTableDrag.rowNumber || 0));
+    if (!guestRow) {
+      return null;
+    }
+
+    return {
+      rowNumber: getGuestRowNumber(guestRow),
+      name: getGuestDisplayName(guestRow),
+      type: getGuestTypeValue(guestRow),
+      attending: getGuestRsvpLabel(guestRow),
+      tableNumber: getGuestTableNumber(guestRow),
+      tableOrder: getGuestTableOrder(guestRow)
+    };
+  }
+
+  function canDropActiveGuestOnTable(tableName) {
+    const guest = getActiveTableDragGuest();
+    if (!guest) {
+      return false;
+    }
+
+    const normalizedTableName = String(tableName || "").trim();
+    if (guest.tableNumber === normalizedTableName) {
+      return true;
+    }
+
+    const table = getTableByName(normalizedTableName);
+    return Boolean(table) && canGuestSitAtTable(guest, table) && getAvailableSeatCount(normalizedTableName, guest.rowNumber) > 0;
+  }
+
+  function syncTableDragUi() {
+    const dragGuest = getActiveTableDragGuest();
+    tablesListEl.classList.toggle("is-table-drag-active", Boolean(dragGuest));
+    tablesListEl.querySelectorAll("[data-assigned-guest]").forEach((entry) => {
+      entry.classList.toggle("is-drag-source", Boolean(dragGuest) && Number(entry.dataset.rowNumber || 0) === Number(dragGuest?.rowNumber || 0));
+    });
+    tablesListEl.querySelectorAll("[data-table-dropzone]").forEach((dropzone) => {
+      const canDrop = dragGuest
+        ? canDropActiveGuestOnTable(dropzone.dataset.tableName) && Number(dropzone.dataset.dropSeat || 0) > 0
+        : false;
+      dropzone.dataset.dropEnabled = canDrop ? "true" : "false";
+      dropzone.setAttribute("aria-disabled", canDrop ? "false" : "true");
+      dropzone.classList.toggle("is-drop-available", Boolean(dragGuest) && canDrop);
+      dropzone.classList.toggle("is-active-dropzone", false);
+    });
+  }
+
+  function setActiveTableDrag(rowNumber) {
+    const guestRow = cachedGuests.find((row) => getGuestRowNumber(row) === Number(rowNumber || 0));
+    if (!guestRow) {
+      return;
+    }
+
+    activeTableDrag = {
+      rowNumber: getGuestRowNumber(guestRow)
+    };
+    syncTableDragUi();
+  }
+
+  function clearActiveTableDrag() {
+    if (!activeTableDrag) {
+      return;
+    }
+
+    activeTableDrag = null;
+    syncTableDragUi();
   }
 
   async function removeGuestFromTable(button) {
@@ -1824,23 +3518,25 @@
       return;
     }
 
+    const guest = cachedGuests.find((row) => getGuestRowNumber(row) === rowNumber);
     await rpcRequest("saveGuestTableAssignment", {
       rowNumber,
       tableName: "",
       tableOrder: ""
     });
 
-    const guest = cachedGuests.find((row) => getGuestRowNumber(row) === rowNumber);
-    if (guest) {
-      const guestTableColumn = findGuestColumn(guest, /^table\s*(number|#)?$/i);
-      const guestOrderColumn = findGuestColumn(guest, /^table\s*order$/i);
+    const updatedGuest = cachedGuests.find((row) => getGuestRowNumber(row) === rowNumber);
+    if (updatedGuest) {
+      const guestTableColumn = findGuestColumn(updatedGuest, /^table\s*(number|#)?$/i);
+      const guestOrderColumn = findGuestColumn(updatedGuest, /^table\s*order$/i);
       if (guestTableColumn) {
-        guest[guestTableColumn] = "";
+        updatedGuest[guestTableColumn] = "";
       }
       if (guestOrderColumn) {
-        guest[guestOrderColumn] = "";
+        updatedGuest[guestOrderColumn] = "";
       }
     }
+
   }
 
   function getRsvpGroup(attending) {
@@ -1896,7 +3592,7 @@
       renderSummary();
       setStatus(rsvpStatusEl, `Loaded ${getDashboardRsvps().length} RSVP rows from Guests.`, "success");
       setStatus(guestsStatusEl, `Loaded ${cachedGuests.length} rows from Guests.`, "success");
-      setStatus(plannerSyncStatusEl, "Spreadsheet feed connected. People and events sync through the planner backend.", "success");
+      setStatus(plannerSyncStatusEl, "Spreadsheet feed connected. Planner data, including people, events, and shots, syncs through the backend.", "success");
     } catch (error) {
       rsvpFeedConnected = false;
       cachedRsvps = [];
@@ -1928,20 +3624,38 @@
   plannerSignOutButton.addEventListener("click", () => {
     window.sessionStorage.removeItem(STORAGE_KEYS.auth);
     window.sessionStorage.removeItem(STORAGE_KEYS.authHash);
+    openPlannerSidebar();
     refreshViewer();
     renderRoute();
     setStatus(plannerLoginStatusEl, "Dashboard locked.", "success");
   });
 
+  plannerMenuToggleButton.addEventListener("click", () => {
+    togglePlannerSidebar();
+  });
+
   personForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
+    const previousPeople = cachedPeople;
     try {
       requirePlannerAccess();
       setStatus(personStatusEl, "Saving person...", "pending");
       const data = Object.fromEntries(new FormData(personForm).entries());
-      await rpcRequest("savePerson", {
-        id: String(data.id || "").trim(),
+      const personId = String(data.id || "").trim() || createClientId("person");
+      upsertCachedPerson({
+        id: personId,
+        name: String(data.name || "").trim(),
+        phone: String(data.phone || "").trim(),
+        role: String(data.role || "").trim(),
+        groupName: String(data.groupName || "").trim(),
+        consentStatus: String(data.consentStatus || "invited").trim(),
+        notes: String(data.notes || "").trim(),
+        createdAt: cachedPeople.find((item) => item.id === personId)?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      const savedPerson = await rpcRequest("savePerson", {
+        id: personId,
         name: String(data.name || "").trim(),
         phone: String(data.phone || "").trim(),
         role: String(data.role || "").trim(),
@@ -1949,12 +3663,14 @@
         consentStatus: String(data.consentStatus || "").trim(),
         notes: String(data.notes || "").trim()
       });
-      await refreshPlannerCollections();
+      upsertCachedPerson(savedPerson);
       setStatus(personStatusEl, "Person saved to Google Sheets.", "success");
       window.setTimeout(() => {
         closePersonModal();
       }, 300);
     } catch (error) {
+      cachedPeople = previousPeople;
+      rerenderPeopleData();
       setStatus(personStatusEl, error.message || "Unable to save person.", "error");
     }
   });
@@ -1962,42 +3678,129 @@
   eventForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
+    const previousEvents = cachedEvents;
+    const previousShots = cachedShots;
     try {
       requirePlannerAccess();
       setStatus(eventStatusEl, "Saving event...", "pending");
       const data = Object.fromEntries(new FormData(eventForm).entries());
-      await rpcRequest("saveEvent", {
-        id: String(data.id || "").trim(),
+      const assignedTo = collectEventAssignedToFormValue();
+      const eventId = String(data.id || "").trim() || createClientId("event");
+      upsertCachedEvent({
+        id: eventId,
         title: String(data.title || "").trim(),
         main: String(data.main || "false") === "true",
         date: String(data.date || "").trim(),
         startsAt: String(data.startsAt || "").trim(),
         location: String(data.location || "").trim(),
-        assignedTo: String(data.assignedTo || "").trim(),
+        assignedTo,
+        reminderMinutes: Number(data.reminderMinutes || 15),
+        messageTemplate: String(data.messageTemplate || "").trim(),
+        notes: String(data.notes || "").trim(),
+        active: String(data.active || "true") !== "false",
+        updatedAt: new Date().toISOString()
+      });
+      const savedEvent = await rpcRequest("saveEvent", {
+        id: eventId,
+        title: String(data.title || "").trim(),
+        main: String(data.main || "false") === "true",
+        date: String(data.date || "").trim(),
+        startsAt: String(data.startsAt || "").trim(),
+        location: String(data.location || "").trim(),
+        assignedTo,
         reminderMinutes: Number(data.reminderMinutes || 15),
         messageTemplate: String(data.messageTemplate || "").trim(),
         notes: String(data.notes || "").trim(),
         active: String(data.active || "true") !== "false"
       });
-      await refreshPlannerCollections();
+      upsertCachedEvent(savedEvent);
       setStatus(eventStatusEl, "Event saved to Google Sheets.", "success");
       window.setTimeout(() => {
         closeEventModal();
       }, 300);
     } catch (error) {
+      cachedEvents = previousEvents;
+      cachedShots = previousShots;
+      rerenderEventData();
       setStatus(eventStatusEl, error.message || "Unable to save event.", "error");
+    }
+  });
+
+  shotForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const previousShots = cachedShots;
+    try {
+      requirePlannerAccess();
+      setStatus(shotFormStatusEl, "Saving shot...", "pending");
+      const data = Object.fromEntries(new FormData(shotForm).entries());
+      const shotId = String(data.id || "").trim() || createClientId("shot");
+      const existingShot = cachedShots.find((item) => item.id === shotId);
+      const optimisticShot = {
+        id: shotId,
+        eventId: String(data.eventId || "").trim(),
+        title: String(data.title || "").trim(),
+        description: String(data.description || "").trim(),
+        peopleNeeded: String(data.peopleNeeded || "").trim(),
+        priority: String(data.priority || "Medium").trim(),
+        sortOrder: Number(data.sortOrder || 0),
+        notes: String(data.notes || "").trim(),
+        isComplete: String(data.isComplete || "false") === "true",
+        completedAt: existingShot?.completedAt || "",
+        createdAt: existingShot?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      upsertCachedShot(optimisticShot);
+      const savedShot = await rpcRequest("saveShot", {
+        id: shotId,
+        eventId: String(data.eventId || "").trim(),
+        title: String(data.title || "").trim(),
+        description: String(data.description || "").trim(),
+        peopleNeeded: String(data.peopleNeeded || "").trim(),
+        priority: String(data.priority || "Medium").trim(),
+        sortOrder: Number(data.sortOrder || 0),
+        notes: String(data.notes || "").trim(),
+        isComplete: String(data.isComplete || "false") === "true"
+      });
+      upsertCachedShot(savedShot);
+      setStatus(shotStatusEl, "Shot saved to Google Sheets.", "success");
+      setStatus(shotFormStatusEl, "Shot saved to Google Sheets.", "success");
+      window.setTimeout(() => {
+        closeShotModal();
+      }, 300);
+    } catch (error) {
+      cachedShots = previousShots;
+      rerenderShotData();
+      setStatus(shotFormStatusEl, error.message || "Unable to save shot.", "error");
     }
   });
 
   bedForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
+    const previousBeds = cachedBeds;
     try {
       requirePlannerAccess();
       setStatus(bedStatusEl, "Saving bed assignment...", "pending");
       const data = Object.fromEntries(new FormData(bedForm).entries());
-      await rpcRequest("saveBed", {
-        id: String(data.id || "").trim(),
+      const bedId = String(data.id || "").trim() || createClientId("bed");
+      const existingBed = cachedBeds.find((item) => item.id === bedId);
+      upsertCachedBed({
+        id: bedId,
+        lodging: String(data.lodging || "").trim(),
+        room: String(data.room || "").trim(),
+        bedLabel: String(data.bedLabel || "").trim(),
+        bedType: String(data.bedType || "").trim(),
+        capacity: Number(data.capacity || 0),
+        thursday: String(data.thursday || "").trim(),
+        friday: String(data.friday || "").trim(),
+        notes: String(data.notes || "").trim(),
+        sortOrder: existingBed?.sortOrder || 0,
+        createdAt: existingBed?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      const savedBed = await rpcRequest("saveBed", {
+        id: bedId,
         lodging: String(data.lodging || "").trim(),
         room: String(data.room || "").trim(),
         bedLabel: String(data.bedLabel || "").trim(),
@@ -2007,12 +3810,14 @@
         friday: String(data.friday || "").trim(),
         notes: String(data.notes || "").trim(),
       });
-      await refreshPlannerCollections();
+      upsertCachedBed(savedBed);
       setStatus(bedStatusEl, "Bed assignment saved to Google Sheets.", "success");
       window.setTimeout(() => {
         closeBedModal();
       }, 300);
     } catch (error) {
+      cachedBeds = previousBeds;
+      rerenderBedData();
       setStatus(bedStatusEl, error.message || "Unable to save bed assignment.", "error");
     }
   });
@@ -2020,12 +3825,35 @@
   todoForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
+    const previousTodos = cachedTodos;
     try {
       requirePlannerAccess();
       setStatus(todoStatusEl, "Saving task...", "pending");
       const data = Object.fromEntries(new FormData(todoForm).entries());
-      await rpcRequest("saveTodo", {
-        id: String(data.id || "").trim(),
+      const todoId = String(data.id || "").trim() || createClientId("todo");
+      const existingTodo = cachedTodos.find((item) => item.id === todoId);
+      const optimisticTodo = {
+        id: todoId,
+        title: String(data.title || "").trim(),
+        notes: String(data.notes || "").trim(),
+        assignedTo: String(data.assignedTo || "").trim(),
+        startDate: String(data.startDate || "").trim(),
+        dueDate: String(data.dueDate || "").trim(),
+        priority: String(data.priority || "Medium").trim(),
+        status: String(data.status || "Not Started").trim(),
+        isComplete: String(data.isComplete || "false") === "true",
+        completedAt: existingTodo?.completedAt || "",
+        imageUrl: String(data.imageUrl || "").trim(),
+        smsMessage: String(data.smsMessage || "").trim(),
+        reminderDate: String(data.reminderDate || "").trim(),
+        category: String(data.category || "").trim(),
+        tags: String(data.tags || "").trim(),
+        createdAt: existingTodo?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      upsertCachedTodo(optimisticTodo);
+      const savedTodo = await rpcRequest("saveTodo", {
+        id: todoId,
         title: String(data.title || "").trim(),
         notes: String(data.notes || "").trim(),
         assignedTo: String(data.assignedTo || "").trim(),
@@ -2040,12 +3868,14 @@
         category: String(data.category || "").trim(),
         tags: String(data.tags || "").trim()
       });
-      await refreshPlannerCollections();
+      upsertCachedTodo(savedTodo);
       setStatus(todoStatusEl, "Task saved to Google Sheets.", "success");
       window.setTimeout(() => {
         closeTodoModal();
       }, 300);
     } catch (error) {
+      cachedTodos = previousTodos;
+      rerenderTodoData();
       setStatus(todoStatusEl, error.message || "Unable to save task.", "error");
     }
   });
@@ -2071,8 +3901,28 @@
   });
 
   eventAssignedToFilterEl?.addEventListener("change", (event) => {
-    selectedEventAssignedTo = String(event.target.value || "");
+    const checkbox = event.target.closest("[data-event-assigned-to-filter]");
+    if (!checkbox) {
+      return;
+    }
+
+    selectedEventAssignedTo = Array.from(eventAssignedToFilterEl.querySelectorAll("[data-event-assigned-to-filter]:checked"))
+      .map((input) => String(input.value || "").trim())
+      .filter(Boolean);
+    updateEventAssignedToFilterSummary();
     renderEvents();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!eventAssignedToDropdownEl?.open) {
+      return;
+    }
+
+    if (eventAssignedToDropdownEl.contains(event.target)) {
+      return;
+    }
+
+    eventAssignedToDropdownEl.open = false;
   });
 
   openPersonModalButton.addEventListener("click", () => {
@@ -2083,6 +3933,16 @@
   openEventModalButton.addEventListener("click", () => {
     setActivePlannerPanel("events");
     openEventModal("Add Event");
+  });
+
+  eventDetailBackButton.addEventListener("click", () => {
+    setActivePlannerPanel("events");
+    setStatus(eventDetailStatusEl, "", "");
+  });
+
+  openShotModalButton.addEventListener("click", () => {
+    setActivePlannerPanel("shots");
+    openShotModal("Add Shot");
   });
 
   openTodoModalButton.addEventListener("click", () => {
@@ -2098,6 +3958,7 @@
   tableForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
+    const previousTables = cachedTables;
     try {
       requirePlannerAccess();
       setStatus(tableStatusEl, "Saving table...", "pending");
@@ -2108,13 +3969,30 @@
       if (!selectedTypes.length) {
         throw new Error("Select at least one type.");
       }
-      await rpcRequest("saveTable", {
-        tableName: String(data.tableName || "").trim(),
+      const tableName = String(data.tableName || "").trim();
+      const existingTable = cachedTables.find((item) => String(item.tableName || "").trim() === tableName);
+      const tableId = String(existingTable?.id || "").trim() || createClientId("table");
+      upsertCachedTable({
+        id: tableId,
+        tableName,
+        location: String(data.location || "Center").trim(),
+        order: Number(data.order || 0),
+        type: selectedTypes.join(", "),
+        count: Number(data.count || 0),
+        reservedOpenSeatPositions: existingTable?.reservedOpenSeatPositions || "",
+        createdAt: existingTable?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      const savedTable = await rpcRequest("saveTable", {
+        id: tableId,
+        tableName,
+        location: String(data.location || "Center").trim(),
+        order: Number(data.order || 0),
         type: selectedTypes.join(", "),
         count: Number(data.count || 0)
       });
+      upsertCachedTable(savedTable);
       tableForm.reset();
-      await refreshPlannerCollections();
       setStatus(tableStatusEl, "Table saved to Google Sheets.", "success");
       setActivePlannerPanel("tables");
       window.setTimeout(() => {
@@ -2122,6 +4000,8 @@
         setStatus(tableStatusEl, "Table saved to Google Sheets.", "success");
       }, 250);
     } catch (error) {
+      cachedTables = previousTables;
+      rerenderTableData();
       setStatus(tableStatusEl, error.message || "Unable to save table.", "error");
     }
   });
@@ -2168,6 +4048,16 @@
     });
   });
 
+  document.querySelector("[data-reset-shot]").addEventListener("click", () => {
+    clearShotForm();
+  });
+
+  document.querySelectorAll("[data-close-shot-modal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      closeShotModal();
+    });
+  });
+
   document.querySelector("[data-reset-bed]").addEventListener("click", () => {
     clearBedForm();
   });
@@ -2211,8 +4101,18 @@
   });
 
   eventsListEl.addEventListener("click", (event) => {
+    const workspaceButton = event.target.closest("[data-open-event-workspace]");
+    if (workspaceButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      openEventWorkspace(workspaceButton.dataset.openEventWorkspace);
+      return;
+    }
+
     const button = event.target.closest("[data-edit-event]");
     if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
     const eventItem = cachedEvents.find((item) => item.id === button.dataset.editEvent);
     if (!eventItem) return;
     setActivePlannerPanel("events");
@@ -2224,6 +4124,58 @@
       active: eventItem.active ? "true" : "false"
     });
     setStatus(eventStatusEl, `Editing ${eventItem.title}.`, "success");
+  });
+
+  shotsListEl.addEventListener("click", async (event) => {
+    const editButton = event.target.closest("[data-edit-shot]");
+    if (editButton) {
+      const shot = cachedShots.find((item) => item.id === editButton.dataset.editShot);
+      if (!shot) return;
+      setActivePlannerPanel("shots");
+      openShotModal("Edit Shot", {
+        ...shot,
+        isComplete: shot.isComplete ? "true" : "false"
+      });
+      setStatus(shotFormStatusEl, `Editing ${shot.title}.`, "success");
+      return;
+    }
+
+    const toggleButton = event.target.closest("[data-toggle-shot-complete]");
+    if (!toggleButton) return;
+
+    const shot = cachedShots.find((item) => item.id === toggleButton.dataset.toggleShotComplete);
+    if (!shot) return;
+
+    const previousShots = cachedShots;
+    try {
+      requirePlannerAccess();
+      const nextIsComplete = !shot.isComplete;
+      setStatus(shotStatusEl, shot.isComplete ? "Marking shot incomplete..." : "Marking shot complete...", "pending");
+      upsertCachedShot({
+        ...shot,
+        isComplete: nextIsComplete,
+        completedAt: nextIsComplete ? (shot.completedAt || new Date().toISOString()) : "",
+        updatedAt: new Date().toISOString()
+      });
+      const savedShot = await rpcRequest("saveShot", {
+        id: String(shot.id || "").trim(),
+        eventId: String(shot.eventId || "").trim(),
+        title: String(shot.title || "").trim(),
+        description: String(shot.description || "").trim(),
+        peopleNeeded: String(shot.peopleNeeded || "").trim(),
+        priority: String(shot.priority || "Medium").trim(),
+        sortOrder: Number(shot.sortOrder || 0),
+        notes: String(shot.notes || "").trim(),
+        isComplete: nextIsComplete,
+        completedAt: shot.completedAt || ""
+      });
+      upsertCachedShot(savedShot);
+      setStatus(shotStatusEl, !shot.isComplete ? "Shot marked complete." : "Shot marked incomplete.", "success");
+    } catch (error) {
+      cachedShots = previousShots;
+      rerenderShotData();
+      setStatus(shotStatusEl, error.message || "Unable to update shot.", "error");
+    }
   });
 
   todosListEl.addEventListener("click", (event) => {
@@ -2296,7 +4248,55 @@
     if (openButton) {
       const table = cachedTables.find((item) => item.id === openButton.dataset.tableId);
       if (!table) return;
-      openAddGuestModal(table);
+      openAddGuestModal(table, { returnFocusEl: openButton });
+      return;
+    }
+
+    const reserveButton = event.target.closest("[data-toggle-reserved-seat]");
+    if (reserveButton) {
+      try {
+        requirePlannerAccess();
+        setStatus(tableStatusEl, "Saving reserved open spot...", "pending");
+        await toggleReservedOpenSeat(reserveButton.dataset.tableId, reserveButton.dataset.seatNumber);
+      } catch (error) {
+        setStatus(tableStatusEl, error.message || "Unable to save reserved open spot.", "error");
+      }
+      return;
+    }
+
+    const handleButton = event.target.closest("[data-table-guest-handle]");
+    if (handleButton) {
+      requirePlannerAccess();
+      const rowNumber = Number(handleButton.dataset.rowNumber || 0);
+      if (activeTableDrag && Number(activeTableDrag.rowNumber || 0) === rowNumber) {
+        clearActiveTableDrag();
+        setStatus(tableStatusEl, "Move cancelled.", "success");
+      } else {
+        setActiveTableDrag(rowNumber);
+        setStatus(tableStatusEl, "Drag or tap a drop spot to move this guest.", "pending");
+      }
+      return;
+    }
+
+    const dropzone = event.target.closest("[data-table-dropzone]");
+    if (dropzone && activeTableDrag) {
+      try {
+        requirePlannerAccess();
+        if (dropzone.dataset.dropEnabled !== "true") {
+          return;
+        }
+        setStatus(tableStatusEl, "Moving guest...", "pending");
+        await moveGuestToTablePosition(activeTableDrag.rowNumber, dropzone.dataset.tableName, dropzone.dataset.dropSeat);
+        activeTableDrag = null;
+        renderRsvps();
+        renderGuests();
+        renderTables();
+        renderSummary();
+        setStatus(tableStatusEl, "Guest moved.", "success");
+      } catch (error) {
+        setStatus(tableStatusEl, error.message || "Unable to move guest.", "error");
+        await refreshRsvps();
+      }
       return;
     }
 
@@ -2318,6 +4318,79 @@
     }
   });
 
+  tablesListEl.addEventListener("dragstart", (event) => {
+    const handleButton = event.target.closest("[data-table-guest-handle]");
+    if (!handleButton) {
+      return;
+    }
+
+    requirePlannerAccess();
+    setActiveTableDrag(handleButton.dataset.rowNumber);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(handleButton.dataset.rowNumber || ""));
+    }
+  });
+
+  tablesListEl.addEventListener("dragend", () => {
+    syncTableDragUi();
+  });
+
+  tablesListEl.addEventListener("dragover", (event) => {
+    const dropzone = event.target.closest("[data-table-dropzone]");
+    if (!dropzone || !activeTableDrag || dropzone.dataset.dropEnabled !== "true") {
+      return;
+    }
+
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+  });
+
+  tablesListEl.addEventListener("dragenter", (event) => {
+    const dropzone = event.target.closest("[data-table-dropzone]");
+    if (!dropzone || !activeTableDrag || dropzone.dataset.dropEnabled !== "true") {
+      return;
+    }
+
+    dropzone.classList.add("is-active-dropzone");
+  });
+
+  tablesListEl.addEventListener("dragleave", (event) => {
+    const dropzone = event.target.closest("[data-table-dropzone]");
+    if (!dropzone) {
+      return;
+    }
+
+    dropzone.classList.remove("is-active-dropzone");
+  });
+
+  tablesListEl.addEventListener("drop", async (event) => {
+    const dropzone = event.target.closest("[data-table-dropzone]");
+    if (!dropzone || !activeTableDrag || dropzone.dataset.dropEnabled !== "true") {
+      return;
+    }
+
+    event.preventDefault();
+    dropzone.classList.remove("is-active-dropzone");
+
+    try {
+      requirePlannerAccess();
+      setStatus(tableStatusEl, "Moving guest...", "pending");
+      await moveGuestToTablePosition(activeTableDrag.rowNumber, dropzone.dataset.tableName, dropzone.dataset.dropSeat);
+      activeTableDrag = null;
+      renderRsvps();
+      renderGuests();
+      renderTables();
+      renderSummary();
+      setStatus(tableStatusEl, "Guest moved.", "success");
+    } catch (error) {
+      setStatus(tableStatusEl, error.message || "Unable to move guest.", "error");
+      await refreshRsvps();
+    }
+  });
+
   routeLinks.forEach((link) => {
     link.addEventListener("click", (event) => {
       const route = link.dataset.routeLink;
@@ -2330,7 +4403,34 @@
   plannerSectionButtons.forEach((button) => {
     button.addEventListener("click", () => {
       setActivePlannerPanel(button.dataset.plannerSection);
+      if (plannerSidebarMediaQuery.matches) {
+        closePlannerSidebar();
+      }
     });
+  });
+
+  plannerSidebarMediaQuery.addEventListener("change", (event) => {
+    if (!event.matches) {
+      plannerSidebarOpen = false;
+    }
+    syncPlannerSidebar();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!plannerSidebarMediaQuery.matches || !plannerSidebarOpen || !viewerProfile.isAdmin) {
+      return;
+    }
+
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    if (target.closest("#plannerSidebar") || target.closest("#plannerMenuToggle")) {
+      return;
+    }
+
+    closePlannerSidebar();
   });
 
   window.addEventListener("popstate", () => {
@@ -2340,6 +4440,11 @@
   });
 
   window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && plannerSidebarMediaQuery.matches && plannerSidebarOpen && viewerProfile.isAdmin) {
+      closePlannerSidebar();
+      return;
+    }
+
     if (event.key === "Escape" && !personModal.hidden) {
       closePersonModal();
       return;
@@ -2347,6 +4452,11 @@
 
     if (event.key === "Escape" && !eventModal.hidden) {
       closeEventModal();
+      return;
+    }
+
+    if (event.key === "Escape" && !shotModal.hidden) {
+      closeShotModal();
       return;
     }
 

@@ -1,12 +1,14 @@
 export const ADMIN_SHEET = "Admins";
 export const PEOPLE_SHEET = "People";
 export const EVENTS_SHEET = "Events";
+export const SHOTS_SHEET = "Shot List";
 export const BEDS_SHEET = "Beds";
 export const TABLES_SHEET = "Tables";
 export const TODO_SHEET = "Todo";
 export const GOOGLE_CLIENT_ID_PROPERTY_KEY = "GOOGLE_CLIENT_ID";
 export const SPREADSHEET_ID_PROPERTY_KEY = "SPREADSHEET_ID";
 export const DASHBOARD_PASSWORD_HASH_PROPERTY_KEY = "DASHBOARD_PASSWORD_HASH";
+export const OPENAI_API_KEY_PROPERTY_KEY = "OPENAI_API_KEY";
 export const RSVP_SHEET = "RSVPs";
 export const RSVP_TAB_SHEET = "RSVP";
 export const COMMENT_SHEET = "Comments";
@@ -41,6 +43,20 @@ export const EVENT_HEADERS = [
   "Active",
   "UpdatedAt"
 ];
+export const SHOT_HEADERS = [
+  "Id",
+  "EventId",
+  "Title",
+  "Description",
+  "PeopleNeeded",
+  "Priority",
+  "SortOrder",
+  "Notes",
+  "IsComplete",
+  "CompletedAt",
+  "CreatedAt",
+  "UpdatedAt"
+];
 export const BED_HEADERS = [
   "Id",
   "Lodging",
@@ -55,8 +71,11 @@ export const BED_HEADERS = [
 export const TABLE_HEADERS = [
   "Id",
   "Table Name",
+  "Location",
+  "Order",
   "Type",
   "Count",
+  "Reserved Open Seat Positions",
   "CreatedAt",
   "UpdatedAt"
 ];

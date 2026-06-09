@@ -23,11 +23,19 @@ export function ensureSheet(name: string, headers: string[]) {
   if (sheet.getLastRow() === 0) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   } else {
-    const existing = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), headers.length)).getValues()[0].map(String);
-    headers.forEach((header, index) => {
-      if (existing[index] !== header) {
-        sheet!.getRange(1, index + 1).setValue(header);
+    const existing = sheet
+      .getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1))
+      .getValues()[0]
+      .map((value) => String(value || "").trim());
+
+    headers.forEach((header) => {
+      if (existing.includes(header)) {
+        return;
       }
+
+      const nextColumn = sheet!.getLastColumn() + 1;
+      sheet!.getRange(1, nextColumn).setValue(header);
+      existing.push(header);
     });
   }
 
@@ -57,17 +65,46 @@ export function getSheetByName(sheetName: string) {
 export function upsertRow(sheetName: string, headers: string[], id: string, values: PlannerRow) {
   const sheet = ensureSheet(sheetName, headers);
   const rows = sheet.getDataRange().getValues();
-  const idIndex = headers.indexOf("Id");
+  const actualHeaders = rows[0].map((header) => String(header || "").trim());
+  const idIndex = actualHeaders.indexOf("Id");
+  if (idIndex < 0) {
+    throw new Error(`${sheetName} sheet is missing the Id column.`);
+  }
+
   const targetRow = rows.findIndex((row, index) => index > 0 && String(row[idIndex] || "").trim() === id);
-  const normalized = headers.map((header) => values[header] ?? "");
+  const existingRow = targetRow >= 0 ? rows[targetRow] : null;
+  const normalized = actualHeaders.map((header, index) => {
+    if (Object.prototype.hasOwnProperty.call(values, header)) {
+      return values[header] ?? "";
+    }
+
+    return existingRow ? existingRow[index] ?? "" : "";
+  });
 
   if (targetRow >= 0) {
-    sheet.getRange(targetRow + 1, 1, 1, headers.length).setValues([normalized]);
+    sheet.getRange(targetRow + 1, 1, 1, actualHeaders.length).setValues([normalized]);
     return targetRow + 1;
   }
 
   sheet.appendRow(normalized);
   return sheet.getLastRow();
+}
+
+export function deleteRowById(sheetName: string, headers: string[], id: string) {
+  const sheet = ensureSheet(sheetName, headers);
+  const rows = sheet.getDataRange().getValues();
+  const actualHeaders = rows[0].map((header) => String(header || "").trim());
+  const idIndex = actualHeaders.indexOf("Id");
+  if (idIndex < 0) {
+    throw new Error(`${sheetName} sheet is missing the Id column.`);
+  }
+
+  const targetRow = rows.findIndex((row, index) => index > 0 && String(row[idIndex] || "").trim() === id);
+  if (targetRow < 0) {
+    throw new Error(`${sheetName} row not found.`);
+  }
+
+  sheet.deleteRow(targetRow + 1);
 }
 
 export function toIsoString(value: unknown) {

@@ -15,6 +15,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <script>
+      (function () {
+        var pathname = String(window.location.pathname || "").toLowerCase();
+        if (pathname.endsWith("/dashboard.html") || pathname.endsWith("dashboard.html")) {
+          document.documentElement.setAttribute("data-dashboard-entry", "planner");
+        }
+      })();
+    </script>
     <style>
       :root {
         color-scheme: light;
@@ -55,6 +63,10 @@
         overflow-x: hidden;
       }
 
+      html[data-dashboard-entry="planner"] body {
+        background: linear-gradient(180deg, #fcfaf8 0%, #f5efea 100%);
+      }
+
       img {
         display: block;
         max-width: 100%;
@@ -62,6 +74,18 @@
 
       a {
         color: inherit;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
       }
 
       .hero {
@@ -72,6 +96,14 @@
         align-items: end;
         overflow: hidden;
         color: var(--white);
+      }
+
+      html[data-dashboard-entry="planner"] [data-view="home"] {
+        display: none !important;
+      }
+
+      html[data-dashboard-entry="planner"] .planner-shell[hidden] {
+        display: block !important;
       }
 
       .hero__slides,
@@ -471,6 +503,7 @@
         grid-template-columns: max-content minmax(0, 1fr);
         gap: 0;
         align-items: stretch;
+        position: relative;
         min-height: calc(100vh - 7.5rem);
         min-height: calc(100svh - 7.5rem);
         padding: 0 1rem;
@@ -496,6 +529,79 @@
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
+      }
+
+      .planner-banner__titlebar h2 {
+        margin: 0;
+      }
+
+      .planner-heading__mobile-suffix {
+        display: inline;
+      }
+
+      .planner-banner__actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-left: auto;
+      }
+
+      .planner-menu-toggle {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: #6f1d2a;
+        box-shadow: none;
+      }
+
+      .planner-menu-toggle:hover,
+      .planner-menu-toggle:focus-visible {
+        background: transparent;
+      }
+
+      .planner-menu-toggle svg {
+        width: 1.15rem;
+        height: 1.15rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .planner-signout-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 2.75rem;
+        width: 2.75rem;
+        height: 2.75rem;
+        padding: 0;
+        border-color: transparent;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .planner-signout-button:hover,
+      .planner-signout-button:focus-visible {
+        background: transparent;
+      }
+
+      .planner-signout-button svg {
+        width: 1rem;
+        height: 1rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.9;
+        stroke-linecap: round;
+        stroke-linejoin: round;
       }
 
       .planner-shell__intro .planner-summary,
@@ -651,6 +757,7 @@
         min-width: 0;
         display: grid;
         align-self: stretch;
+        min-height: 0;
         min-height: 100%;
       }
 
@@ -744,17 +851,25 @@
         margin: 0.75rem 0 1rem;
       }
 
-      .planner-filter-row label {
+      .planner-filter-field {
         display: grid;
-        gap: 0.35rem;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 0.65rem;
+        min-width: 0;
+      }
+
+      .planner-filter-field label,
+      .planner-filter-field__label {
         color: var(--muted);
         font-size: 0.82rem;
         font-weight: 800;
         letter-spacing: 0.04em;
         text-transform: uppercase;
+        white-space: nowrap;
       }
 
-      .planner-filter-row select {
+      .planner-filter-field select {
         width: 100%;
         padding: 0.75rem 0.85rem;
         border: 1px solid var(--planner-border);
@@ -762,6 +877,106 @@
         background: #fffdf9;
         color: var(--ink);
         font: inherit;
+      }
+
+      .planner-filter-dropdown {
+        position: relative;
+        min-width: 0;
+      }
+
+      .planner-filter-dropdown summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        width: 100%;
+        padding: 0.75rem 0.85rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 10px;
+        background: #fffdf9;
+        color: var(--ink);
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        list-style: none;
+        user-select: none;
+      }
+
+      .planner-filter-dropdown summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .planner-filter-dropdown summary::after {
+        content: "";
+        flex: 0 0 auto;
+        width: 0.55rem;
+        height: 0.55rem;
+        border-right: 2px solid currentColor;
+        border-bottom: 2px solid currentColor;
+        transform: rotate(45deg) translateY(-1px);
+        transform-origin: center;
+        opacity: 0.75;
+      }
+
+      .planner-filter-dropdown[open] summary {
+        border-color: rgba(164, 62, 80, 0.6);
+        box-shadow: 0 0 0 3px rgba(164, 62, 80, 0.14);
+      }
+
+      .planner-filter-dropdown[open] summary::after {
+        transform: rotate(-135deg) translateY(-1px);
+      }
+
+      .planner-filter-dropdown__summary {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .planner-filter-checklist {
+        position: absolute;
+        top: calc(100% + 0.35rem);
+        left: 0;
+        right: 0;
+        z-index: 20;
+        display: grid;
+        gap: 0.45rem;
+        max-height: 14rem;
+        padding: 0.75rem 0.85rem;
+        overflow: auto;
+        border: 1px solid var(--planner-border);
+        border-radius: 10px;
+        background: #fffdf9;
+      }
+
+      .planner-filter-checklist--empty {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .planner-filter-checklist__option {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--ink);
+        font-size: 0.95rem;
+        font-weight: 600;
+        letter-spacing: normal;
+        text-transform: none;
+        line-height: 1.2;
+      }
+
+      .planner-filter-checklist__option input {
+        display: inline-block;
+        flex: 0 0 auto;
+        width: 1rem;
+        height: 1rem;
+        margin: 0;
+      }
+
+      .planner-filter-checklist__option span {
+        display: inline;
       }
 
       .card {
@@ -821,6 +1036,211 @@
         stroke-width: 1.9;
         stroke-linecap: round;
         stroke-linejoin: round;
+      }
+
+      .todo-accordion .guest-card {
+        background: #fcf4f5;
+      }
+
+      .todo-accordion .guest-card__body {
+        gap: 0.65rem;
+        padding: 0.75rem 0.95rem 0.85rem;
+        background: #fff8f9;
+      }
+
+      .todo-accordion .guest-card__grid {
+        display: block;
+        column-count: 2;
+        column-gap: 1.25rem;
+      }
+
+      .todo-accordion .guest-card__field {
+        display: inline-grid;
+        width: 100%;
+        gap: 0.06rem;
+        margin-bottom: 0.75rem;
+        break-inside: avoid;
+      }
+
+      .todo-accordion .guest-card__field--full {
+        column-span: all;
+      }
+
+      .shot-groups {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .shot-group {
+        border: 1px solid var(--planner-border);
+        border-radius: 10px;
+        background: #fffdf9;
+        overflow: hidden;
+      }
+
+      .shot-group summary {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.95rem 1rem;
+        background: #f4e6e3;
+        color: #561d28;
+        cursor: pointer;
+        list-style: none;
+      }
+
+      .shot-group summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .shot-group__summary-main {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        align-items: baseline;
+        gap: 0.75rem;
+      }
+
+      .shot-group__summary-main h3,
+      .shot-group__summary-main p {
+        margin: 0;
+      }
+
+      .shot-group__toggle {
+        flex: 0 0 auto;
+        order: -1;
+        font-size: 1.15rem;
+        font-weight: 800;
+      }
+
+      .shot-group[open] .shot-group__toggle::before {
+        content: "-";
+      }
+
+      .shot-group:not([open]) .shot-group__toggle::before {
+        content: "+";
+      }
+
+      .shot-group__list {
+        display: grid;
+        gap: 0.7rem;
+        padding: 0.9rem 0.95rem 0.95rem;
+        background: #fff8f9;
+      }
+
+      .shot-card {
+        display: grid;
+        gap: 0.65rem;
+        border-width: 1px;
+      }
+
+      .shot-card--complete {
+        background: #f2f8ec;
+        border-color: rgba(95, 111, 58, 0.34);
+      }
+
+      .shot-card--pending {
+        background: #fcf2f3;
+        border-color: rgba(153, 85, 102, 0.26);
+      }
+
+      .shot-card__header {
+        display: flex;
+        align-items: start;
+        gap: 0.8rem;
+      }
+
+      .shot-card__title {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: grid;
+        gap: 0.25rem;
+      }
+
+      .shot-card__title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .shot-card__title h4,
+      .shot-card__title p {
+        margin: 0;
+      }
+
+      .shot-card__title-main {
+        min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .shot-card__title-edit {
+        min-width: 1.7rem;
+        min-height: 1.7rem;
+        padding: 0.2rem;
+        border-radius: 999px;
+      }
+
+      .shot-card__check {
+        min-width: 2rem;
+        width: 2rem;
+        min-height: 2rem;
+        padding: 0;
+        border-radius: 7px;
+        font-size: 1rem;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: transparent;
+        background: #fffdf9;
+        border-color: rgba(153, 85, 102, 0.34);
+      }
+
+      .shot-card__check[aria-pressed="true"] {
+        background: #5f6f3a;
+        border-color: #5f6f3a;
+        color: #fffdf9;
+      }
+
+      .shot-card__priority {
+        flex: 0 0 auto;
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: var(--muted);
+        font-size: 0.86rem;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .shot-card__priority-icon {
+        width: 0.72rem;
+        height: 0.72rem;
+        border-radius: 999px;
+        display: inline-block;
+      }
+
+      .shot-card__priority--high .shot-card__priority-icon {
+        background: #8f1d1d;
+      }
+
+      .shot-card__priority--medium .shot-card__priority-icon {
+        background: #c7832b;
+      }
+
+      .shot-card__priority--low .shot-card__priority-icon {
+        background: #6f7c47;
+      }
+
+      .shot-card__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem 0.8rem;
+        color: var(--muted);
+        font-size: 0.9rem;
       }
 
       .dashboard-entry {
@@ -895,19 +1315,26 @@
 
       .bed-table-wrap {
         height: 100%;
+        min-height: 0;
       }
 
       .bed-table th,
       .bed-table td {
-        padding: 0.45rem 0.65rem;
+        padding: 0.45rem 0.5rem;
       }
 
       .bed-table td {
         vertical-align: middle;
       }
 
+      .bed-table th:nth-child(2),
+      .bed-table td:nth-child(2) {
+        padding-inline: 0.35rem;
+      }
+
       .bed-table__bed {
         font-weight: 700;
+        font-size: 0.88rem;
         white-space: nowrap;
       }
 
@@ -958,6 +1385,381 @@
         background: #fffdf9;
         color: var(--ink);
         font: inherit;
+      }
+
+      .planner-panel[data-planner-panel="guests"] {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .planner-panel[data-planner-panel="beds"] {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding-inline: 0.65rem;
+        padding-bottom: 0.65rem;
+      }
+
+      .planner-panel[data-planner-panel="rsvps"] {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .planner-panel[data-planner-panel="rsvps"] .toolbar {
+        flex: 0 0 auto;
+      }
+
+      .planner-panel[data-planner-panel="rsvps"] #rsvpList {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+      }
+
+      .planner-panel[data-planner-panel="rsvps"] #rsvpStatus {
+        margin-top: 0.75rem;
+      }
+
+      .planner-panel[data-planner-panel="tables"] {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .planner-panel[data-planner-panel="tables"] .list-header,
+      .planner-panel[data-planner-panel="tables"] #tableStatus {
+        flex: 0 0 auto;
+      }
+
+      .planner-panel[data-planner-panel="tables"] #tablesList {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+      }
+
+      .planner-panel[data-planner-panel="events"],
+      .planner-panel[data-planner-panel="event-detail"],
+      .planner-panel[data-planner-panel="shots"],
+      .planner-panel[data-planner-panel="todos"] {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .planner-panel[data-planner-panel="events"] .list-header,
+      .planner-panel[data-planner-panel="events"] .planner-filter-row,
+      .planner-panel[data-planner-panel="event-detail"] .list-header,
+      .planner-panel[data-planner-panel="shots"] .list-header,
+      .planner-panel[data-planner-panel="shots"] #shotStatus,
+      .planner-panel[data-planner-panel="todos"] .list-header {
+        flex: 0 0 auto;
+      }
+
+      .planner-panel[data-planner-panel="events"] #eventsList {
+        flex: 0 0 auto;
+        min-height: 0;
+        max-height: none;
+      }
+
+      .planner-panel[data-planner-panel="shots"] #shotsList,
+      .planner-panel[data-planner-panel="todos"] #todosList {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+      }
+
+      .planner-panel[data-planner-panel="event-detail"] {
+        gap: 1rem;
+      }
+
+      .event-detail-shell {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .event-detail-header {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .event-detail-header__copy {
+        display: grid;
+        gap: 0.25rem;
+      }
+
+      .event-detail-header__copy p,
+      .event-detail-section__header p,
+      .event-detail-empty p {
+        margin: 0;
+      }
+
+      .event-detail-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: flex-end;
+      }
+
+      .event-detail-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+        gap: 1rem;
+        align-items: start;
+      }
+
+      .event-detail-main,
+      .event-detail-side {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .event-detail-card {
+        display: grid;
+        gap: 0.9rem;
+        padding: 1rem 1.05rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 12px;
+        background: #fffdf9;
+      }
+
+      .event-detail-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.85rem;
+      }
+
+      .event-detail-meta .guest-card__field {
+        margin: 0;
+      }
+
+      .event-detail-section__header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .event-detail-section__header h4,
+      .event-detail-card h4,
+      .event-detail-prompt-output h4 {
+        margin: 0;
+      }
+
+      .event-detail-empty {
+        padding: 1rem;
+        border: 1px dashed rgba(89, 0, 0, 0.18);
+        border-radius: 10px;
+        background: rgba(244, 230, 227, 0.45);
+      }
+
+      .event-detail-ai-form {
+        display: grid;
+        gap: 0.85rem;
+      }
+
+      .event-detail-ai-form textarea {
+        min-height: 9rem;
+        resize: vertical;
+      }
+
+      .event-detail-ai-options {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.65rem;
+      }
+
+      .event-detail-ai-option {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.75rem 0.8rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 10px;
+        background: #fff8f9;
+        font-size: 0.92rem;
+        font-weight: 700;
+      }
+
+      .event-detail-ai-option input {
+        margin: 0;
+      }
+
+      .event-detail-prompt-output {
+        display: grid;
+        gap: 0.6rem;
+      }
+
+      .event-detail-prompt-output textarea {
+        min-height: 16rem;
+        resize: vertical;
+        font-family: "Consolas", "Courier New", monospace;
+        font-size: 0.9rem;
+        line-height: 1.45;
+      }
+
+      .event-detail-stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+      }
+
+      .event-detail-stat {
+        padding: 0.85rem 0.9rem;
+        border-radius: 10px;
+        background: linear-gradient(180deg, rgba(244, 230, 227, 0.92), rgba(255, 253, 249, 0.92));
+        border: 1px solid var(--planner-border);
+      }
+
+      .event-detail-stat span,
+      .event-detail-stat strong {
+        display: block;
+      }
+
+      .event-detail-stat span {
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .event-detail-stat strong {
+        margin-top: 0.2rem;
+        color: #6f1d2a;
+        font-size: 1.55rem;
+      }
+
+      .event-detail-shot-list {
+        display: grid;
+        gap: 0.7rem;
+      }
+
+      .event-detail-shot-list .shot-card {
+        background: #fff8f9;
+      }
+
+      .event-detail-shot-title {
+        min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .event-detail-shot-delete {
+        min-width: 1.7rem;
+        min-height: 1.7rem;
+        padding: 0.2rem;
+        border-radius: 999px;
+        color: #7a2340;
+      }
+
+      .event-detail-shot-delete svg {
+        width: 0.95rem;
+        height: 0.95rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .event-ai-plan {
+        display: grid;
+        gap: 0.9rem;
+      }
+
+      .event-ai-plan__section {
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .event-ai-plan__section p,
+      .event-ai-plan__section ul {
+        margin: 0;
+      }
+
+      .event-ai-plan__cards {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .event-ai-plan__card {
+        padding: 0.85rem 0.9rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 10px;
+        background: #fff8f9;
+      }
+
+      .event-ai-plan__card strong,
+      .event-ai-plan__card p {
+        display: block;
+      }
+
+      .event-ai-plan__card p {
+        margin: 0.25rem 0 0;
+      }
+
+      .event-ai-plan__list {
+        padding-left: 1.1rem;
+      }
+
+      #tablesList {
+        display: grid;
+        gap: 1rem;
+        align-content: start;
+      }
+
+      .table-side-group {
+        display: grid;
+        gap: 0.8rem;
+        min-width: 0;
+      }
+
+      .table-side-group__header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0 0.2rem;
+      }
+
+      .table-side-group__header h4 {
+        margin: 0;
+        color: #6f1d2a;
+        font-size: 1rem;
+      }
+
+      .table-side-group__header .meta {
+        margin: 0;
+      }
+
+      .table-side-group__list {
+        display: grid;
+        gap: 1rem;
+        align-content: start;
+      }
+
+      .planner-panel[data-planner-panel="guests"] #guestsList {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+      }
+
+      .planner-panel[data-planner-panel="guests"] #guestsStatus {
+        margin-top: 0.75rem;
+      }
+
+      .planner-panel[data-planner-panel="beds"] #bedsList {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: auto;
+      }
+
+      .planner-panel[data-planner-panel="beds"] #bedsInlineStatus {
+        margin-top: 0.75rem;
       }
 
       .type-options {
@@ -1016,21 +1818,40 @@
       .guest-card {
         border: 1px solid var(--planner-border);
         border-radius: 8px;
-        background: #fffdf9;
+        background: #fcf4f5;
         overflow: hidden;
       }
 
       .guest-card summary {
         display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: 1rem;
-        padding: 0.95rem 1rem;
-        background: #6f1d2a;
-        color: #fff8f6;
+        padding: 0.8rem 0.95rem;
+        color: #561d28;
         cursor: pointer;
         list-style: none;
         font-weight: 800;
+      }
+
+      .guest-card--pending summary {
+        background: #efdadd;
+      }
+
+      .guest-card--pending .guest-card__body {
+        background: #fff8f9;
+      }
+
+      .guest-card--attending summary {
+        background: #dcebd7;
+        color: #284a2f;
+      }
+
+      .guest-card--attending .accordion-summary__meta {
+        color: rgba(40, 74, 47, 0.9);
+      }
+
+      .guest-card--attending .guest-card__body {
+        background: #f4fbf1;
       }
 
       .guest-card summary::-webkit-details-marker {
@@ -1038,27 +1859,73 @@
       }
 
       .guest-card summary::after {
-        content: "+";
-        flex: 0 0 auto;
-        color: currentColor;
-        font-size: 1.15rem;
+        content: none;
       }
 
       .guest-card[open] summary::after {
         content: "−";
       }
 
-      .guest-card__meta {
-        color: rgba(255, 248, 246, 0.82);
-        font-weight: 500;
-        font-size: 0.92rem;
+      .guest-card[open] summary {
+        border-bottom: 1px solid rgba(111, 29, 42, 0.14);
+      }
+
+      .accordion-summary__main {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.7rem;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+
+      .accordion-toggle {
+        flex: 0 0 auto;
+        width: 0.9rem;
+        text-align: center;
+        font-size: 1.15rem;
+        font-weight: 800;
+      }
+
+      .accordion-title {
+        min-width: 0;
+      }
+
+      .event-accordion__title-main {
+        min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .accordion-summary__meta {
+        font-size: 0.9rem;
+        color: rgba(86, 29, 40, 0.9);
+        white-space: nowrap;
+      }
+
+      .accordion-summary__meta--end {
+        flex: 0 0 auto;
+        margin-left: auto;
+        text-align: right;
+      }
+
+      .guest-card[open] .accordion-toggle {
+        font-size: 1.2rem;
+      }
+
+      .guest-card[open] .accordion-toggle::before {
+        content: "-";
+      }
+
+      .guest-card:not([open]) .accordion-toggle::before {
+        content: "+";
       }
 
       .guest-card__body {
         display: grid;
-        gap: 0.75rem;
-        padding: 0 1rem 1rem;
-        border-top: 1px solid var(--planner-border);
+        gap: 0.65rem;
+        padding: 0.75rem 0.95rem 0.85rem;
+        background: #fff8f9;
       }
 
       .guest-card__grid {
@@ -1169,6 +2036,28 @@
         min-width: 0;
       }
 
+      .event-accordion__title-edit {
+        min-width: 0;
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        color: #561d28;
+      }
+
+      .event-accordion__title-edit:hover,
+      .event-accordion__title-edit:focus-visible {
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .event-accordion__title-edit svg {
+        width: 0.95rem;
+        height: 0.95rem;
+        stroke-width: 2.35;
+      }
+
       .event-accordion .guest-card__grid {
         display: block;
         column-count: 2;
@@ -1187,16 +2076,30 @@
         column-span: all;
       }
 
+      .guest-card[open] summary::after {
+        content: none;
+      }
+
       .table-control-row {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(18rem, 28rem);
+        display: flex;
         align-items: start;
         gap: 0.85rem 1rem;
-        margin-top: 0.75rem;
+        margin: -0.95rem -1rem 0;
+        padding: 1rem;
+        border-radius: 8px 8px 0 0;
+        background: linear-gradient(135deg, #a74f69, #8f2f4c);
+        color: #fff7f8;
       }
 
       .table-control-row .meta {
         margin: 0;
+        color: rgba(255, 247, 248, 0.88);
+      }
+
+      .table-control-row .toolbar {
+        margin-left: auto;
+        justify-content: flex-end;
+        flex: 0 0 auto;
       }
 
       .table-control-row .guest-card__field {
@@ -1227,6 +2130,7 @@
 
       .table-control-row__title h3 {
         margin: 0;
+        color: inherit;
       }
 
       .table-control-row__details {
@@ -1235,14 +2139,77 @@
         gap: 0.4rem 1rem;
       }
 
+      .table-control-row .button--icon {
+        margin-left: auto;
+        justify-self: end;
+        align-self: start;
+        background: #fff7f8;
+        color: #8f2f4c;
+        border-color: rgba(255, 247, 248, 0.9);
+      }
+
+      .table-control-row .button--icon:hover:not(:disabled),
+      .table-control-row .button--icon:focus-visible {
+        background: #ffffff;
+        color: #7a2340;
+      }
+
       .table-assignment-row {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 0.75rem;
       }
 
       .table-assignment-row strong {
         margin: 0;
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      .table-assignment-row__meta {
+        min-width: 0;
+        flex: 1 1 auto;
+        display: flex;
+        align-items: center;
+      }
+
+      .table-assignment-row__actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        flex: 0 0 auto;
+        margin-left: auto;
+      }
+
+      .table-drag-handle {
+        min-width: 1.9rem;
+        min-height: 1.9rem;
+        padding: 0.25rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: grab;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        color: #8f2f4c;
+        touch-action: none;
+      }
+
+      .table-drag-handle:active {
+        cursor: grabbing;
+      }
+
+      .table-drag-handle svg {
+        width: 0.9rem;
+        height: 0.9rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.9;
+        stroke-linecap: round;
+        stroke-linejoin: round;
       }
 
       .table-remove-button {
@@ -1274,10 +2241,83 @@
         margin-top: 0.9rem;
       }
 
+      .table-seat {
+        display: grid;
+        gap: 0.65rem;
+        padding: 0.8rem 0.9rem;
+        border: 1px solid rgba(143, 47, 76, 0.14);
+        border-radius: 0.95rem;
+        background: rgba(255, 253, 249, 0.94);
+        transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease, opacity 160ms ease;
+      }
+
+      .table-seat.is-drag-source {
+        opacity: 0.55;
+      }
+
+      .table-seat__hint {
+        display: block;
+        color: #8f2f4c;
+        font-size: 0.78rem;
+        font-weight: 700;
+        opacity: 0;
+        transition: opacity 160ms ease;
+      }
+
+      .is-table-drag-active .table-seat.is-drop-available .table-seat__hint,
+      .table-seat--empty .table-seat__hint {
+        opacity: 1;
+      }
+
+      .table-seat--empty {
+        border-style: dashed;
+        background: rgba(255, 247, 248, 0.55);
+      }
+
+      .table-seat--reserved {
+        border-color: rgba(122, 35, 64, 0.32);
+        background: rgba(255, 241, 244, 0.78);
+      }
+
+      .table-seat__empty {
+        display: grid;
+        gap: 0.25rem;
+        align-content: center;
+        min-height: 100%;
+        color: var(--muted);
+      }
+
+      .table-seat__empty strong {
+        color: var(--ink);
+      }
+
+      .table-seat__toggle {
+        justify-self: start;
+        margin-top: 0.35rem;
+        padding: 0.35rem 0.65rem;
+        font-size: 0.82rem;
+      }
+
       .table-assignment-list .dashboard-entry {
         padding-top: 0;
         margin-top: 0;
         border-top: 0;
+      }
+
+      .table-seat.is-drop-available {
+        cursor: pointer;
+        border-color: rgba(143, 47, 76, 0.42);
+        background: rgba(255, 247, 248, 0.92);
+      }
+
+      .table-seat.is-active-dropzone {
+        border-color: #8f2f4c;
+        background: #fff;
+        box-shadow: 0 0 0 2px rgba(143, 47, 76, 0.12);
+      }
+
+      .table-seat[aria-disabled="true"] {
+        cursor: default;
       }
 
       form {
@@ -1412,8 +2452,41 @@
         box-shadow: 0 22px 56px rgba(43, 30, 29, 0.18);
       }
 
+      .modal__header {
+        margin-bottom: 1rem;
+        padding-right: 2.5rem;
+      }
+
       .modal__dialog h3 {
         margin-bottom: 0.4rem;
+      }
+
+      .modal__close {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        background: #8f2f4c;
+        color: #fff7f4;
+        font: inherit;
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1;
+        cursor: pointer;
+        box-shadow: 0 8px 20px rgba(143, 47, 76, 0.24);
+      }
+
+      .modal__close:hover,
+      .modal__close:focus-visible {
+        border-color: #8f2f4c;
+        background: #7d2943;
+        outline: none;
       }
 
       [hidden] {
@@ -1435,13 +2508,98 @@
         }
 
         .planner-banner__titlebar {
-          align-items: flex-start;
-          flex-direction: column;
+          align-items: center;
+          flex-direction: row;
+          flex-wrap: nowrap;
+        }
+
+        .planner-banner__actions {
+          width: auto;
+          flex: 0 0 auto;
+          justify-content: flex-end;
+        }
+
+        .planner-menu-toggle {
+          display: inline-flex;
+        }
+
+        .planner-shell__layout {
+          gap: 1rem;
+          width: 100vw;
+          max-width: 100vw;
+          margin-inline: calc(50% - 50vw);
+          height: calc(100dvh - 5.4rem);
+          min-height: calc(100vh - 5.4rem);
+          min-height: calc(100svh - 5.4rem);
+          padding-inline: 0;
+        }
+
+        .planner-stage {
+          height: 100%;
+        }
+
+        #tablesList {
+          grid-template-columns: 1fr;
+        }
+
+        .table-side-group--head {
+          order: 1;
+        }
+
+        .table-side-group--food {
+          order: 2;
+        }
+
+        .table-side-group--bar {
+          order: 3;
+        }
+
+        .planner-shell__layout::before {
+          content: "";
+          position: fixed;
+          inset: 0;
+          background: rgba(30, 20, 18, 0.18);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 180ms ease;
+          z-index: 39;
+        }
+
+        .planner-shell__layout.is-sidebar-open::before {
+          opacity: 1;
+          pointer-events: auto;
         }
 
         .planner-sidebar {
-          position: static;
-          width: auto;
+          position: fixed;
+          top: 5.4rem;
+          left: 0;
+          z-index: 40;
+          width: max-content;
+          max-width: calc(100vw - 1rem);
+          padding: 0.9rem 0.75rem 1rem 0;
+          border-radius: 0 1rem 1rem 0;
+          background: rgba(252, 250, 248, 0.98);
+          box-shadow: 0 22px 56px rgba(43, 30, 29, 0.22);
+          transform: translateX(calc(-100% - 1rem));
+          opacity: 0;
+          pointer-events: none;
+          transition: transform 220ms ease, opacity 180ms ease;
+        }
+
+        .planner-shell__layout.is-sidebar-open .planner-sidebar {
+          transform: translateX(0);
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        .planner-sections {
+          width: max-content;
+        }
+
+        .planner-section-button {
+          border-radius: 0.85rem;
+          white-space: nowrap;
         }
 
         .planner-summary-grid {
@@ -1474,6 +2632,28 @@
       }
 
       @media (max-width: 620px) {
+        .planner-banner__titlebar {
+          gap: 0.75rem;
+        }
+
+        .planner-banner__titlebar h2 {
+          flex: 1 1 auto;
+          min-width: 0;
+          font-size: clamp(2rem, 9vw, 2.8rem);
+          line-height: 1.05;
+        }
+
+        .planner-heading__mobile-suffix {
+          display: none;
+        }
+
+        .planner-menu-toggle,
+        .planner-signout-button {
+          width: 2.5rem;
+          height: 2.5rem;
+          min-width: 2.5rem;
+        }
+
         .story-slider,
         .story-slider__viewport,
         .story-slider__viewport--wide {
@@ -1492,20 +2672,46 @@
           column-count: 1;
         }
 
+        .guest-card summary {
+          gap: 0.75rem;
+        }
+
+        .accordion-summary__meta {
+          white-space: normal;
+        }
+
         .planner-filter-row {
           grid-template-columns: 1fr;
         }
 
-        .table-control-row {
+        .planner-filter-field {
           grid-template-columns: 1fr;
+          align-items: stretch;
+          gap: 0.35rem;
+        }
+
+        .planner-filter-field label,
+        .planner-filter-field__label {
+          white-space: normal;
+        }
+
+        .table-control-row {
+          align-items: flex-start;
         }
 
         .type-options__grid {
           grid-template-columns: 1fr;
         }
 
-        .table-assignment-list {
-          grid-template-columns: 1fr;
+        .table-assignment-row,
+        .table-assignment-row__actions {
+          flex-direction: row;
+          align-items: center;
+        }
+
+        .table-assignment-row__actions {
+          flex: 0 0 auto;
+          margin-left: auto;
         }
 
         .list-header {
@@ -1525,8 +2731,89 @@
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
+        .planner-panel[data-planner-panel="beds"] {
+          padding-inline: 0.4rem;
+          padding-bottom: 0.4rem;
+        }
+
+        .planner-home-card--countdown,
+        .planner-home-card--next-event {
+          grid-column: 1 / -1;
+        }
+
         .planner-countdown {
           grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 600px) {
+        .event-accordion .guest-card summary {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          grid-template-areas:
+            "toggle time date"
+            "toggle title title";
+          align-items: center;
+          row-gap: 0.35rem;
+        }
+
+        .event-accordion .accordion-summary__main {
+          display: contents;
+        }
+
+        .event-accordion .accordion-toggle {
+          grid-area: toggle;
+          align-self: start;
+        }
+
+        .event-accordion__time {
+          grid-area: time;
+        }
+
+        .event-accordion .accordion-summary__meta--end {
+          grid-area: date;
+          margin-left: 0;
+          justify-self: end;
+          white-space: nowrap;
+        }
+
+        .event-accordion__title-main {
+          grid-area: title;
+        }
+
+        .event-detail-grid,
+        .event-detail-meta,
+        .event-detail-ai-options,
+        .event-detail-stats {
+          grid-template-columns: 1fr;
+        }
+
+        .event-detail-header {
+          flex-direction: column;
+        }
+
+        .event-detail-actions {
+          width: 100%;
+          justify-content: flex-start;
+        }
+      }
+
+      @media (min-width: 861px) {
+        #tablesList {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          align-items: start;
+        }
+
+        .table-side-group--bar {
+          order: 1;
+        }
+
+        .table-side-group--head {
+          order: 2;
+        }
+
+        .table-side-group--food {
+          order: 3;
         }
       }
     </style>
@@ -1541,7 +2828,7 @@
         <a href="?view=home" data-route-link="home" class="nav__brand is-active">Hope & Caleb</a>
         <div class="nav__links">
           <a href="?view=home" data-route-link="home">Home</a>
-          <a href="/dashboard.html" data-route-link="planner">Dashboard</a>
+          <a href="?view=planner" data-route-link="planner">Dashboard</a>
           <a href="/celebration.html">Celebration</a>
           <a href="/slideshow.html">Slideshow</a>
         </div>
@@ -1553,7 +2840,7 @@
           This site should grow out of the celebration page instead of competing with it. The public home and the private planner now share the same basic visual language, structure, and tone.
         </p>
         <div class="hero__actions">
-          <a class="button" href="/dashboard.html">Open Dashboard</a>
+          <a class="button" href="?view=planner">Open Dashboard</a>
           <a class="button button--light" href="/celebration.html">View Celebration Site</a>
         </div>
       </section>
@@ -1690,8 +2977,21 @@
       <section class="planner-shell" data-view="planner" hidden aria-labelledby="planner-heading">
         <section class="planner-banner planner-shell__intro" aria-labelledby="planner-heading">
           <div class="planner-banner__titlebar">
-            <h2 id="planner-heading">Wedding Planner Dashboard</h2>
-            <button class="button button--light" type="button" id="plannerSignOut" hidden>Lock Dashboard</button>
+            <button class="planner-menu-toggle" type="button" id="plannerMenuToggle" aria-expanded="false" aria-controls="plannerSidebar" hidden>
+              <span class="sr-only">Toggle dashboard menu</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg>
+            </button>
+            <h2 id="planner-heading">H &amp; C Wedding<span class="planner-heading__mobile-suffix"> Planner</span></h2>
+            <div class="planner-banner__actions">
+              <button class="button button--light planner-signout-button" type="button" id="plannerSignOut" aria-label="Lock dashboard" title="Lock dashboard" hidden>
+                <span class="sr-only">Lock dashboard</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M8 11V8a4 4 0 1 1 8 0v3"></path>
+                  <path d="M6 11h12v9H6z"></path>
+                  <path d="M12 15v2"></path>
+                </svg>
+              </button>
+            </div>
           </div>
           <div class="planner-summary" id="plannerGate">
             <div id="plannerGateMessage" class="meta">Enter the dashboard password to continue.</div>
@@ -1699,8 +2999,8 @@
           <p class="status" id="plannerSyncStatus"></p>
         </section>
 
-        <div class="planner-shell__layout">
-          <aside class="planner-sidebar">
+        <div class="planner-shell__layout is-sidebar-open" id="plannerLayout">
+          <aside class="planner-sidebar" id="plannerSidebar">
             <section class="planner-banner" id="plannerLocked" aria-labelledby="planner-locked-heading">
               <h3 id="planner-locked-heading">Unlock Dashboard</h3>
               <p class="meta">Use one shared password for the planner dashboard on this device.</p>
@@ -1739,6 +3039,10 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path></svg>
                   <strong>Timeline</strong>
                 </button>
+                <button class="planner-section-button" type="button" data-planner-section="shots">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"></path><circle cx="9" cy="10" r="2"></circle><path d="m20 16-5.5-5.5L7 18"></path></svg>
+                  <strong>Shot List</strong>
+                </button>
                 <button class="planner-section-button" type="button" data-planner-section="todos">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-4"></path><path d="M21 12c0 4.97-4.03 9-9 9S3 16.97 3 12 7.03 3 12 3c1.74 0 3.37.49 4.75 1.34"></path></svg>
                   <strong>Todo</strong>
@@ -1774,7 +3078,6 @@
 
             <section class="panel planner-panel" data-planner-panel="guests" hidden>
           <h3>Guests</h3>
-          <p class="meta">Read-only rows from the `Guests` tab in your planning spreadsheet.</p>
           <div class="guest-filter">
             <label for="guestTypeFilter">Filter by type</label>
             <select id="guestTypeFilter">
@@ -1827,19 +3130,57 @@
             <button class="button button--icon" type="button" id="openEventModal" aria-label="Add event">+</button>
           </div>
           <div class="planner-filter-row">
-            <label>Date
+            <div class="planner-filter-field">
+              <label for="eventDateFilter">Date</label>
               <select id="eventDateFilter">
                 <option value="">All dates</option>
               </select>
-            </label>
-            <label>Assigned To
-              <select id="eventAssignedToFilter">
-                <option value="">All assignees</option>
-              </select>
-            </label>
+            </div>
+            <div class="planner-filter-field">
+              <span class="planner-filter-field__label">Assigned To</span>
+              <details class="planner-filter-dropdown" id="eventAssignedToDropdown">
+                <summary aria-label="Filter events by assignee">
+                  <span id="eventAssignedToFilterSummary" class="planner-filter-dropdown__summary">All assignees</span>
+                </summary>
+                <div id="eventAssignedToFilter" class="planner-filter-checklist" role="group" aria-label="Filter events by assignee">
+                  <span class="planner-filter-checklist--empty">All assignees</span>
+                </div>
+              </details>
+            </div>
           </div>
           <div class="list" id="eventsList">
             <p class="meta">No events loaded yet.</p>
+          </div>
+            </section>
+
+            <section class="panel planner-panel" data-planner-panel="event-detail" hidden>
+          <div class="list-header">
+            <div class="list-header__copy">
+              <h3>Event Workspace</h3>
+              <p class="meta">See the full event context and draft an AI planning prompt before creating linked tasks and lists.</p>
+            </div>
+            <button class="button button--light" type="button" id="eventDetailBackButton">Back to Timeline</button>
+          </div>
+          <div id="eventDetailShell" class="event-detail-shell">
+            <div class="event-detail-empty">
+              <h4>Select an event</h4>
+              <p class="meta">Open any timeline event to see its details, related shots, and an AI planning prompt composer.</p>
+            </div>
+          </div>
+          <p class="status" id="eventDetailStatus"></p>
+            </section>
+
+            <section class="panel planner-panel" data-planner-panel="shots" hidden>
+          <div class="list-header">
+            <div class="list-header__copy">
+              <h3>Shot List</h3>
+              <p class="meta">Track photographer requests by event and mark each shot complete when it is covered.</p>
+            </div>
+            <button class="button button--icon" type="button" id="openShotModal" aria-label="Add shot">+</button>
+          </div>
+          <p class="status" id="shotStatus"></p>
+          <div class="list" id="shotsList">
+            <p class="meta">No shots loaded yet.</p>
           </div>
             </section>
 
@@ -1861,12 +3202,12 @@
         <section class="modal" id="personModal" hidden aria-hidden="true">
           <div class="modal__backdrop" data-close-person-modal></div>
           <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="personModalTitle">
-            <div class="toolbar">
+            <button class="modal__close" type="button" data-close-person-modal aria-label="Close dialog">X</button>
+            <div class="modal__header">
               <div>
                 <h3 id="personModalTitle">Add Person</h3>
                 <p class="meta">Save a contact for the wedding party, family, vendor team, or any custom group.</p>
               </div>
-              <button class="button button--light" type="button" data-close-person-modal>Close</button>
             </div>
             <form id="personForm">
               <input type="hidden" name="id">
@@ -1892,12 +3233,12 @@
         <section class="modal" id="eventModal" hidden aria-hidden="true">
           <div class="modal__backdrop" data-close-event-modal></div>
           <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle">
-            <div class="toolbar">
+            <button class="modal__close" type="button" data-close-event-modal aria-label="Close dialog">X</button>
+            <div class="modal__header">
               <div>
                 <h3 id="eventModalTitle">Add Event</h3>
                 <p class="meta">Use this for the wedding-day schedule, invitations, showers, reminders, and any other date-based item.</p>
               </div>
-              <button class="button button--light" type="button" data-close-event-modal>Close</button>
             </div>
             <form id="eventForm">
               <input type="hidden" name="id">
@@ -1915,10 +3256,12 @@
                 <label>Date <input name="date" type="date"></label>
                 <label>Start Time <input name="startsAt" type="time"></label>
               </div>
-              <div class="split">
-                <label>Location <input name="location" placeholder="Courtyard"></label>
-                <label>Assigned To <input name="assignedTo" placeholder="Bridesmaids, Parents"></label>
-              </div>
+              <label>Location <input name="location" placeholder="Courtyard"></label>
+              <fieldset class="type-options">
+                <legend>Assigned To</legend>
+                <div id="eventAssignedTypeOptions" class="type-options__grid"></div>
+              </fieldset>
+              <label>Additional Types <input name="assignedToExtra" placeholder="Bridesmaids, Parents"></label>
               <label>Reminder Minutes <input name="reminderMinutes" type="number" min="0" value="15"></label>
               <label>Message Template <textarea name="messageTemplate" placeholder="Hope & Caleb update: Family photos at 3:15 PM in the courtyard. Please head there by 3:00 PM."></textarea></label>
               <label>Notes <textarea name="notes" placeholder="Use this for shot list notes, fallback locations, or vendor context."></textarea></label>
@@ -1938,15 +3281,66 @@
           </div>
         </section>
 
+        <section class="modal" id="shotModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-shot-modal></div>
+          <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="shotModalTitle">
+            <button class="modal__close" type="button" data-close-shot-modal aria-label="Close dialog">X</button>
+            <div class="modal__header">
+              <div>
+                <h3 id="shotModalTitle">Add Shot</h3>
+                <p class="meta">Save one requested photographer shot and tie it to a timeline event.</p>
+              </div>
+            </div>
+            <form id="shotForm">
+              <input type="hidden" name="id">
+              <label>
+                Event
+                <select name="eventId" required>
+                  <option value="">Select event</option>
+                </select>
+              </label>
+              <div class="split">
+                <label>Shot Title <input name="title" required placeholder="Bride with siblings"></label>
+                <label>
+                  Priority
+                  <select name="priority">
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
+                </label>
+              </div>
+              <div class="split">
+                <label>People Needed <input name="peopleNeeded" placeholder="Bride, siblings, parents nearby"></label>
+                <label>Shot Order <input name="sortOrder" type="number" min="0" value="0"></label>
+              </div>
+              <label>Description <textarea name="description" placeholder="Wide portrait near the altar before guests leave the ceremony space."></textarea></label>
+              <label>Notes <textarea name="notes" placeholder="Any backup location, family wrangler notes, or pose guidance."></textarea></label>
+              <label>
+                Complete
+                <select name="isComplete">
+                  <option value="false">No</option>
+                  <option value="true">Yes</option>
+                </select>
+              </label>
+              <div class="toolbar">
+                <button class="button" type="submit">Save Shot</button>
+                <button class="button button--light" type="button" data-reset-shot>Clear</button>
+              </div>
+              <p class="status" id="shotFormStatus"></p>
+            </form>
+          </div>
+        </section>
+
         <section class="modal" id="bedModal" hidden aria-hidden="true">
           <div class="modal__backdrop" data-close-bed-modal></div>
           <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="bedModalTitle">
-            <div class="toolbar">
+            <button class="modal__close" type="button" data-close-bed-modal aria-label="Close dialog">X</button>
+            <div class="modal__header">
               <div>
                 <h3 id="bedModalTitle">Edit Bed</h3>
                 <p class="meta">Assign one sleeping space at a time for Thursday and Friday separately.</p>
               </div>
-              <button class="button button--light" type="button" data-close-bed-modal>Close</button>
             </div>
             <form id="bedForm">
               <input type="hidden" name="id">
@@ -1976,12 +3370,12 @@
         <section class="modal" id="todoModal" hidden aria-hidden="true">
           <div class="modal__backdrop" data-close-todo-modal></div>
           <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="todoModalTitle">
-            <div class="toolbar">
+            <button class="modal__close" type="button" data-close-todo-modal aria-label="Close dialog">X</button>
+            <div class="modal__header">
               <div>
                 <h3 id="todoModalTitle">Add Task</h3>
                 <p class="meta">Save a wedding task with dates, assignee, notes, image link, complete status, and SMS message.</p>
               </div>
-              <button class="button button--light" type="button" data-close-todo-modal>Close</button>
             </div>
             <form id="todoForm">
               <input type="hidden" name="id">
@@ -2041,14 +3435,22 @@
         <section class="modal" id="tableModal" hidden aria-hidden="true">
           <div class="modal__backdrop" data-close-table-modal></div>
           <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="tableModalTitle">
-            <div class="toolbar">
+            <button class="modal__close" type="button" data-close-table-modal aria-label="Close dialog">X</button>
+            <div class="modal__header">
               <div>
                 <h3 id="tableModalTitle">Add Table</h3>
               </div>
-              <button class="button button--light" type="button" data-close-table-modal>Close</button>
             </div>
             <form id="tableForm" class="guest-filter">
               <label>Table Name <input name="tableName" type="text" required></label>
+              <label>Location
+                <select name="location" required>
+                  <option value="Center">Center</option>
+                  <option value="Food Side">Food Side</option>
+                  <option value="Bar Side">Bar Side</option>
+                </select>
+              </label>
+              <label>Order <input name="order" type="number" min="1" step="1" required></label>
               <fieldset class="type-options">
                 <legend>Type</legend>
                 <div id="tableTypeOptions" class="type-options__grid"></div>
@@ -2080,11 +3482,11 @@
         <section class="modal" id="addGuestModal" hidden aria-hidden="true">
           <div class="modal__backdrop" data-close-add-guest-modal></div>
           <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="addGuestModalTitle">
-            <div class="toolbar">
+            <button class="modal__close" type="button" data-close-add-guest-modal aria-label="Close dialog">X</button>
+            <div class="modal__header">
               <div>
                 <h3 id="addGuestModalTitle">Add Guest</h3>
               </div>
-              <button class="button button--light" type="button" data-close-add-guest-modal>Close</button>
             </div>
             <form id="addGuestForm">
               <input type="hidden" name="tableId">

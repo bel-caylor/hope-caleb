@@ -1,6 +1,6 @@
-import { BED_HEADERS, BEDS_SHEET, EVENT_HEADERS, EVENTS_SHEET, GUESTS_SHEET, PEOPLE_HEADERS, PEOPLE_SHEET, TABLE_HEADERS, TABLES_SHEET, TODO_HEADERS, TODO_SHEET } from "../constants";
+import { BED_HEADERS, BEDS_SHEET, EVENT_HEADERS, EVENTS_SHEET, GUESTS_SHEET, PEOPLE_HEADERS, PEOPLE_SHEET, SHOT_HEADERS, SHOTS_SHEET, TABLE_HEADERS, TABLES_SHEET, TODO_HEADERS, TODO_SHEET } from "../constants";
 import { requirePlannerAccess } from "../auth";
-import { createId, ensureSheet, getSheetByName, readRows, toIsoString, upsertRow } from "../util/sheets";
+import { createId, deleteRowById, ensureSheet, getSheetByName, readRows, toIsoString, upsertRow } from "../util/sheets";
 
 type SavePersonInput = {
   id?: string;
@@ -38,6 +38,19 @@ type SaveBedInput = {
   notes?: string;
 };
 
+type SaveShotInput = {
+  id?: string;
+  eventId?: string;
+  title?: string;
+  description?: string;
+  peopleNeeded?: string;
+  priority?: string;
+  sortOrder?: number | string;
+  notes?: string;
+  isComplete?: boolean | string;
+  completedAt?: string;
+};
+
 type SaveTodoInput = {
   id?: string;
   title?: string;
@@ -59,14 +72,25 @@ type SaveTodoInput = {
 type SaveTableInput = {
   id?: string;
   tableName?: string;
+  location?: string;
+  order?: number | string;
   type?: string;
   count?: number | string;
+};
+
+type SaveTableReservedOpenSeatsInput = {
+  id?: string;
+  reservedOpenSeatPositions?: string | number[] | string[];
 };
 
 type SaveGuestTableAssignmentInput = {
   rowNumber?: number | string;
   tableName?: string;
   tableOrder?: number | string;
+};
+
+type SaveGuestTableAssignmentsInput = {
+  assignments?: SaveGuestTableAssignmentInput[];
 };
 
 function normalizeBoolean(value: unknown, fallback = false) {
@@ -293,6 +317,198 @@ const DEFAULT_BEDS = [
   }
 ];
 
+function mapPersonRow(row: Record<string, unknown>) {
+  return {
+    id: String(row.Id || ""),
+    name: String(row.Name || ""),
+    phone: String(row.Phone || ""),
+    role: String(row.Role || ""),
+    groupName: String(row.GroupName || ""),
+    consentStatus: String(row.ConsentStatus || ""),
+    notes: String(row.Notes || ""),
+    createdAt: toIsoString(row.CreatedAt),
+    updatedAt: toIsoString(row.UpdatedAt)
+  };
+}
+
+function mapEventRow(row: Record<string, unknown>) {
+  return {
+    id: String(row.Id || ""),
+    title: String(row.Title || ""),
+    main: normalizeBoolean(row.Main),
+    date: normalizeSheetDate(row.Date) || deriveLegacyEventDate(row.StartsAt),
+    startsAt: normalizeSheetTime(row.StartsAt) || deriveLegacyEventTime(row.StartsAt),
+    location: String(row.Location || ""),
+    assignedTo: String(row.AssignedTo || ""),
+    reminderMinutes: Number(row.ReminderMinutes || 15),
+    messageTemplate: String(row.MessageTemplate || ""),
+    notes: String(row.Notes || ""),
+    active: String(row.Active || "TRUE").toLowerCase() !== "false",
+    updatedAt: toIsoString(row.UpdatedAt)
+  };
+}
+
+function mapShotRow(row: Record<string, unknown>) {
+  return {
+    id: String(row.Id || ""),
+    eventId: String(row.EventId || "").trim(),
+    title: String(row.Title || "").trim(),
+    description: String(row.Description || "").trim(),
+    peopleNeeded: String(row.PeopleNeeded || "").trim(),
+    priority: String(row.Priority || "Medium").trim(),
+    sortOrder: Number(row.SortOrder || 0),
+    notes: String(row.Notes || "").trim(),
+    isComplete: normalizeBoolean(row.IsComplete),
+    completedAt: toIsoString(row.CompletedAt),
+    createdAt: toIsoString(row.CreatedAt),
+    updatedAt: toIsoString(row.UpdatedAt)
+  };
+}
+
+function mapBedRow(row: Record<string, unknown>) {
+  return {
+    id: String(row.Id || ""),
+    lodging: String(row.Lodging || ""),
+    room: String(row.Room || ""),
+    bedLabel: String(row.BedLabel || ""),
+    bedType: String(row.BedType || ""),
+    capacity: Number(row.Capacity || 0),
+    thursday: String(row.Thursday || ""),
+    friday: String(row.Friday || ""),
+    notes: String(row.Notes || ""),
+    sortOrder: Number(row.SortOrder || DEFAULT_BED_SORT_ORDER[String(row.Id || "")] || 0),
+    createdAt: toIsoString(row.CreatedAt),
+    updatedAt: toIsoString(row.UpdatedAt)
+  };
+}
+
+function mapTodoRow(row: Record<string, unknown>) {
+  return {
+    id: String(row.Id || ""),
+    title: String(row.Title || ""),
+    notes: String(row.Notes || ""),
+    assignedTo: String(row.AssignedTo || ""),
+    startDate: normalizeSheetDate(row.StartDate),
+    dueDate: normalizeSheetDate(row.DueDate),
+    priority: String(row.Priority || "Medium"),
+    status: String(row.Status || "Not Started"),
+    isComplete: normalizeBoolean(row.IsComplete) || String(row.Status || "").trim().toLowerCase() === "done",
+    completedAt: toIsoString(row.CompletedAt),
+    imageUrl: String(row.ImageUrl || ""),
+    smsMessage: String(row.SmsMessage || ""),
+    reminderDate: normalizeSheetDate(row.ReminderDate),
+    category: String(row.Category || ""),
+    tags: String(row.Tags || ""),
+    createdAt: toIsoString(row.CreatedAt),
+    updatedAt: toIsoString(row.UpdatedAt)
+  };
+}
+
+function mapTableRow(row: Record<string, unknown>) {
+  const rawLocation = String(row.Location || "").trim();
+  const rawType = String(row.Type || "").trim();
+  const normalizedLegacySide = normalizeLegacyTableSide(rawType);
+
+  return {
+    id: String(row.Id || ""),
+    tableName: String(row["Table Name"] || "").trim(),
+    location: rawLocation || normalizedLegacySide,
+    order: Number(row.Order || 0),
+    type: rawLocation ? rawType : normalizedLegacySide ? "" : rawType,
+    count: Number(row.Count || 0),
+    reservedOpenSeatPositions: String(row["Reserved Open Seat Positions"] || "").trim(),
+    createdAt: toIsoString(row.CreatedAt),
+    updatedAt: toIsoString(row.UpdatedAt)
+  };
+}
+
+function normalizeLegacyTableSide(value: string) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) {
+    return "";
+  }
+  if (normalized.includes("bar")) {
+    return "Bar Side";
+  }
+  if (normalized.includes("food")) {
+    return "Food Side";
+  }
+  if (normalized.includes("head") || normalized.includes("center")) {
+    return "Center";
+  }
+  return "";
+}
+
+const RESERVED_OPEN_SEAT_POSITIONS_HEADER = "Reserved Open Seat Positions";
+
+function normalizeReservedOpenSeatPositions(value: SaveTableReservedOpenSeatsInput["reservedOpenSeatPositions"]) {
+  const tokens = Array.isArray(value)
+    ? value
+    : String(value || "")
+      .split(",");
+
+  const seen = new Set<number>();
+  return tokens
+    .map((token) => Number(String(token || "").trim()))
+    .filter((seat) => Number.isInteger(seat) && seat > 0)
+    .filter((seat) => {
+      if (seen.has(seat)) {
+        return false;
+      }
+      seen.add(seat);
+      return true;
+    })
+    .sort((left, right) => left - right)
+    .join(", ");
+}
+
+function ensureColumn(sheet: GoogleAppsScript.Spreadsheet.Sheet, header: string) {
+  const headers = sheet
+    .getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1))
+    .getDisplayValues()[0]
+    .map((value) => String(value || "").trim());
+  const existingIndex = headers.findIndex((value) => value === header);
+  if (existingIndex >= 0) {
+    return existingIndex + 1;
+  }
+
+  const nextColumn = headers.length + 1;
+  sheet.getRange(1, nextColumn).setValue(header);
+  return nextColumn;
+}
+
+function saveGuestTableAssignmentInternal(
+  guestsSheet: GoogleAppsScript.Spreadsheet.Sheet,
+  headers: string[],
+  input: SaveGuestTableAssignmentInput
+) {
+  const rowNumber = Number(input.rowNumber || 0);
+  if (!Number.isInteger(rowNumber) || rowNumber < 2) {
+    throw new Error("Missing guest row number.");
+  }
+
+  const tableNumberIndex = headers.findIndex((header) => header === "table number" || header === "table #");
+  const tableOrderIndex = headers.findIndex((header) => header === "table order");
+
+  if (tableNumberIndex < 0) {
+    throw new Error("Guests sheet is missing the Table number column.");
+  }
+
+  const tableName = String(input.tableName || "").trim();
+  const tableOrder = Number(input.tableOrder || 0) || 0;
+
+  guestsSheet.getRange(rowNumber, tableNumberIndex + 1).setValue(tableName);
+  if (tableOrderIndex >= 0) {
+    guestsSheet.getRange(rowNumber, tableOrderIndex + 1).setValue(tableOrder || "");
+  }
+
+  return {
+    rowNumber,
+    tableName,
+    tableOrder
+  };
+}
+
 const DEFAULT_BED_SORT_ORDER = Object.fromEntries(
   DEFAULT_BEDS.map((bed) => [bed.id, bed.sortOrder])
 );
@@ -341,17 +557,7 @@ export function listPeople() {
 
   return readRows(PEOPLE_SHEET)
     .filter((row) => String(row.Name || row.Phone || "").trim())
-    .map((row) => ({
-      id: String(row.Id || ""),
-      name: String(row.Name || ""),
-      phone: String(row.Phone || ""),
-      role: String(row.Role || ""),
-      groupName: String(row.GroupName || ""),
-      consentStatus: String(row.ConsentStatus || ""),
-      notes: String(row.Notes || ""),
-      createdAt: toIsoString(row.CreatedAt),
-      updatedAt: toIsoString(row.UpdatedAt)
-    }));
+    .map(mapPersonRow);
 }
 
 export function savePerson(input: SavePersonInput) {
@@ -361,7 +567,7 @@ export function savePerson(input: SavePersonInput) {
   const now = new Date().toISOString();
   const existing = listPeople().find((person) => person.id === id);
 
-  upsertRow(PEOPLE_SHEET, PEOPLE_HEADERS, id, {
+  const savedRow = {
     Id: id,
     Name: String(input.name || "").trim(),
     Phone: String(input.phone || "").trim(),
@@ -371,9 +577,11 @@ export function savePerson(input: SavePersonInput) {
     Notes: String(input.notes || "").trim(),
     CreatedAt: existing?.createdAt || now,
     UpdatedAt: now
-  });
+  };
 
-  return { ok: true, id };
+  upsertRow(PEOPLE_SHEET, PEOPLE_HEADERS, id, savedRow);
+
+  return mapPersonRow(savedRow);
 }
 
 export function listEvents() {
@@ -382,20 +590,7 @@ export function listEvents() {
 
   return readRows(EVENTS_SHEET)
     .filter((row) => String(row.Title || row.Date || row.StartsAt || "").trim())
-    .map((row) => ({
-      id: String(row.Id || ""),
-      title: String(row.Title || ""),
-      main: normalizeBoolean(row.Main),
-      date: normalizeSheetDate(row.Date) || deriveLegacyEventDate(row.StartsAt),
-      startsAt: normalizeSheetTime(row.StartsAt) || deriveLegacyEventTime(row.StartsAt),
-      location: String(row.Location || ""),
-      assignedTo: String(row.AssignedTo || ""),
-      reminderMinutes: Number(row.ReminderMinutes || 15),
-      messageTemplate: String(row.MessageTemplate || ""),
-      notes: String(row.Notes || ""),
-      active: String(row.Active || "TRUE").toLowerCase() !== "false",
-      updatedAt: toIsoString(row.UpdatedAt)
-    }));
+    .map(mapEventRow);
 }
 
 export function saveEvent(input: SaveEventInput) {
@@ -404,7 +599,7 @@ export function saveEvent(input: SaveEventInput) {
   const id = String(input.id || "").trim() || createId("event");
   const now = new Date().toISOString();
 
-  upsertRow(EVENTS_SHEET, EVENT_HEADERS, id, {
+  const savedRow = {
     Id: id,
     Title: String(input.title || "").trim(),
     Main: input.main === true || String(input.main).toLowerCase() === "true" ? "TRUE" : "FALSE",
@@ -417,8 +612,61 @@ export function saveEvent(input: SaveEventInput) {
     Notes: String(input.notes || "").trim(),
     Active: input.active === false || String(input.active).toLowerCase() === "false" ? "FALSE" : "TRUE",
     UpdatedAt: now
-  });
+  };
 
+  upsertRow(EVENTS_SHEET, EVENT_HEADERS, id, savedRow);
+
+  return mapEventRow(savedRow);
+}
+
+export function listShots() {
+  requirePlannerAccess();
+  ensureSheet(SHOTS_SHEET, SHOT_HEADERS);
+
+  return readRows(SHOTS_SHEET)
+    .filter((row) => String(row.Title || row.EventId || row.Description || "").trim())
+    .map(mapShotRow);
+}
+
+export function saveShot(input: SaveShotInput) {
+  requirePlannerAccess();
+
+  const id = String(input.id || "").trim() || createId("shot");
+  const now = new Date().toISOString();
+  const existing = listShots().find((shot) => shot.id === id);
+  const isComplete = normalizeBoolean(input.isComplete);
+  const completedAt = isComplete
+    ? String(input.completedAt || existing?.completedAt || now).trim()
+    : "";
+
+  const savedRow = {
+    Id: id,
+    EventId: String(input.eventId || "").trim(),
+    Title: String(input.title || "").trim(),
+    Description: String(input.description || "").trim(),
+    PeopleNeeded: String(input.peopleNeeded || "").trim(),
+    Priority: String(input.priority || "Medium").trim(),
+    SortOrder: Number(input.sortOrder || 0),
+    Notes: String(input.notes || "").trim(),
+    IsComplete: isComplete ? "TRUE" : "FALSE",
+    CompletedAt: completedAt,
+    CreatedAt: existing?.createdAt || now,
+    UpdatedAt: now
+  };
+
+  upsertRow(SHOTS_SHEET, SHOT_HEADERS, id, savedRow);
+
+  return mapShotRow(savedRow);
+}
+
+export function deleteShot(input: { id?: string }) {
+  requirePlannerAccess();
+  const id = String(input?.id || "").trim();
+  if (!id) {
+    throw new Error("Missing shot id.");
+  }
+
+  deleteRowById(SHOTS_SHEET, SHOT_HEADERS, id);
   return { ok: true, id };
 }
 
@@ -428,20 +676,7 @@ export function listBeds() {
 
   return readRows(BEDS_SHEET)
     .filter((row) => String(row.Lodging || row.Room || row.BedLabel || "").trim())
-    .map((row) => ({
-      id: String(row.Id || ""),
-      lodging: String(row.Lodging || ""),
-      room: String(row.Room || ""),
-      bedLabel: String(row.BedLabel || ""),
-      bedType: String(row.BedType || ""),
-      capacity: Number(row.Capacity || 0),
-      thursday: String(row.Thursday || ""),
-      friday: String(row.Friday || ""),
-      notes: String(row.Notes || ""),
-      sortOrder: Number(row.SortOrder || DEFAULT_BED_SORT_ORDER[String(row.Id || "")] || 0),
-      createdAt: toIsoString(row.CreatedAt),
-      updatedAt: toIsoString(row.UpdatedAt)
-    }));
+    .map(mapBedRow);
 }
 
 export function saveBed(input: SaveBedInput) {
@@ -449,8 +684,9 @@ export function saveBed(input: SaveBedInput) {
   ensureBedsSheet();
 
   const id = String(input.id || "").trim() || createId("bed");
-
-  upsertRow(BEDS_SHEET, BED_HEADERS, id, {
+  const now = new Date().toISOString();
+  const existing = listBeds().find((bed) => bed.id === id);
+  const savedRow = {
     Id: id,
     Lodging: String(input.lodging || "").trim(),
     Room: String(input.room || "").trim(),
@@ -460,9 +696,14 @@ export function saveBed(input: SaveBedInput) {
     Thursday: String(input.thursday || "").trim(),
     Friday: String(input.friday || "").trim(),
     Notes: String(input.notes || "").trim(),
-  });
+    SortOrder: Number(existing?.sortOrder || DEFAULT_BED_SORT_ORDER[id] || 0),
+    CreatedAt: existing?.createdAt || now,
+    UpdatedAt: now
+  };
 
-  return { ok: true, id };
+  upsertRow(BEDS_SHEET, BED_HEADERS, id, savedRow);
+
+  return mapBedRow(savedRow);
 }
 
 export function listTodos() {
@@ -471,25 +712,7 @@ export function listTodos() {
 
   return readRows(TODO_SHEET)
     .filter((row) => String(row.Title || row.Notes || row.AssignedTo || row.DueDate || "").trim())
-    .map((row) => ({
-      id: String(row.Id || ""),
-      title: String(row.Title || ""),
-      notes: String(row.Notes || ""),
-      assignedTo: String(row.AssignedTo || ""),
-      startDate: normalizeSheetDate(row.StartDate),
-      dueDate: normalizeSheetDate(row.DueDate),
-      priority: String(row.Priority || "Medium"),
-      status: String(row.Status || "Not Started"),
-      isComplete: normalizeBoolean(row.IsComplete) || String(row.Status || "").trim().toLowerCase() === "done",
-      completedAt: toIsoString(row.CompletedAt),
-      imageUrl: String(row.ImageUrl || ""),
-      smsMessage: String(row.SmsMessage || ""),
-      reminderDate: normalizeSheetDate(row.ReminderDate),
-      category: String(row.Category || ""),
-      tags: String(row.Tags || ""),
-      createdAt: toIsoString(row.CreatedAt),
-      updatedAt: toIsoString(row.UpdatedAt)
-    }));
+    .map(mapTodoRow);
 }
 
 export function listTables() {
@@ -498,14 +721,7 @@ export function listTables() {
 
   return readRows(TABLES_SHEET)
     .filter((row) => String(row["Table Name"] || row.Type || row.Count || "").trim())
-    .map((row) => ({
-      id: String(row.Id || ""),
-      tableName: String(row["Table Name"] || "").trim(),
-      type: String(row.Type || "").trim(),
-      count: Number(row.Count || 0),
-      createdAt: toIsoString(row.CreatedAt),
-      updatedAt: toIsoString(row.UpdatedAt)
-    }));
+    .map(mapTableRow);
 }
 
 export function saveTable(input: SaveTableInput) {
@@ -515,24 +731,98 @@ export function saveTable(input: SaveTableInput) {
   const now = new Date().toISOString();
   const existing = listTables().find((table) => table.id === id);
 
-  upsertRow(TABLES_SHEET, TABLE_HEADERS, id, {
+  const savedRow = {
     Id: id,
     "Table Name": String(input.tableName || "").trim(),
-    Type: String(input.type || "").trim(),
+    Location: String(input.location || existing?.location || "").trim(),
+    Order: Number(input.order || existing?.order || 0),
+    Type: String(input.type || existing?.type || "").trim(),
     Count: Number(input.count || 0),
+    "Reserved Open Seat Positions": String(existing?.reservedOpenSeatPositions || "").trim(),
     CreatedAt: existing?.createdAt || now,
     UpdatedAt: now
+  };
+
+  upsertRow(TABLES_SHEET, TABLE_HEADERS, id, savedRow);
+
+  return mapTableRow(savedRow);
+}
+
+export function saveTableReservedOpenSeats(input: SaveTableReservedOpenSeatsInput) {
+  requirePlannerAccess();
+  ensureSheet(TABLES_SHEET, TABLE_HEADERS);
+
+  const id = String(input.id || "").trim();
+  if (!id) {
+    throw new Error("Missing table id.");
+  }
+
+  const sheet = getSheetByName(TABLES_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) {
+    throw new Error("Tables sheet not found.");
+  }
+
+  const headerValues = sheet
+    .getRange(1, 1, 1, sheet.getLastColumn())
+    .getDisplayValues()[0]
+    .map((value) => String(value || "").trim());
+  const idColumnIndex = headerValues.findIndex((header) => header === "Id");
+  if (idColumnIndex < 0) {
+    throw new Error("Tables sheet is missing the Id column.");
+  }
+
+  const rows = sheet
+    .getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), sheet.getLastColumn())
+    .getDisplayValues();
+  const rowIndex = rows.findIndex((row) => String(row[idColumnIndex] || "").trim() === id);
+  if (rowIndex < 0) {
+    throw new Error("Table not found.");
+  }
+
+  const reservedColumnIndex = ensureColumn(sheet, RESERVED_OPEN_SEAT_POSITIONS_HEADER);
+  const updatedAtColumnIndex = ensureColumn(sheet, "UpdatedAt");
+  const normalizedReservedPositions = normalizeReservedOpenSeatPositions(input.reservedOpenSeatPositions);
+  const sheetRowNumber = rowIndex + 2;
+  const now = new Date().toISOString();
+
+  sheet.getRange(sheetRowNumber, reservedColumnIndex).setValue(normalizedReservedPositions);
+  sheet.getRange(sheetRowNumber, updatedAtColumnIndex).setValue(now);
+
+  const refreshedHeaders = sheet
+    .getRange(1, 1, 1, sheet.getLastColumn())
+    .getDisplayValues()[0]
+    .map((value) => String(value || "").trim());
+  const refreshedValues = sheet.getRange(sheetRowNumber, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const savedRow: Record<string, unknown> = {};
+  refreshedHeaders.forEach((header, index) => {
+    savedRow[header] = refreshedValues[index];
   });
 
-  return { ok: true, id };
+  return mapTableRow(savedRow);
 }
 
 export function saveGuestTableAssignment(input: SaveGuestTableAssignmentInput) {
   requirePlannerAccess();
 
-  const rowNumber = Number(input.rowNumber || 0);
-  if (!Number.isInteger(rowNumber) || rowNumber < 2) {
-    throw new Error("Missing guest row number.");
+  const guestsSheet = getSheetByName(GUESTS_SHEET);
+  if (!guestsSheet || guestsSheet.getLastRow() < 1) {
+    throw new Error("Guests sheet not found.");
+  }
+
+  const headers = guestsSheet
+    .getRange(1, 1, 1, guestsSheet.getLastColumn())
+    .getDisplayValues()[0]
+    .map((header) => String(header || "").trim().toLowerCase());
+
+  return saveGuestTableAssignmentInternal(guestsSheet, headers, input);
+}
+
+export function saveGuestTableAssignments(input: SaveGuestTableAssignmentsInput) {
+  requirePlannerAccess();
+
+  const assignments = Array.isArray(input.assignments) ? input.assignments : [];
+  if (!assignments.length) {
+    return [];
   }
 
   const guestsSheet = getSheetByName(GUESTS_SHEET);
@@ -544,24 +834,8 @@ export function saveGuestTableAssignment(input: SaveGuestTableAssignmentInput) {
     .getRange(1, 1, 1, guestsSheet.getLastColumn())
     .getDisplayValues()[0]
     .map((header) => String(header || "").trim().toLowerCase());
-  const tableNumberIndex = headers.findIndex((header) => header === "table number" || header === "table #");
-  const tableOrderIndex = headers.findIndex((header) => header === "table order");
 
-  if (tableNumberIndex < 0) {
-    throw new Error("Guests sheet is missing the Table number column.");
-  }
-
-  guestsSheet.getRange(rowNumber, tableNumberIndex + 1).setValue(String(input.tableName || "").trim());
-  if (tableOrderIndex >= 0) {
-    guestsSheet.getRange(rowNumber, tableOrderIndex + 1).setValue(Number(input.tableOrder || 0) || "");
-  }
-
-  return {
-    ok: true,
-    rowNumber,
-    tableName: String(input.tableName || "").trim(),
-    tableOrder: Number(input.tableOrder || 0) || 0
-  };
+  return assignments.map((assignment) => saveGuestTableAssignmentInternal(guestsSheet, headers, assignment));
 }
 
 export function saveTodo(input: SaveTodoInput) {
@@ -575,7 +849,7 @@ export function saveTodo(input: SaveTodoInput) {
     ? String(input.completedAt || existing?.completedAt || now).trim()
     : "";
 
-  upsertRow(TODO_SHEET, TODO_HEADERS, id, {
+  const savedRow = {
     Id: id,
     Title: String(input.title || "").trim(),
     Notes: String(input.notes || "").trim(),
@@ -593,9 +867,11 @@ export function saveTodo(input: SaveTodoInput) {
     Tags: String(input.tags || "").trim(),
     CreatedAt: existing?.createdAt || now,
     UpdatedAt: now
-  });
+  };
 
-  return { ok: true, id };
+  upsertRow(TODO_SHEET, TODO_HEADERS, id, savedRow);
+
+  return mapTodoRow(savedRow);
 }
 
 export function initializeBedsSheet() {
