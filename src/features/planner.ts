@@ -18,6 +18,7 @@ type SaveEventInput = {
   main?: boolean | string;
   date?: string;
   startsAt?: string;
+  endsAt?: string;
   location?: string;
   assignedTo?: string;
   reminderMinutes?: number | string;
@@ -338,6 +339,7 @@ function mapEventRow(row: Record<string, unknown>) {
     main: normalizeBoolean(row.Main),
     date: normalizeSheetDate(row.Date) || deriveLegacyEventDate(row.StartsAt),
     startsAt: normalizeSheetTime(row.StartsAt) || deriveLegacyEventTime(row.StartsAt),
+    endsAt: normalizeSheetTime(row.EndsAt),
     location: String(row.Location || ""),
     assignedTo: String(row.AssignedTo || ""),
     reminderMinutes: Number(row.ReminderMinutes || 15),
@@ -437,6 +439,177 @@ function normalizeLegacyTableSide(value: string) {
     return "Center";
   }
   return "";
+}
+
+function isTableLayoutSideLabel(value: unknown) {
+  return Boolean(normalizeLegacyTableSide(String(value || "").trim()));
+}
+
+function findHeaderIndexes(headers: string[], headerName: string) {
+  const normalizedTarget = String(headerName || "").trim().toLowerCase();
+  return headers.reduce<number[]>((matches, header, index) => {
+    if (String(header || "").trim().toLowerCase() === normalizedTarget) {
+      matches.push(index);
+    }
+    return matches;
+  }, []);
+}
+
+function pickColumnValue(
+  row: unknown[],
+  preferredIndexes: number[],
+  usedIndexes: Set<number>,
+  fallbackIndexes: number[] = []
+) {
+  const candidates = [...preferredIndexes, ...fallbackIndexes];
+  for (const index of candidates) {
+    if (!Number.isInteger(index) || index < 0 || index >= row.length || usedIndexes.has(index)) {
+      continue;
+    }
+
+    usedIndexes.add(index);
+    return row[index];
+  }
+
+  return "";
+}
+
+function isTableIdValue(value: unknown) {
+  return /^table_/i.test(String(value || "").trim());
+}
+
+function isLikelyDateValue(value: unknown) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return false;
+  }
+  const parsed = new Date(raw);
+  return !Number.isNaN(parsed.getTime());
+}
+
+function isLikelyNumericValue(value: unknown) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return false;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed);
+}
+
+function pickRemainingColumnValue(
+  row: unknown[],
+  usedIndexes: Set<number>,
+  predicate: (value: unknown, index: number) => boolean
+) {
+  for (let index = 0; index < row.length; index += 1) {
+    if (usedIndexes.has(index)) {
+      continue;
+    }
+    if (!predicate(row[index], index)) {
+      continue;
+    }
+
+    usedIndexes.add(index);
+    return row[index];
+  }
+
+  return "";
+}
+
+function normalizeTablesSheet() {
+  const sheet = ensureSheet(TABLES_SHEET, TABLE_HEADERS);
+  const lastColumn = Math.max(sheet.getLastColumn(), TABLE_HEADERS.length);
+  const headerValues = sheet
+    .getRange(1, 1, 1, lastColumn)
+    .getDisplayValues()[0]
+    .map((value) => String(value || "").trim());
+  const visibleHeaders = headerValues.slice(0, TABLE_HEADERS.length);
+  const headersMatch = TABLE_HEADERS.every((header, index) => visibleHeaders[index] === header);
+  const hasDuplicateHeaders = headerValues.some((header, index) => header && headerValues.indexOf(header) !== index);
+
+  if (headersMatch && !hasDuplicateHeaders) {
+    return sheet;
+  }
+
+  const rowCount = Math.max(sheet.getLastRow() - 1, 0);
+  const rawRows = rowCount
+    ? sheet.getRange(2, 1, rowCount, lastColumn).getValues()
+    : [];
+
+  const normalizedRows = rawRows.map((row) => {
+    const usedIndexes = new Set<number>();
+    const hasLocationHeader = findHeaderIndexes(headerValues, "Location").length > 0;
+    const hasOrderHeader = findHeaderIndexes(headerValues, "Order").length > 0;
+    const createdAtIndexes = findHeaderIndexes(headerValues, "CreatedAt");
+    const updatedAtIndexes = findHeaderIndexes(headerValues, "UpdatedAt");
+    const id = pickColumnValue(row, findHeaderIndexes(headerValues, "Id"), usedIndexes, [0])
+      || pickRemainingColumnValue(row, usedIndexes, (value) => isTableIdValue(value));
+    const tableName = pickColumnValue(row, findHeaderIndexes(headerValues, "Table Name"), usedIndexes, [1])
+      || pickRemainingColumnValue(row, usedIndexes, (value) => {
+        const raw = String(value || "").trim();
+        return Boolean(raw) && !isLikelyNumericValue(raw) && !isLikelyDateValue(raw) && !isTableLayoutSideLabel(raw);
+      });
+    const location = pickColumnValue(row, findHeaderIndexes(headerValues, "Location"), usedIndexes)
+      || pickRemainingColumnValue(row, usedIndexes, (value) => isTableLayoutSideLabel(value));
+    const order = pickColumnValue(row, findHeaderIndexes(headerValues, "Order"), usedIndexes)
+      || pickRemainingColumnValue(row, usedIndexes, (value) => {
+        const parsed = Number(String(value || "").trim());
+        return Number.isFinite(parsed) && parsed > 0 && parsed <= 20;
+      });
+    const type = pickColumnValue(
+      row,
+      findHeaderIndexes(headerValues, "Type"),
+      usedIndexes,
+      !hasLocationHeader && !hasOrderHeader ? [2] : []
+    ) || pickRemainingColumnValue(row, usedIndexes, (value) => {
+      const raw = String(value || "").trim();
+      return Boolean(raw) && !isLikelyNumericValue(raw) && !isLikelyDateValue(raw) && !isTableLayoutSideLabel(raw);
+    });
+    const count = pickColumnValue(
+      row,
+      findHeaderIndexes(headerValues, "Count"),
+      usedIndexes,
+      !hasLocationHeader && !hasOrderHeader ? [3] : []
+    ) || pickRemainingColumnValue(row, usedIndexes, (value) => {
+      const parsed = Number(String(value || "").trim());
+      return Number.isFinite(parsed) && parsed >= 0;
+    });
+    const reservedOpenSeatPositions = pickColumnValue(row, findHeaderIndexes(headerValues, RESERVED_OPEN_SEAT_POSITIONS_HEADER), usedIndexes);
+    const createdAt = pickColumnValue(
+      row,
+      createdAtIndexes,
+      usedIndexes,
+      !hasLocationHeader && !hasOrderHeader ? [4] : []
+    ) || pickRemainingColumnValue(row, usedIndexes, (value) => isLikelyDateValue(value));
+    const updatedAt = pickColumnValue(
+      row,
+      updatedAtIndexes.slice(1),
+      usedIndexes,
+      updatedAtIndexes.length ? [updatedAtIndexes[0]] : (!hasLocationHeader && !hasOrderHeader ? [5] : [])
+    ) || pickRemainingColumnValue(row, usedIndexes, (value) => isLikelyDateValue(value));
+
+    return [
+      id,
+      tableName,
+      location,
+      order,
+      type,
+      count,
+      reservedOpenSeatPositions,
+      createdAt,
+      updatedAt
+    ];
+  });
+
+  const totalRows = Math.max(sheet.getLastRow(), normalizedRows.length + 1);
+  const totalColumns = Math.max(sheet.getLastColumn(), TABLE_HEADERS.length);
+  sheet.getRange(1, 1, totalRows, totalColumns).clearContent();
+  sheet.getRange(1, 1, 1, TABLE_HEADERS.length).setValues([TABLE_HEADERS]);
+  if (normalizedRows.length) {
+    sheet.getRange(2, 1, normalizedRows.length, TABLE_HEADERS.length).setValues(normalizedRows);
+  }
+
+  return sheet;
 }
 
 const RESERVED_OPEN_SEAT_POSITIONS_HEADER = "Reserved Open Seat Positions";
@@ -605,6 +778,7 @@ export function saveEvent(input: SaveEventInput) {
     Main: input.main === true || String(input.main).toLowerCase() === "true" ? "TRUE" : "FALSE",
     Date: String(input.date || "").trim(),
     StartsAt: String(input.startsAt || "").trim(),
+    EndsAt: String(input.endsAt || "").trim(),
     Location: String(input.location || "").trim(),
     AssignedTo: String(input.assignedTo || "").trim(),
     ReminderMinutes: Number(input.reminderMinutes || 15),
@@ -717,7 +891,7 @@ export function listTodos() {
 
 export function listTables() {
   requirePlannerAccess();
-  ensureSheet(TABLES_SHEET, TABLE_HEADERS);
+  normalizeTablesSheet();
 
   return readRows(TABLES_SHEET)
     .filter((row) => String(row["Table Name"] || row.Type || row.Count || "").trim())
@@ -750,7 +924,7 @@ export function saveTable(input: SaveTableInput) {
 
 export function saveTableReservedOpenSeats(input: SaveTableReservedOpenSeatsInput) {
   requirePlannerAccess();
-  ensureSheet(TABLES_SHEET, TABLE_HEADERS);
+  normalizeTablesSheet();
 
   const id = String(input.id || "").trim();
   if (!id) {

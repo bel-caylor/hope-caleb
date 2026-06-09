@@ -3,6 +3,7 @@ import { listPublicFeed, savePublicSubmission } from "./features/feed";
 import { syncGuestSummarySheets } from "./features/feed";
 import { initializeBedsSheet } from "./features/planner";
 import { rpc } from "./rpc";
+import { PLANNER_BUILD_VERSION } from "./version";
 
 type RequestState = {
   __REQUEST_AUTH_TOKEN__?: string;
@@ -38,6 +39,7 @@ export function doGet(e?: GoogleAppsScript.Events.DoGet) {
   tpl.dashboardPasswordHash = getDashboardPasswordHash();
   tpl.rsvpFeedUrl = scriptBaseUrl;
   tpl.scriptBaseUrl = scriptBaseUrl;
+  tpl.plannerBuildVersion = PLANNER_BUILD_VERSION;
   tpl.include = include;
   return tpl.evaluate().setTitle("Hope & Caleb Planner");
 }

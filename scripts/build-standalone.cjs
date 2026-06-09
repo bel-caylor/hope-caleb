@@ -7,6 +7,7 @@ const DIST = path.join(ROOT, "dist");
 const OUT_DIR = path.join(ROOT, "dist-standalone");
 const INDEX_TEMPLATE = path.join(ROOT, "src", "html", "index.html");
 const LOCAL_ENV_FILE = path.join(ROOT, ".env.standalone.local");
+const VERSION_FILE = path.join(ROOT, "src", "version.ts");
 
 const INCLUDE_FILES = ["util", "apps-planner"];
 const LEGACY_FILES = [
@@ -54,8 +55,19 @@ function readLocalEnvFile() {
 }
 
 const replaceInclude = (buffer, name, content) => {
-  const pattern = new RegExp(`<\\?!=\\s*include\\("${name}"\\);?\\s*\\?>`, "g");
-  return buffer.replace(pattern, content);
+  const tokens = [
+    `<?!= include("${name}"); ?>`,
+    `<?!= include("${name}") ?>`
+  ];
+
+  for (const token of tokens) {
+    const index = buffer.indexOf(token);
+    if (index >= 0) {
+      return `${buffer.slice(0, index)}${content}${buffer.slice(index + token.length)}`;
+    }
+  }
+
+  return buffer;
 };
 
 function copyFileToOut(relativePath) {
@@ -86,6 +98,7 @@ function main() {
   }
 
   const localEnv = readLocalEnvFile();
+  const plannerBuildVersion = readPlannerBuildVersion();
   let html = readFile(INDEX_TEMPLATE);
 
   INCLUDE_FILES.forEach((name) => {
@@ -113,6 +126,10 @@ function main() {
     /content="<\?= scriptBaseUrl \?>"/g,
     `content="${escapeHtml(plannerScriptBaseUrl)}"`
   );
+  html = html.replace(
+    /content="<\?= plannerBuildVersion \?>"/g,
+    `content="${escapeHtml(plannerBuildVersion)}"`
+  );
 
   fs.rmSync(OUT_DIR, { recursive: true, force: true });
   fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -133,6 +150,12 @@ function main() {
   if (!plannerScriptBaseUrl) {
     console.warn("[standalone] PLANNER_PROXY_URL is empty. Planner RPC calls will use the same URL as the RSVP feed.");
   }
+}
+
+function readPlannerBuildVersion() {
+  const source = readFile(VERSION_FILE);
+  const match = source.match(/PLANNER_BUILD_VERSION\s*=\s*"([^"]+)"/);
+  return match?.[1] || "dev";
 }
 
 function escapeHtml(value) {

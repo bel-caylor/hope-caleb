@@ -8,6 +8,7 @@
   const plannerMenuToggleButton = document.querySelector("#plannerMenuToggle");
   const plannerSummaryEl = document.querySelector("#plannerSummary");
   const plannerSyncStatusEl = document.querySelector("#plannerSyncStatus");
+  const plannerVersionInfoEl = document.querySelector("#plannerVersionInfo");
   const rsvpListEl = document.querySelector("#rsvpList");
   const personModal = document.querySelector("#personModal");
   const openPersonModalButton = document.querySelector("#openPersonModal");
@@ -25,6 +26,7 @@
   const tableTypeOptionsEl = document.querySelector("#tableTypeOptions");
   const personForm = document.querySelector("#personForm");
   const eventForm = document.querySelector("#eventForm");
+  const eventPromptFillButton = document.querySelector("#eventPromptFillButton");
   const eventAssignedTypeOptionsEl = document.querySelector("#eventAssignedTypeOptions");
   const shotForm = document.querySelector("#shotForm");
   const bedForm = document.querySelector("#bedForm");
@@ -45,6 +47,7 @@
   const bedsInlineStatusEl = document.querySelector("#bedsInlineStatus");
   const personStatusEl = document.querySelector("#personStatus");
   const eventStatusEl = document.querySelector("#eventStatus");
+  const eventPromptStatusEl = document.querySelector("#eventPromptStatus");
   const eventDetailStatusEl = document.querySelector("#eventDetailStatus");
   const shotStatusEl = document.querySelector("#shotStatus");
   const shotFormStatusEl = document.querySelector("#shotFormStatus");
@@ -96,6 +99,7 @@
   let activePlannerPanel = "home";
   let plannerSidebarOpen = false;
   let activeTableDrag = null;
+  let backendBuildVersion = "";
   let viewerProfile = {
     signedIn: false,
     email: "Dashboard session",
@@ -105,6 +109,55 @@
 
   function createClientId(prefix) {
     return `${String(prefix || "item").trim()}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  function getFrontendBuildVersion() {
+    return String(window.PLANNER_CTX.frontendVersion || "").trim() || "unknown";
+  }
+
+  function renderPlannerVersionInfo() {
+    if (!plannerVersionInfoEl) {
+      return;
+    }
+
+    const frontendVersion = getFrontendBuildVersion();
+    const backendVersion = String(backendBuildVersion || "").trim();
+    if (!backendVersion) {
+      plannerVersionInfoEl.textContent = `Planner version ${frontendVersion} | backend unavailable`;
+      return;
+    }
+
+    plannerVersionInfoEl.textContent = `Planner version ${frontendVersion} | backend ${backendVersion}`;
+  }
+
+  async function refreshPlannerVersionInfo() {
+    renderPlannerVersionInfo();
+
+    try {
+      const buildInfo = await backendRequest("getPlannerBuildInfo", {});
+      backendBuildVersion = String(buildInfo?.version || "").trim();
+      renderPlannerVersionInfo();
+
+      if (backendBuildVersion && backendBuildVersion !== getFrontendBuildVersion()) {
+        setStatus(
+          plannerSyncStatusEl,
+          `Frontend ${getFrontendBuildVersion()} is newer than backend ${backendBuildVersion}. Push a new Apps Script deployment to sync them.`,
+          "pending"
+        );
+      }
+    } catch (error) {
+      const message = String(error?.message || "");
+      backendBuildVersion = "";
+      renderPlannerVersionInfo();
+      if (/Unknown RPC method:\s*getPlannerBuildInfo/i.test(message)) {
+        setStatus(
+          plannerSyncStatusEl,
+          `Frontend ${getFrontendBuildVersion()} is running against an older backend that does not expose version info yet.`,
+          "pending"
+        );
+        return;
+      }
+    }
   }
 
   function sortBeds(items) {
@@ -360,8 +413,19 @@
       : parsed.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   }
 
+  function formatEventTimeRange(startsAt, endsAt) {
+    const startLabel = formatEventTime(startsAt);
+    const endLabel = formatEventTime(endsAt);
+    if (startLabel && endLabel) {
+      return `${startLabel} - ${endLabel}`;
+    }
+    return startLabel || endLabel || "";
+  }
+
   function formatEventSchedule(event) {
-    return [formatEventDate(event.date), formatEventTime(event.startsAt)].filter(Boolean).join(" at ");
+    const dateLabel = formatEventDate(event.date);
+    const timeLabel = formatEventTimeRange(event?.startsAt, event?.endsAt);
+    return [dateLabel, timeLabel].filter(Boolean).join(" at ");
   }
 
   function formatEventDateShort(dateValue) {
@@ -570,6 +634,420 @@
     eventForm.elements.namedItem("reminderMinutes").value = "15";
     renderEventAssignedTypeOptions();
     setStatus(eventStatusEl, "", "");
+    setStatus(eventPromptStatusEl, "", "");
+  }
+
+  function toIsoDateString(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function createLocalDate(year, monthIndex, day) {
+    const date = new Date(year, monthIndex, day);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function getMonthIndexFromLabel(label) {
+    const monthLookup = {
+      january: 0,
+      jan: 0,
+      february: 1,
+      feb: 1,
+      march: 2,
+      mar: 2,
+      april: 3,
+      apr: 3,
+      may: 4,
+      june: 5,
+      jun: 5,
+      july: 6,
+      jul: 6,
+      august: 7,
+      aug: 7,
+      september: 8,
+      sep: 8,
+      sept: 8,
+      october: 9,
+      oct: 9,
+      november: 10,
+      nov: 10,
+      december: 11,
+      dec: 11
+    };
+
+    const normalized = String(label || "").trim().toLowerCase().replace(/\.$/, "");
+    return Number.isInteger(monthLookup[normalized]) ? monthLookup[normalized] : -1;
+  }
+
+  function addDays(date, days) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+      return null;
+    }
+
+    return createLocalDate(date.getFullYear(), date.getMonth(), date.getDate() + Number(days || 0));
+  }
+
+  function getReferenceWeddingDate() {
+    const activeEvents = cachedEvents.filter((event) => !isFalseLike(event?.active));
+    const ceremonyEvent = activeEvents.find((event) => /^\s*ceremony\s*$/i.test(String(event?.title || "").trim()) || /\bceremony\b/i.test(String(event?.title || "")));
+    if (ceremonyEvent?.date) {
+      return String(ceremonyEvent.date || "").trim();
+    }
+
+    const mainEvent = activeEvents.find((event) => isTrueLike(event?.main) && String(event?.date || "").trim());
+    if (mainEvent?.date) {
+      return String(mainEvent.date || "").trim();
+    }
+
+    const datedEvent = activeEvents
+      .filter((event) => String(event?.date || "").trim())
+      .sort((left, right) => {
+        const leftDate = parseEventDateTime({ date: left.date, startsAt: left.startsAt || "00:00" })?.getTime() || 0;
+        const rightDate = parseEventDateTime({ date: right.date, startsAt: right.startsAt || "00:00" })?.getTime() || 0;
+        return leftDate - rightDate;
+      })[0];
+    return String(datedEvent?.date || "").trim();
+  }
+
+  function guessEventDateFromPrompt(prompt) {
+    const text = String(prompt || "").trim();
+    if (!text) {
+      return "";
+    }
+
+    const isoMatch = text.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
+    if (isoMatch) {
+      return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+    }
+
+    const numericMatch = text.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+    if (numericMatch) {
+      const month = Number(numericMatch[1]);
+      const day = Number(numericMatch[2]);
+      let year = Number(numericMatch[3] || new Date().getFullYear());
+      if (year < 100) {
+        year += 2000;
+      }
+      return toIsoDateString(createLocalDate(year, month - 1, day));
+    }
+
+    const monthMatch = text.match(/\b(january|jan\.?|february|feb\.?|march|mar\.?|april|apr\.?|may|june|jun\.?|july|jul\.?|august|aug\.?|september|sept?\.?|october|oct\.?|november|nov\.?|december|dec\.?)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,\s*(\d{4}))?\b/i);
+    if (monthMatch) {
+      const monthIndex = getMonthIndexFromLabel(monthMatch[1]);
+      const day = Number(monthMatch[2]);
+      const year = Number(monthMatch[3] || new Date().getFullYear());
+      if (monthIndex >= 0) {
+        return toIsoDateString(createLocalDate(year, monthIndex, day));
+      }
+    }
+
+    if (/\bwedding day\b|\bday of the wedding\b|\bceremony day\b/i.test(text)) {
+      return getReferenceWeddingDate();
+    }
+
+    const today = new Date();
+    if (/\bday after tomorrow\b/i.test(text)) {
+      return toIsoDateString(addDays(today, 2));
+    }
+    if (/\btomorrow\b/i.test(text)) {
+      return toIsoDateString(addDays(today, 1));
+    }
+    if (/\btoday\b/i.test(text)) {
+      return toIsoDateString(today);
+    }
+
+    return "";
+  }
+
+  function guessEventTimeFromPrompt(prompt) {
+    const text = String(prompt || "").trim();
+    if (!text) {
+      return "";
+    }
+
+    if (/\bnoon\b/i.test(text)) {
+      return "12:00";
+    }
+    if (/\bmidnight\b/i.test(text)) {
+      return "00:00";
+    }
+
+    const meridiemMatch = text.match(/\b(\d{1,2})(?::(\d{2}))?\s*([ap])(?:\.?\s*m\.?)\b/i);
+    if (meridiemMatch) {
+      let hours = Number(meridiemMatch[1]) % 12;
+      if (String(meridiemMatch[3] || "").toLowerCase() === "p") {
+        hours += 12;
+      }
+      const minutes = String(meridiemMatch[2] || "00").padStart(2, "0");
+      return `${String(hours).padStart(2, "0")}:${minutes}`;
+    }
+
+    const twentyFourHourMatch = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+    if (twentyFourHourMatch) {
+      return `${String(twentyFourHourMatch[1]).padStart(2, "0")}:${twentyFourHourMatch[2]}`;
+    }
+
+    return "";
+  }
+
+  function normalizePromptText(text) {
+    return String(text || "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function escapeRegex(value) {
+    return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function buildLooseTypePattern(type) {
+    const tokens = String(type || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((token, index, array) => {
+        if (index === array.length - 1 && !/s$/i.test(token) && token.length > 3) {
+          return `${escapeRegex(token)}s?`;
+        }
+        return escapeRegex(token);
+      });
+
+    return tokens.length ? new RegExp(`\\b${tokens.join("\\s+")}\\b`, "i") : null;
+  }
+
+  function guessAssignedToFromPrompt(prompt) {
+    const text = normalizePromptText(prompt);
+    if (!text) {
+      return "";
+    }
+
+    const matches = getGuestTypeOptions().filter((type) => {
+      const normalizedType = String(type || "").trim();
+      if (!normalizedType) {
+        return false;
+      }
+
+      const directPattern = buildLooseTypePattern(normalizedType);
+      if (directPattern?.test(text)) {
+        return true;
+      }
+
+      const familyMatch = normalizedType.match(/^family\s+(.+)$/i);
+      if (familyMatch) {
+        const familyName = String(familyMatch[1] || "").trim();
+        if (familyName && new RegExp(`\\b(?:family\\s+${escapeRegex(familyName)}|${escapeRegex(familyName)}\\s+family|${escapeRegex(familyName)})\\b`, "i").test(text)) {
+          return true;
+        }
+      }
+
+      return false;
+    });
+
+    return dedupeTokens(matches).join(", ");
+  }
+
+  function getKnownEventLocations() {
+    return Array.from(new Set(
+      cachedEvents
+        .map((event) => String(event?.location || "").trim())
+        .filter(Boolean)
+    )).sort((left, right) => right.length - left.length);
+  }
+
+  function guessEventLocationFromPrompt(prompt) {
+    const text = normalizePromptText(prompt);
+    if (!text) {
+      return "";
+    }
+
+    const knownLocation = getKnownEventLocations().find((location) => new RegExp(`\\b${escapeRegex(location)}\\b`, "i").test(text));
+    if (knownLocation) {
+      return knownLocation;
+    }
+
+    const locationMatch = text.match(/\b(?:at|in)\s+the\s+([^,.;]+?)(?=\s+\b(?:on|with|for|by|before|after|during)\b|[,.;&]|$)/i)
+      || text.match(/\b(?:at|in)\s+((?:courtyard|church|chapel|sanctuary|garden|patio|terrace|ballroom|hall|barn|venue|house|cabin|hotel|lobby|suite|salon|studio|kitchen|dining room|living room|bridal suite|groom suite|reception tent|tent|porch|deck|lawn|gazebo|vineyard|orchard|parking lot|driveway)[^,.;]*?)(?=\s+\b(?:on|with|for|by|before|after|during)\b|[,.;&]|$)/i);
+    if (!locationMatch) {
+      return "";
+    }
+
+    const candidate = String(locationMatch[1] || "")
+      .replace(/^(the)\s+/i, "")
+      .trim()
+      .replace(/\s+/g, " ");
+
+    if (!candidate) {
+      return "";
+    }
+
+    if (/^(?:\d{1,2}(?::\d{2})?\s*[ap]\.?\s*m\.?|[01]?\d:\d{2}|noon|midnight)$/i.test(candidate)) {
+      return "";
+    }
+
+    if (/^(?:jan\.?|feb\.?|mar\.?|apr\.?|may|jun\.?|jul\.?|aug\.?|sep\.?|sept\.?|oct\.?|nov\.?|dec\.?)\s+\d{1,2}$/i.test(candidate)) {
+      return "";
+    }
+
+    if (/\b(?:planning|departure|arrival|breakfast|brunch|lunch|dinner|photos|ceremony|reception)\b/i.test(candidate)
+      && !/\b(?:courtyard|church|chapel|sanctuary|garden|patio|terrace|ballroom|hall|barn|venue|house|cabin|hotel|lobby|suite|salon|studio|kitchen|dining room|living room|tent|porch|deck|lawn|gazebo|vineyard|orchard|parking lot|driveway)\b/i.test(candidate)) {
+      return "";
+    }
+
+    return candidate;
+  }
+
+  function guessMainEventFromPrompt(prompt) {
+    const text = normalizePromptText(prompt);
+    if (!text) {
+      return null;
+    }
+
+    if (/\bmain event\b|\bprimary event\b/i.test(text)) {
+      return true;
+    }
+
+    if (/\b(ceremony|reception|cocktail hour|vows|first dance|send[- ]?off|grand exit|wedding dinner)\b/i.test(text)) {
+      return true;
+    }
+
+    if (/\b(photo|photos|portrait|portraits|prep|getting ready|breakfast|brunch|shower|reminder|hair|makeup)\b/i.test(text)) {
+      return false;
+    }
+
+    return null;
+  }
+
+  function guessEventTitleFromPrompt(prompt) {
+    const normalized = normalizePromptText(prompt);
+    if (!normalized) {
+      return "";
+    }
+
+    const quotedMatch = normalized.match(/["“”']([^"“”']{2,80})["“”']/);
+    if (quotedMatch) {
+      return String(quotedMatch[1] || "").trim();
+    }
+
+    let title = normalized
+      .replace(/^(please\s+)?(?:add|create|schedule|plan|set up|put in|make)\s+(?:an?\s+)?(?:event|timeline item|reminder)\s+(?:for\s+)?/i, "")
+      .replace(/^(please\s+)?(?:add|create|schedule|plan|set up|put in|make)\s+/i, "")
+      .replace(/^(?:on\s+)?(?:wedding day|day of the wedding|ceremony day|today|tomorrow)\s+/i, "")
+      .replace(/^(?:on\s+)?(?:\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|january\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|february\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|march\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|april\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|may\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|june\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|july\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|august\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|september\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|october\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|november\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|december\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?)\s+/i, "")
+      .replace(/^(?:at\s+)?(?:\d{1,2}(?::\d{2})?\s*[ap]\.?\s*m\.?|[01]?\d:\d{2}|noon|midnight)\s+/i, "");
+
+    const firstClause = title.split(/\b(?:at|in|on|with|for|by|before|after|during)\b/i)[0];
+    title = String(firstClause || title)
+      .replace(/\b\d{1,2}:\d{2}\s*[ap]\.?\s*m\.?\b/ig, "")
+      .replace(/\b\d{1,2}\s*[ap]\.?\s*m\.?\b/ig, "")
+      .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g, "")
+      .replace(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?\b/ig, "")
+      .replace(/[,:;.\-]+$/g, "")
+      .trim();
+
+    if (!title) {
+      const actionMatch = normalized.match(/\b(?:do|have|hold|plan|schedule|add|create)\s+([^,.;]+?)(?=\s+\b(?:at|in|on|with|for|by|before|after|during)\b|[,.;&]|$)/i);
+      title = String(actionMatch?.[1] || "").trim();
+    }
+
+    if (!title) {
+      return "";
+    }
+
+    return `${title.charAt(0).toUpperCase()}${title.slice(1)}`;
+  }
+
+  function guessEventFormValuesFromPrompt(prompt) {
+    const title = guessEventTitleFromPrompt(prompt);
+    const date = guessEventDateFromPrompt(prompt);
+    const startsAt = guessEventTimeFromPrompt(prompt);
+    const endsAt = "";
+    const location = guessEventLocationFromPrompt(prompt);
+    const assignedTo = guessAssignedToFromPrompt(prompt);
+    const main = guessMainEventFromPrompt(prompt);
+
+    return {
+      title,
+      date,
+      startsAt,
+      endsAt,
+      location,
+      assignedTo,
+      main
+    };
+  }
+
+  function buildEventMessageTemplate(values) {
+    const title = String(values?.title || "").trim();
+    const time = formatEventTimeRange(values?.startsAt, values?.endsAt);
+    const date = formatEventDate(values?.date);
+    const location = String(values?.location || "").trim();
+    const assignedTo = String(values?.assignedTo || "").trim();
+    const audience = assignedTo || "everyone";
+    const schedule = [time, date].filter(Boolean).join(" on ");
+
+    if (!title || !schedule) {
+      return "";
+    }
+
+    const locationPart = location ? ` in ${location}` : "";
+    return `Hope & Caleb update: ${title} for ${audience} is at ${schedule}${locationPart}. Please plan to be there a few minutes early.`;
+  }
+
+  function applyEventPromptGuess() {
+    if (!eventForm) {
+      return;
+    }
+
+    const promptField = eventForm.elements.namedItem("eventPrompt");
+    const prompt = normalizePromptText(promptField?.value || "");
+    if (!prompt) {
+      setStatus(eventPromptStatusEl, "Add a short prompt first so I have something to infer from.", "error");
+      promptField?.focus();
+      return;
+    }
+
+    const guessed = guessEventFormValuesFromPrompt(prompt);
+    const nextValues = {};
+    if (guessed.title) nextValues.title = guessed.title;
+    if (guessed.date) nextValues.date = guessed.date;
+    if (guessed.startsAt) nextValues.startsAt = guessed.startsAt;
+    if (guessed.endsAt) nextValues.endsAt = guessed.endsAt;
+    if (guessed.location) nextValues.location = guessed.location;
+    if (typeof guessed.main === "boolean") nextValues.main = guessed.main ? "true" : "false";
+    const currentMessageTemplate = String(eventForm.elements.namedItem("messageTemplate")?.value || "").trim();
+    const messageTemplate = buildEventMessageTemplate(guessed);
+    if (messageTemplate && !currentMessageTemplate) {
+      nextValues.messageTemplate = messageTemplate;
+    }
+    fillForm(eventForm, nextValues);
+
+    if (guessed.assignedTo) {
+      renderEventAssignedTypeOptions(guessed.assignedTo);
+    }
+
+    const guessedFields = [
+      guessed.title ? "title" : "",
+      guessed.date ? "date" : "",
+      guessed.startsAt || guessed.endsAt ? "time" : "",
+      guessed.location ? "location" : "",
+      messageTemplate && !currentMessageTemplate ? "message template" : "",
+      guessed.assignedTo ? "assigned to" : "",
+      typeof guessed.main === "boolean" ? "main event" : ""
+    ].filter(Boolean);
+
+    if (guessedFields.length) {
+      setStatus(eventPromptStatusEl, `Filled ${guessedFields.join(", ")} with best guesses. Review before saving.`, "success");
+      setStatus(eventStatusEl, "", "");
+      return;
+    }
+
+    setStatus(eventPromptStatusEl, "I could not infer much from that prompt yet. Try including a title, date, time, or location.", "pending");
   }
 
   function openEventModal(title, values = {}) {
@@ -722,6 +1200,7 @@
     addGuestForm.reset();
     addGuestForm.elements.namedItem("tableId").value = "";
     addGuestForm.elements.namedItem("tableName").value = "";
+    addGuestForm.elements.namedItem("seatNumber").value = "";
     addGuestModal.querySelector("#addGuestModalTitle").textContent = "Add Guest";
     setStatus(addGuestStatusEl, "", "");
     activeTableForGuestModal = null;
@@ -734,8 +1213,9 @@
     }
 
     const eligibleGuests = getEligibleGuestsForTable(table);
+    const guestTypeLabel = getTableGuestTypeValue(table) || "guest";
     guestField.innerHTML = `
-      <option value="">Select a ${escapeHtml(table.type || "guest")}</option>
+      <option value="">Select a ${escapeHtml(guestTypeLabel)}</option>
       ${eligibleGuests.map((guest) => `
         <option value="${escapeHtml(String(guest.rowNumber || ""))}">
           ${escapeHtml(guest.name)}
@@ -751,7 +1231,10 @@
     addGuestModalReturnFocusEl = options.returnFocusEl instanceof HTMLElement ? options.returnFocusEl : null;
     addGuestForm.elements.namedItem("tableId").value = String(table.id || "").trim();
     addGuestForm.elements.namedItem("tableName").value = String(table.tableName || "").trim();
-    addGuestModal.querySelector("#addGuestModalTitle").textContent = `Add Guest to ${table.tableName || "Table"}`;
+    addGuestForm.elements.namedItem("seatNumber").value = String(options.seatNumber || "").trim();
+    addGuestModal.querySelector("#addGuestModalTitle").textContent = options.seatNumber
+      ? `Add Guest to ${table.tableName || "Table"} Seat ${options.seatNumber}`
+      : `Add Guest to ${table.tableName || "Table"}`;
     renderAddGuestOptions(table);
     addGuestModal.hidden = false;
     addGuestModal.setAttribute("aria-hidden", "false");
@@ -819,7 +1302,7 @@
       <div class="event-accordion">
         ${filteredEvents.map((event) => {
           const schedule = formatEventSchedule(event);
-          const timeLabel = formatEventTime(event.startsAt);
+          const timeLabel = formatEventTimeRange(event.startsAt, event.endsAt);
           const dateLabel = formatEventDate(event.date) || "No date";
           const shotCount = cachedShots.filter((shot) => String(shot.eventId || "").trim() === String(event.id || "").trim()).length;
           return `
@@ -884,7 +1367,7 @@
                   ` : ""}
                 </div>
                 <div class="event-accordion__toolbar">
-                  <span class="meta">${escapeHtml(`${shotCount} linked shot${shotCount === 1 ? "" : "s"}`)}</span>
+                  ${shotCount > 0 ? `<span class="meta">${escapeHtml(`${shotCount} linked shot${shotCount === 1 ? "" : "s"}`)}</span>` : ""}
                 </div>
               </div>
             </details>
@@ -904,9 +1387,13 @@
     return cachedShots.filter((shot) => String(shot.eventId || "").trim() === normalizedEventId);
   }
 
-  function buildEventAiPrompt(eventItem, options = {}) {
+  function buildEventAiPrompts(eventItem, options = {}) {
     if (!eventItem) {
-      return "";
+      return {
+        systemPrompt: "",
+        userPrompt: "",
+        copyPrompt: ""
+      };
     }
 
     const planningNotes = String(options.planningNotes || "").trim();
@@ -918,8 +1405,8 @@
     const existingShotsText = relatedShots.length
       ? relatedShots.map((shot, index) => `${index + 1}. ${shot.title || "Untitled shot"}${shot.description ? ` - ${shot.description}` : ""}`).join("\n")
       : "None yet.";
-
-    return [
+    const systemPrompt = "You are a practical event-planning assistant. Return clean JSON only. Create realistic, useful planning outputs based on the event context. Keep items concise and actionable.";
+    const userPrompt = [
       `Help me plan this event and turn my notes into ${goalSentence}.`,
       "",
       "Event context:",
@@ -936,21 +1423,31 @@
       "Existing photo shots already in the planner:",
       existingShotsText,
       "",
-      "Please respond with these sections in Markdown:",
-      "1. A short event summary and assumptions you made.",
+      "Focus on these outputs:",
       goals.includes("todo items")
-        ? "2. A todo list with owner suggestions, due timing, and any prep dependencies."
-        : "2. Skip todo items unless they are truly needed.",
+        ? "- Todo items with owner suggestions, due timing, and prep dependencies."
+        : "- Skip todo items unless they are truly needed.",
       goals.includes("shopping or packing lists")
-        ? "3. A shopping or packing checklist grouped by section with suggested quantities when obvious."
-        : "3. Skip shopping or packing lists unless they are truly needed.",
+        ? "- A shopping or packing checklist grouped by section with suggested quantities when obvious."
+        : "- Skip shopping or packing lists unless they are truly needed.",
       goals.includes("photo shot ideas")
-        ? "4. Optional photo shot ideas that would fit this event."
-        : "4. Skip photo shot ideas unless they are truly needed.",
-      "5. Questions I should answer before finalizing the plan.",
+        ? "- Optional photo shot ideas that would fit this event."
+        : "- Skip photo shot ideas unless they are truly needed.",
+      "- Questions I should answer before finalizing the plan.",
       "",
-      "Keep the output practical and easy to copy into my planner."
+      "Keep the output practical and easy to use in my planner."
     ].join("\n");
+    const copyPrompt = [
+      `System:\n${systemPrompt}`,
+      "",
+      `User:\n${userPrompt}`
+    ].join("\n");
+
+    return {
+      systemPrompt,
+      userPrompt,
+      copyPrompt
+    };
   }
 
   function updateEventPromptActions() {
@@ -975,10 +1472,10 @@
       goals
     });
 
-    promptOutputField.value = buildEventAiPrompt(eventItem, {
+    promptOutputField.value = buildEventAiPrompts(eventItem, {
       planningNotes: planningNotesField.value,
       goals
-    });
+    }).copyPrompt;
 
     if (copyButton) {
       copyButton.disabled = !String(promptOutputField.value || "").trim();
@@ -1145,7 +1642,11 @@
         generateButton.disabled = true;
       }
       setStatus(eventDetailStatusEl, "Generating event plan...", "pending");
-      const plan = await rpcRequest("generateEventPlan", {
+      const prompts = buildEventAiPrompts(eventItem, {
+        planningNotes,
+        goals
+      });
+      const plan = await backendRequest("generateEventPlan", {
         eventId: String(eventItem.id || "").trim(),
         title: String(eventItem.title || "").trim(),
         date: String(eventItem.date || "").trim(),
@@ -1156,6 +1657,8 @@
         notes: String(eventItem.notes || "").trim(),
         planningNotes,
         goals,
+        systemPrompt: prompts.systemPrompt,
+        userPrompt: prompts.userPrompt,
         existingShots: getShotsForEvent(eventItem.id).map((shot) => ({
           title: String(shot.title || "").trim(),
           description: String(shot.description || "").trim(),
@@ -1392,6 +1895,7 @@
         ...detailEvent,
         date: String(detailEvent.date || "").trim(),
         startsAt: String(detailEvent.startsAt || "").trim(),
+        endsAt: String(detailEvent.endsAt || "").trim(),
         main: detailEvent.main ? "true" : "false",
         active: detailEvent.active ? "true" : "false"
       });
@@ -1421,7 +1925,7 @@
           cachedShots = cachedShots.filter((item) => String(item.id || "").trim() !== shotId);
           renderEventDetail();
           rerenderShotData();
-          await rpcRequest("deleteShot", { id: shotId });
+          await backendRequest("deleteShot", { id: shotId });
           setStatus(eventDetailStatusEl, `${shot.title || "Shot"} deleted.`, "success");
         } catch (error) {
           cachedShots = previousShots;
@@ -1729,7 +2233,7 @@
     }
 
     setStatus(bedsInlineStatusEl, "Saving bed assignment...", "pending");
-    return rpcRequest("saveBed", {
+    return backendRequest("saveBed", {
       id: String(bed.id || "").trim(),
       lodging: String(bed.lodging || "").trim(),
       room: String(bed.room || "").trim(),
@@ -1962,9 +2466,6 @@
                 <p class="meta">${Number(table.count || 0)} seats</p>
                 <p class="meta">${assignedGuests.length} assigned</p>
               </div>
-            </div>
-            <div class="toolbar">
-              <button class="button button--icon" type="button" data-open-add-guest-modal data-table-id="${escapeHtml(table.id)}" aria-label="Add guest to ${escapeHtml(table.tableName || "table")}" ${assignedGuests.length >= Number(table.count || 0) ? "disabled" : ""}>+</button>
             </div>
           </div>
           <div class="table-assignment-list ${assignedGuests.length ? "" : "table-assignment-list--empty"}" data-table-drop-list data-table-name="${escapeHtml(String(table.tableName || "").trim())}">
@@ -2350,7 +2851,8 @@
   }
 
   function getTableTypes(table) {
-    return getTypeTokens(String(table?.type || "").trim());
+    const rawTypeValue = String(table?.type || getTableColumnValue(table, /^type$/i) || "").trim();
+    return isTableLayoutSideToken(rawTypeValue) ? [] : getTypeTokens(rawTypeValue);
   }
 
   function tableAcceptsAnyGuest(table) {
@@ -2358,7 +2860,7 @@
   }
 
   function getTableGuestTypeValue(table) {
-    const typeValue = String(table?.type || "").trim();
+    const typeValue = String(table?.type || getTableColumnValue(table, /^type$/i) || "").trim();
     return isTableLayoutSideToken(typeValue) ? "" : typeValue;
   }
 
@@ -2679,7 +3181,7 @@
     return String(window.PLANNER_CTX.rsvpFeedUrl || "").trim();
   }
 
-  async function rpcRequest(method, payload) {
+  async function backendRequest(method, payload) {
     const rpcUrl = getRpcUrl();
     const passwordHash = String(window.sessionStorage.getItem(STORAGE_KEYS.authHash) || "").trim();
 
@@ -2712,9 +3214,9 @@
 
   async function refreshPlannerCollections() {
     const [people, events, shots, beds, todos, tables] = await Promise.all([
-      rpcRequest("listPeople", {}),
-      rpcRequest("listEvents", {}),
-      rpcRequest("listShots", {}).catch((error) => {
+      backendRequest("listPeople", {}),
+      backendRequest("listEvents", {}),
+      backendRequest("listShots", {}).catch((error) => {
         const message = String(error?.message || "");
         if (/Unknown RPC method:\s*listShots/i.test(message)) {
           setStatus(shotStatusEl, "Shot List is hidden until the latest planner backend is deployed.", "pending");
@@ -2722,9 +3224,9 @@
         }
         throw error;
       }),
-      rpcRequest("listBeds", {}),
-      rpcRequest("listTodos", {}),
-      rpcRequest("listTables", {})
+      backendRequest("listBeds", {}),
+      backendRequest("listTodos", {}),
+      backendRequest("listTables", {})
     ]);
 
     cachedPeople = sortByUpdated(Array.isArray(people) ? people : [], "updatedAt");
@@ -3054,12 +3556,12 @@ function sortTables(items) {
     updateCachedTableReservedOpenSeats(tableId, nextReservedSeats);
 
     try {
-      const savedTable = await rpcRequest("saveTableReservedOpenSeats", {
+      const savedTable = await backendRequest("saveTableReservedOpenSeats", {
         id: tableId,
         reservedOpenSeatPositions: nextReservedSeats
       });
       upsertCachedTable(savedTable);
-      setStatus(tableStatusEl, currentReservedSeats.includes(numericSeatNumber) ? "Reserved open spot removed." : "Reserved open spot saved.", "success");
+      setStatus(tableStatusEl, currentReservedSeats.includes(numericSeatNumber) ? "Held seat released." : "Seat held open.", "success");
     } catch (error) {
       cachedTables = previousTables;
       rerenderTableData();
@@ -3080,7 +3582,7 @@ function sortTables(items) {
     }
 
     const nextReservedSeats = currentReservedSeats.filter((item) => item !== numericSeatNumber);
-    const savedTable = await rpcRequest("saveTableReservedOpenSeats", {
+    const savedTable = await backendRequest("saveTableReservedOpenSeats", {
       id: tableId,
       reservedOpenSeatPositions: nextReservedSeats
     });
@@ -3100,8 +3602,8 @@ function sortTables(items) {
       return true;
     }
 
-    const guestTypes = getTypeTokens(guest.type);
-    const tableTypes = getTableTypes(table);
+    const guestTypes = getTypeTokens(guest.type).map((type) => type.toLowerCase());
+    const tableTypes = getTableTypes(table).map((type) => type.toLowerCase());
     return guestTypes.some((type) => tableTypes.includes(type));
   }
 
@@ -3188,7 +3690,7 @@ function sortTables(items) {
     const isDragSource = guest && activeTableDrag && Number(activeTableDrag.rowNumber || 0) === Number(guest.rowNumber || 0);
     return `
       <div class="table-seat ${guest ? "table-seat--occupied" : "table-seat--empty"} ${reserved ? "table-seat--reserved" : ""} ${isDragSource ? "is-drag-source" : ""}" data-table-dropzone data-table-id="${escapeHtml(tableId)}" data-table-name="${escapeHtml(tableName)}" data-drop-seat="${escapeHtml(String(seatNumber))}" data-drop-enabled="false" role="button" tabindex="0" aria-label="${escapeHtml(dropLabel)}" aria-disabled="true">
-        ${guest ? activeTableDrag ? `<span class="table-seat__hint" aria-hidden="true">Drop here</span>` : "" : `<span class="table-seat__hint" aria-hidden="true">${reserved ? "Reserved spot" : "Open spot"}</span>`}
+        ${guest ? activeTableDrag ? `<span class="table-seat__hint" aria-hidden="true">Drop here</span>` : "" : ""}
         ${guest ? `
           <div class="dashboard-entry" data-assigned-guest data-row-number="${escapeHtml(String(guest.rowNumber || ""))}" data-table-name="${escapeHtml(tableName)}">
             <div class="table-assignment-row">
@@ -3220,11 +3722,12 @@ function sortTables(items) {
           </div>
         ` : `
           <div class="table-seat__empty">
-            <strong>${reserved ? "Reserved open spot" : "Open spot"}</strong>
-            <span>${reserved ? "This seat is intentionally being kept open." : "Keep this seat available for a couple or late assignment."}</span>
-            <button class="button button--light table-seat__toggle" type="button" data-toggle-reserved-seat data-table-id="${escapeHtml(tableId)}" data-seat-number="${escapeHtml(String(seatNumber))}">
-              ${reserved ? "Unreserve" : "Reserve"}
-            </button>
+            <div class="table-seat__actions">
+              <button class="button button--icon table-seat__add" type="button" data-open-add-guest-seat data-table-id="${escapeHtml(tableId)}" data-seat-number="${escapeHtml(String(seatNumber))}" aria-label="Add guest to seat ${escapeHtml(String(seatNumber))} at ${escapeHtml(tableName || "table")}">+</button>
+              <button class="button button--light table-seat__toggle" type="button" data-toggle-reserved-seat data-table-id="${escapeHtml(tableId)}" data-seat-number="${escapeHtml(String(seatNumber))}">
+                ${reserved ? "Release" : "Hold"}
+              </button>
+            </div>
           </div>
         `}
       </div>
@@ -3248,20 +3751,30 @@ function sortTables(items) {
       .sort((left, right) => left.name.localeCompare(right.name));
   }
 
-  async function addGuestToTable(table, guestRowNumber) {
+  async function addGuestToTable(table, guestRowNumber, seatNumber = "") {
     const tableName = String(table.tableName || "").trim();
     const tableId = String(table.id || "").trim();
     const nextRowNumber = Number(guestRowNumber || 0);
+    const requestedSeatNumber = Number(seatNumber || 0);
     if (!tableName || !nextRowNumber) {
       return;
     }
 
-    const nextOrder = findFirstOpenSeat(tableName);
+    const nextOrder = requestedSeatNumber || findFirstOpenSeat(tableName);
     if (!nextOrder) {
       throw new Error("That table is already full.");
     }
+    if (requestedSeatNumber) {
+      const assignedGuests = getAssignedGuestByTableName(tableName);
+      if (assignedGuests.some((guest) => Number(guest.tableOrder || 0) === requestedSeatNumber)) {
+        throw new Error("That seat is already taken.");
+      }
+      if (requestedSeatNumber < 1 || requestedSeatNumber > Number(table.count || 0)) {
+        throw new Error("That seat is outside this table's range.");
+      }
+    }
 
-    await rpcRequest("saveGuestTableAssignment", {
+    await backendRequest("saveGuestTableAssignment", {
       rowNumber: nextRowNumber,
       tableName,
       tableOrder: nextOrder
@@ -3333,7 +3846,7 @@ function sortTables(items) {
       return;
     }
 
-    const savedAssignments = await rpcRequest("saveGuestTableAssignments", {
+    const savedAssignments = await backendRequest("saveGuestTableAssignments", {
       assignments: pendingAssignments
     });
 
@@ -3519,7 +4032,7 @@ function sortTables(items) {
     }
 
     const guest = cachedGuests.find((row) => getGuestRowNumber(row) === rowNumber);
-    await rpcRequest("saveGuestTableAssignment", {
+    await backendRequest("saveGuestTableAssignment", {
       rowNumber,
       tableName: "",
       tableOrder: ""
@@ -3654,7 +4167,7 @@ function sortTables(items) {
         createdAt: cachedPeople.find((item) => item.id === personId)?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
-      const savedPerson = await rpcRequest("savePerson", {
+      const savedPerson = await backendRequest("savePerson", {
         id: personId,
         name: String(data.name || "").trim(),
         phone: String(data.phone || "").trim(),
@@ -3692,6 +4205,7 @@ function sortTables(items) {
         main: String(data.main || "false") === "true",
         date: String(data.date || "").trim(),
         startsAt: String(data.startsAt || "").trim(),
+        endsAt: String(data.endsAt || "").trim(),
         location: String(data.location || "").trim(),
         assignedTo,
         reminderMinutes: Number(data.reminderMinutes || 15),
@@ -3700,12 +4214,13 @@ function sortTables(items) {
         active: String(data.active || "true") !== "false",
         updatedAt: new Date().toISOString()
       });
-      const savedEvent = await rpcRequest("saveEvent", {
+      const savedEvent = await backendRequest("saveEvent", {
         id: eventId,
         title: String(data.title || "").trim(),
         main: String(data.main || "false") === "true",
         date: String(data.date || "").trim(),
         startsAt: String(data.startsAt || "").trim(),
+        endsAt: String(data.endsAt || "").trim(),
         location: String(data.location || "").trim(),
         assignedTo,
         reminderMinutes: Number(data.reminderMinutes || 15),
@@ -3751,7 +4266,7 @@ function sortTables(items) {
         updatedAt: new Date().toISOString()
       };
       upsertCachedShot(optimisticShot);
-      const savedShot = await rpcRequest("saveShot", {
+      const savedShot = await backendRequest("saveShot", {
         id: shotId,
         eventId: String(data.eventId || "").trim(),
         title: String(data.title || "").trim(),
@@ -3799,7 +4314,7 @@ function sortTables(items) {
         createdAt: existingBed?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
-      const savedBed = await rpcRequest("saveBed", {
+      const savedBed = await backendRequest("saveBed", {
         id: bedId,
         lodging: String(data.lodging || "").trim(),
         room: String(data.room || "").trim(),
@@ -3852,7 +4367,7 @@ function sortTables(items) {
         updatedAt: new Date().toISOString()
       };
       upsertCachedTodo(optimisticTodo);
-      const savedTodo = await rpcRequest("saveTodo", {
+      const savedTodo = await backendRequest("saveTodo", {
         id: todoId,
         title: String(data.title || "").trim(),
         notes: String(data.notes || "").trim(),
@@ -3983,7 +4498,7 @@ function sortTables(items) {
         createdAt: existingTable?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
-      const savedTable = await rpcRequest("saveTable", {
+      const savedTable = await backendRequest("saveTable", {
         id: tableId,
         tableName,
         location: String(data.location || "Center").trim(),
@@ -4016,7 +4531,7 @@ function sortTables(items) {
       }
       setStatus(addGuestStatusEl, "Saving table assignment...", "pending");
       const data = Object.fromEntries(new FormData(addGuestForm).entries());
-      await addGuestToTable(activeTableForGuestModal, data.guestRowNumber);
+      await addGuestToTable(activeTableForGuestModal, data.guestRowNumber, data.seatNumber);
       renderRsvps();
       renderGuests();
       renderTables();
@@ -4040,6 +4555,14 @@ function sortTables(items) {
 
   document.querySelector("[data-reset-event]").addEventListener("click", () => {
     clearEventForm();
+  });
+
+  eventPromptFillButton?.addEventListener("click", () => {
+    applyEventPromptGuess();
+  });
+
+  eventForm?.elements?.namedItem("eventPrompt")?.addEventListener("input", () => {
+    setStatus(eventPromptStatusEl, "", "");
   });
 
   document.querySelectorAll("[data-close-event-modal]").forEach((button) => {
@@ -4120,6 +4643,7 @@ function sortTables(items) {
       ...eventItem,
       date: String(eventItem.date || "").trim(),
       startsAt: String(eventItem.startsAt || "").trim(),
+      endsAt: String(eventItem.endsAt || "").trim(),
       main: eventItem.main ? "true" : "false",
       active: eventItem.active ? "true" : "false"
     });
@@ -4157,7 +4681,7 @@ function sortTables(items) {
         completedAt: nextIsComplete ? (shot.completedAt || new Date().toISOString()) : "",
         updatedAt: new Date().toISOString()
       });
-      const savedShot = await rpcRequest("saveShot", {
+      const savedShot = await backendRequest("saveShot", {
         id: String(shot.id || "").trim(),
         eventId: String(shot.eventId || "").trim(),
         title: String(shot.title || "").trim(),
@@ -4244,11 +4768,14 @@ function sortTables(items) {
   });
 
   tablesListEl.addEventListener("click", async (event) => {
-    const openButton = event.target.closest("[data-open-add-guest-modal]");
+    const openButton = event.target.closest("[data-open-add-guest-seat]");
     if (openButton) {
       const table = cachedTables.find((item) => item.id === openButton.dataset.tableId);
       if (!table) return;
-      openAddGuestModal(table, { returnFocusEl: openButton });
+      openAddGuestModal(table, {
+        returnFocusEl: openButton,
+        seatNumber: Number(openButton.dataset.seatNumber || 0) || ""
+      });
       return;
     }
 
@@ -4256,10 +4783,10 @@ function sortTables(items) {
     if (reserveButton) {
       try {
         requirePlannerAccess();
-        setStatus(tableStatusEl, "Saving reserved open spot...", "pending");
+        setStatus(tableStatusEl, "Saving held seat...", "pending");
         await toggleReservedOpenSeat(reserveButton.dataset.tableId, reserveButton.dataset.seatNumber);
       } catch (error) {
-        setStatus(tableStatusEl, error.message || "Unable to save reserved open spot.", "error");
+        setStatus(tableStatusEl, error.message || "Unable to save held seat.", "error");
       }
       return;
     }
@@ -4483,6 +5010,8 @@ function sortTables(items) {
   window.addEventListener("load", async () => {
     refreshViewer();
     renderRoute();
+    renderPlannerVersionInfo();
     await maybeLoadPlannerData();
+    await refreshPlannerVersionInfo();
   });
 </script>

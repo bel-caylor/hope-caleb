@@ -2,6 +2,7 @@ import { syncGuestSummarySheets } from "./features/feed";
 import { getViewerProfile } from "./auth";
 import { deleteShot, listBeds, listEvents, listPeople, listShots, listTables, listTodos, saveBed, saveEvent, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveShot, saveTable, saveTableReservedOpenSeats, saveTodo } from "./features/planner";
 import { generateEventPlan } from "./util/ai";
+import { PLANNER_BUILD_VERSION } from "./version";
 
 export function rpc(input: { method: string; payload: unknown }) {
   const { method, payload } = input;
@@ -9,6 +10,10 @@ export function rpc(input: { method: string; payload: unknown }) {
   switch (method) {
     case "getViewerProfile":
       return getViewerProfile();
+    case "getPlannerBuildInfo":
+      return {
+        version: PLANNER_BUILD_VERSION
+      };
     case "listPeople":
       return listPeople();
     case "savePerson":

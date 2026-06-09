@@ -13,6 +13,8 @@ type GenerateEventPlanInput = {
   planningNotes?: string;
   goals?: string[];
   existingShots?: Array<{ title?: string; description?: string; notes?: string }>;
+  systemPrompt?: string;
+  userPrompt?: string;
 };
 
 type EventPlanItem = {
@@ -68,13 +70,32 @@ export function generateEventPlan(input: GenerateEventPlanInput): EventPlanResul
   }
 
   const goals = normalizeGoals(input?.goals);
+  const prompts = buildEventPlanPrompts(input, goals);
+
+  try {
+    const responseText = callOpenAi(prompts.systemPrompt, prompts.userPrompt, key);
+    const parsed = safeJsonParse(responseText);
+    const normalized = normalizeEventPlan(parsed, fallback, goals);
+    return normalized;
+  } catch (error) {
+    try {
+      Logger.log(`generateEventPlan AI error: ${(error as Error)?.message || error}`);
+    } catch (_) {}
+    return {
+      ...fallback,
+      error: "AI request failed"
+    };
+  }
+}
+
+function buildEventPlanPrompts(input: GenerateEventPlanInput, goals: string[]) {
   const existingShots = Array.isArray(input?.existingShots) ? input.existingShots : [];
-  const systemPrompt = "You are a practical event-planning assistant. Return clean JSON only. Create realistic, useful planning outputs based on the event context. Keep items concise and actionable.";
-  const userPrompt = [
+  const fallbackSystemPrompt = "You are a practical event-planning assistant. Return clean JSON only. Create realistic, useful planning outputs based on the event context. Keep items concise and actionable.";
+  const fallbackUserPrompt = [
     "Build an event plan for the following event.",
     "",
     "Event context:",
-    `- Title: ${title}`,
+    `- Title: ${String(input?.title || "").trim() || "Untitled event"}`,
     `- Date: ${String(input?.date || "").trim() || "Not provided"}`,
     `- Start time: ${String(input?.startsAt || "").trim() || "Not provided"}`,
     `- Location: ${String(input?.location || "").trim() || "Not provided"}`,
@@ -87,7 +108,12 @@ export function generateEventPlan(input: GenerateEventPlanInput): EventPlanResul
     "Existing shot requests already in the planner:",
     existingShots.length
       ? existingShots.map((shot, index) => `${index + 1}. ${String(shot?.title || "").trim() || "Untitled shot"}${String(shot?.description || "").trim() ? ` - ${String(shot?.description || "").trim()}` : ""}`).join("\n")
-      : "None yet.",
+      : "None yet."
+  ].join("\n");
+
+  const systemPrompt = String(input?.systemPrompt || "").trim() || fallbackSystemPrompt;
+  const userPromptBase = String(input?.userPrompt || "").trim() || fallbackUserPrompt;
+  const schemaGuardrail = [
     "",
     "Return valid JSON with this exact shape:",
     "{\"summary\":\"string\",\"assumptions\":[\"string\"],\"todos\":[{\"title\":\"string\",\"ownerSuggestion\":\"string\",\"dueTiming\":\"string\",\"notes\":\"string\"}],\"checklists\":[{\"title\":\"string\",\"type\":\"shopping|packing|checklist\",\"items\":[{\"item\":\"string\",\"quantity\":\"string\",\"notes\":\"string\"}]}],\"shotIdeas\":[{\"title\":\"string\",\"reason\":\"string\"}],\"questions\":[\"string\"]}",
@@ -101,20 +127,10 @@ export function generateEventPlan(input: GenerateEventPlanInput): EventPlanResul
     "- Do not wrap the JSON in markdown fences."
   ].join("\n");
 
-  try {
-    const responseText = callOpenAi(systemPrompt, userPrompt, key);
-    const parsed = safeJsonParse(responseText);
-    const normalized = normalizeEventPlan(parsed, fallback, goals);
-    return normalized;
-  } catch (error) {
-    try {
-      Logger.log(`generateEventPlan AI error: ${(error as Error)?.message || error}`);
-    } catch (_) {}
-    return {
-      ...fallback,
-      error: "AI request failed"
-    };
-  }
+  return {
+    systemPrompt,
+    userPrompt: `${userPromptBase}${schemaGuardrail}`
+  };
 }
 
 function buildFallbackEventPlan(input: GenerateEventPlanInput): EventPlanResult {

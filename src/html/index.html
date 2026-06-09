@@ -11,6 +11,7 @@
     <meta name="planner-dashboard-password-hash" content="<?= dashboardPasswordHash ?>">
     <meta name="planner-rsvp-feed-url" content="<?= rsvpFeedUrl ?>">
     <meta name="planner-script-base-url" content="<?= scriptBaseUrl ?>">
+    <meta name="planner-build-version" content="<?= plannerBuildVersion ?>">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1768,6 +1769,39 @@
         border: 0;
       }
 
+      .event-prompt-intake {
+        display: grid;
+        gap: 0.7rem;
+        margin-bottom: 1rem;
+        padding: 0.95rem 1rem;
+        border: 1px solid color-mix(in srgb, var(--planner-accent) 20%, var(--planner-border));
+        border-radius: 12px;
+        background:
+          radial-gradient(circle at top left, rgba(223, 158, 89, 0.14), transparent 44%),
+          linear-gradient(135deg, rgba(255, 249, 242, 0.98), rgba(252, 243, 236, 0.94));
+      }
+
+      .event-prompt-intake__header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.8rem;
+      }
+
+      .event-prompt-intake__header strong,
+      .event-prompt-intake__header span {
+        display: block;
+      }
+
+      .event-prompt-intake__header strong {
+        color: var(--ink);
+      }
+
+      .event-prompt-intake__actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+
       .type-options legend {
         margin-bottom: 0.45rem;
         color: var(--muted);
@@ -2281,19 +2315,29 @@
 
       .table-seat__empty {
         display: grid;
-        gap: 0.25rem;
+        gap: 0.55rem;
         align-content: center;
         min-height: 100%;
         color: var(--muted);
       }
 
-      .table-seat__empty strong {
-        color: var(--ink);
+      .table-seat__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        align-items: center;
+      }
+
+      .table-seat__add {
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+        padding: 0;
+        border-radius: 999px;
+        font-size: 1.3rem;
+        line-height: 1;
       }
 
       .table-seat__toggle {
-        justify-self: start;
-        margin-top: 0.35rem;
         padding: 0.35rem 0.65rem;
         font-size: 0.82rem;
       }
@@ -2996,6 +3040,7 @@
           <div class="planner-summary" id="plannerGate">
             <div id="plannerGateMessage" class="meta">Enter the dashboard password to continue.</div>
           </div>
+          <p class="meta" id="plannerVersionInfo"></p>
           <p class="status" id="plannerSyncStatus"></p>
         </section>
 
@@ -3242,6 +3287,22 @@
             </div>
             <form id="eventForm">
               <input type="hidden" name="id">
+              <div class="event-prompt-intake">
+                <div class="event-prompt-intake__header">
+                  <div>
+                    <strong>Quick Prompt</strong>
+                    <span class="meta">Describe the event once and we will fill in the best guesses below.</span>
+                  </div>
+                </div>
+                <label>
+                  Prompt
+                  <textarea name="eventPrompt" rows="3" placeholder="Family photos with the bride, bridesmaids, and both moms in the courtyard at 3:15 PM on wedding day."></textarea>
+                </label>
+                <div class="event-prompt-intake__actions">
+                  <button class="button button--light" type="button" id="eventPromptFillButton">Fill From Prompt</button>
+                </div>
+                <p class="status" id="eventPromptStatus"></p>
+              </div>
               <div class="split">
                 <label>Title <input name="title" required placeholder="Family photos"></label>
                 <label>
@@ -3255,6 +3316,10 @@
               <div class="split">
                 <label>Date <input name="date" type="date"></label>
                 <label>Start Time <input name="startsAt" type="time"></label>
+              </div>
+              <div class="split">
+                <label>End Time <input name="endsAt" type="time"></label>
+                <span aria-hidden="true"></span>
               </div>
               <label>Location <input name="location" placeholder="Courtyard"></label>
               <fieldset class="type-options">
@@ -3491,6 +3556,7 @@
             <form id="addGuestForm">
               <input type="hidden" name="tableId">
               <input type="hidden" name="tableName">
+              <input type="hidden" name="seatNumber">
               <label>Guest
                 <select name="guestRowNumber" required>
                   <option value="">Select guest</option>

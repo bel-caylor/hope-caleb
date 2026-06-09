@@ -35,6 +35,7 @@ export const EVENT_HEADERS = [
   "Main",
   "Date",
   "StartsAt",
+  "EndsAt",
   "Location",
   "AssignedTo",
   "ReminderMinutes",
