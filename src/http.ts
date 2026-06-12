@@ -1,4 +1,4 @@
-import { getDashboardPasswordHash, getGoogleClientId } from "./auth";
+import { getGoogleClientId } from "./auth";
 import { listPublicFeed, savePublicSubmission } from "./features/feed";
 import { syncGuestSummarySheets } from "./features/feed";
 import { initializeBedsSheet } from "./features/planner";
@@ -7,7 +7,6 @@ import { PLANNER_BUILD_VERSION } from "./version";
 
 type RequestState = {
   __REQUEST_AUTH_TOKEN__?: string;
-  __REQUEST_PASSWORD_HASH__?: string;
 };
 
 function getRequestState(): RequestState {
@@ -36,7 +35,6 @@ export function doGet(e?: GoogleAppsScript.Events.DoGet) {
     }
   })();
   tpl.googleClientId = getGoogleClientId();
-  tpl.dashboardPasswordHash = getDashboardPasswordHash();
   tpl.rsvpFeedUrl = scriptBaseUrl;
   tpl.scriptBaseUrl = scriptBaseUrl;
   tpl.plannerBuildVersion = PLANNER_BUILD_VERSION;
@@ -50,7 +48,7 @@ export function doPost(e?: GoogleAppsScript.Events.DoPost) {
   }
 
   const body = e?.postData?.contents || "";
-  let parsed: { method?: string; payload?: unknown; authToken?: string; passwordHash?: string } = {};
+  let parsed: { method?: string; payload?: unknown; authToken?: string } = {};
 
   try {
     parsed = body ? JSON.parse(body) : {};
@@ -59,7 +57,6 @@ export function doPost(e?: GoogleAppsScript.Events.DoPost) {
   }
 
   getRequestState().__REQUEST_AUTH_TOKEN__ = String(parsed.authToken || "").trim();
-  getRequestState().__REQUEST_PASSWORD_HASH__ = String(parsed.passwordHash || "").trim();
 
   try {
     const method = String(parsed.method || "").trim();
@@ -73,7 +70,6 @@ export function doPost(e?: GoogleAppsScript.Events.DoPost) {
     return jsonResponse({ ok: false, error: message }, e);
   } finally {
     getRequestState().__REQUEST_AUTH_TOKEN__ = "";
-    getRequestState().__REQUEST_PASSWORD_HASH__ = "";
   }
 }
 
@@ -86,7 +82,6 @@ function handleRpcGet(e?: GoogleAppsScript.Events.DoGet) {
   const payload = parseRpcPayload(String(e?.parameter?.payload || ""));
 
   getRequestState().__REQUEST_AUTH_TOKEN__ = String(e?.parameter?.authToken || "").trim();
-  getRequestState().__REQUEST_PASSWORD_HASH__ = String(e?.parameter?.passwordHash || "").trim();
 
   try {
     if (!method) {
@@ -99,7 +94,6 @@ function handleRpcGet(e?: GoogleAppsScript.Events.DoGet) {
     return publicFeedResponse({ ok: false, error: message }, e);
   } finally {
     getRequestState().__REQUEST_AUTH_TOKEN__ = "";
-    getRequestState().__REQUEST_PASSWORD_HASH__ = "";
   }
 }
 

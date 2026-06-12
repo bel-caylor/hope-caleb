@@ -1,6 +1,5 @@
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 
 const ROOT = process.cwd();
 const DIST = path.join(ROOT, "dist");
@@ -111,12 +110,11 @@ function main() {
 
   const rsvpFeedUrl = process.env.PUBLIC_RSVP_FEED_URL || localEnv.PUBLIC_RSVP_FEED_URL || "";
   const plannerScriptBaseUrl = process.env.PLANNER_PROXY_URL || localEnv.PLANNER_PROXY_URL || rsvpFeedUrl;
-  const dashboardPassword = process.env.DASHBOARD_PASSWORD || localEnv.DASHBOARD_PASSWORD || "";
-  const dashboardPasswordHash = (process.env.DASHBOARD_PASSWORD_HASH || localEnv.DASHBOARD_PASSWORD_HASH || hashPassword(dashboardPassword)).trim();
+  const googleClientId = process.env.GOOGLE_CLIENT_ID || localEnv.GOOGLE_CLIENT_ID || "";
 
   html = html.replace(
-    /content="<\?= dashboardPasswordHash \?>"/g,
-    `content="${escapeHtml(dashboardPasswordHash)}"`
+    /content="<\?= googleClientId \?>"/g,
+    `content="${escapeHtml(googleClientId)}"`
   );
   html = html.replace(
     /content="<\?= rsvpFeedUrl \?>"/g,
@@ -141,8 +139,8 @@ function main() {
 
   console.log("Copied root static site files into dist-standalone/.");
   console.log("Built standalone dashboard shell at dist-standalone/dashboard.html from src/html/index.html.");
-  if (!dashboardPasswordHash) {
-    console.warn("[standalone] DASHBOARD_PASSWORD is empty. The dashboard will render, but it will not unlock until you set a password or hash.");
+  if (!googleClientId) {
+    console.warn("[standalone] GOOGLE_CLIENT_ID is empty. Google sign-in will not render until you set it in the environment or .env.standalone.local.");
   }
   if (!rsvpFeedUrl) {
     console.warn("[standalone] PUBLIC_RSVP_FEED_URL is empty. The dashboard can still work, but the RSVP panel will stay disconnected.");
@@ -164,15 +162,6 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-}
-
-function hashPassword(value) {
-  const normalized = String(value || "").trim();
-  if (!normalized) {
-    return "";
-  }
-
-  return crypto.createHash("sha256").update(normalized).digest("hex");
 }
 
 try {

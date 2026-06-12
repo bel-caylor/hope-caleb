@@ -1,14 +1,13 @@
 import {
   ADMIN_HEADERS,
   ADMIN_SHEET,
-  DASHBOARD_PASSWORD_HASH_PROPERTY_KEY,
-  GOOGLE_CLIENT_ID_PROPERTY_KEY
+  GOOGLE_CLIENT_ID_PROPERTY_KEY,
+  SPREADSHEET_ID_PROPERTY_KEY
 } from "./constants";
 import { ensureSheet, readRows } from "./util/sheets";
 
 type RequestState = {
   __REQUEST_AUTH_TOKEN__?: string;
-  __REQUEST_PASSWORD_HASH__?: string;
 };
 
 const GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo?id_token=";
@@ -27,10 +26,12 @@ export function getGoogleClientId() {
   return String(PropertiesService.getScriptProperties().getProperty(GOOGLE_CLIENT_ID_PROPERTY_KEY) || "").trim();
 }
 
-export function getDashboardPasswordHash() {
-  return String(PropertiesService.getScriptProperties().getProperty(DASHBOARD_PASSWORD_HASH_PROPERTY_KEY) || "")
-    .trim()
-    .toLowerCase();
+function getSpreadsheetId() {
+  const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty(SPREADSHEET_ID_PROPERTY_KEY) || "").trim();
+  if (!spreadsheetId) {
+    throw new Error("Spreadsheet access is not configured. Add SPREADSHEET_ID to Script Properties.");
+  }
+  return spreadsheetId;
 }
 
 function decodeJwtPayload(token: string) {
@@ -101,6 +102,49 @@ function verifyGoogleIdToken(token: string): VerifiedUser | null {
   return verified;
 }
 
+function readPlannerAccessEmails() {
+  const spreadsheetId = getSpreadsheetId();
+  const cache = CacheService.getScriptCache();
+  const cacheKey = `planner-sheet-access:${spreadsheetId}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    try {
+      return new Set(JSON.parse(cached) as string[]);
+    } catch (_) {}
+  }
+
+  const file = DriveApp.getFileById(spreadsheetId);
+  const emails = new Set<string>();
+  const ownerEmail = String(file.getOwner()?.getEmail?.() || "").trim().toLowerCase();
+  if (ownerEmail) {
+    emails.add(ownerEmail);
+  }
+
+  file.getEditors().forEach((user) => {
+    const email = String(user?.getEmail?.() || "").trim().toLowerCase();
+    if (email) {
+      emails.add(email);
+    }
+  });
+
+  file.getViewers().forEach((user) => {
+    const email = String(user?.getEmail?.() || "").trim().toLowerCase();
+    if (email) {
+      emails.add(email);
+    }
+  });
+
+  cache.put(cacheKey, JSON.stringify([...emails]), 300);
+  return emails;
+}
+
+function getViewerName(email: string) {
+  ensureSheet(ADMIN_SHEET, ADMIN_HEADERS);
+  const adminRows = readRows(ADMIN_SHEET);
+  const admin = adminRows.find((row) => String(row.Email || "").trim().toLowerCase() === email);
+  return String(admin?.Name || "").trim();
+}
+
 export function getViewerProfile() {
   const token = String(getRequestState().__REQUEST_AUTH_TOKEN__ || "").trim();
   if (!token) {
@@ -122,41 +166,28 @@ export function getViewerProfile() {
     };
   }
 
-  ensureSheet(ADMIN_SHEET, ADMIN_HEADERS);
-  const adminRows = readRows(ADMIN_SHEET);
-  const admin = adminRows.find((row) => String(row.Email || "").trim().toLowerCase() === verified.email);
+  const allowedEmails = readPlannerAccessEmails();
+  const isSharedOnSheet = allowedEmails.has(verified.email);
 
   return {
     signedIn: true,
     email: verified.email,
-    name: String(admin?.Name || "").trim(),
-    isAdmin: Boolean(admin)
+    name: getViewerName(verified.email),
+    isAdmin: isSharedOnSheet
   };
 }
 
 export function requireAdmin() {
   const viewer = getViewerProfile();
   if (!viewer.signedIn) {
-    throw new Error("Please sign in first.");
+    throw new Error("Please sign in with Google first.");
   }
   if (!viewer.isAdmin) {
-    throw new Error("Your account is not listed in the Admins sheet yet.");
+    throw new Error("Your Google account does not have access to this Google Sheet. Share the planner spreadsheet with this email first.");
   }
   return viewer;
 }
 
 export function requirePlannerAccess() {
-  const passwordHash = String(getRequestState().__REQUEST_PASSWORD_HASH__ || "").trim().toLowerCase();
-  const expectedHash = getDashboardPasswordHash();
-
-  if (expectedHash && passwordHash === expectedHash) {
-    return {
-      signedIn: true,
-      email: "",
-      name: "Dashboard session",
-      isAdmin: true
-    };
-  }
-
   return requireAdmin();
 }

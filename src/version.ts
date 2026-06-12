@@ -1,1 +1,1 @@
-export const PLANNER_BUILD_VERSION = "2026.06.09.1";
+export const PLANNER_BUILD_VERSION = "2026.06.12.1";

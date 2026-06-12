@@ -119,10 +119,10 @@ This repo now includes a protected dashboard under `src/`, with public wedding v
 Current dashboard pieces:
 
 - `src/html/index.html` - unified public + planner UI shell
-- `src/html/js/apps-planner.html` - password gate, RSVP panel, and planning tools
+- `src/html/js/apps-planner.html` - Google sign-in gate, RSVP panel, and planning tools
 - `src/http.ts` - Apps Script entrypoint bundled to `dist/Code.js`
 - `src/features/feed.ts` - public RSVP/comments/Guests feed logic
-- `scripts/build-standalone.cjs` - standalone builder with password hash injection
+- `scripts/build-standalone.cjs` - standalone builder with Google client ID injection
 - `dist-standalone/dashboard.html` - generated standalone output for the dashboard shell
 
 The dashboard currently includes:
@@ -141,12 +141,12 @@ For UI development, you can run the dashboard locally without Google Sign-In.
 2. Set env vars in PowerShell:
 
 ```powershell
-$env:DASHBOARD_PASSWORD = "choose-a-strong-shared-password"
+$env:GOOGLE_CLIENT_ID = "your-google-oauth-client-id.apps.googleusercontent.com"
 $env:PUBLIC_RSVP_FEED_URL = "https://script.google.com/macros/s/YOUR_RSVP_DEPLOYMENT_ID/exec"
 $env:PLANNER_PROXY_URL = "https://hope-caleb-wedding-planner-proxy.your-subdomain.workers.dev"
 ```
 
-To let the backend accept the same password for planner RPC calls, also set the Apps Script script property `DASHBOARD_PASSWORD_HASH` to the SHA-256 hash of that password.
+Set the same `GOOGLE_CLIENT_ID` value in your Apps Script project under **Script Properties** so the backend can verify the browser's Google ID token.
 
 3. Build the standalone page:
 

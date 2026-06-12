@@ -2,7 +2,7 @@
   const plannerMeta = (name) => document.querySelector(`meta[name="${name}"]`)?.getAttribute("content") || "";
 
   window.PLANNER_CTX = {
-    dashboardPasswordHash: plannerMeta("planner-dashboard-password-hash"),
+    googleClientId: plannerMeta("planner-google-client-id"),
     frontendVersion: plannerMeta("planner-build-version"),
     rsvpFeedUrl: plannerMeta("planner-rsvp-feed-url"),
     scriptBaseUrl: plannerMeta("planner-script-base-url")

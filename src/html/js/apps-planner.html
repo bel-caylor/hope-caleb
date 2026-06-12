@@ -1,8 +1,7 @@
 <script>
   const viewerStateEl = document.querySelector("#viewerState");
   const plannerGateMessageEl = document.querySelector("#plannerGateMessage");
-  const plannerLoginForm = document.querySelector("#plannerLoginForm");
-  const plannerPasswordInput = document.querySelector("#plannerPassword");
+  const plannerGoogleSignInEl = document.querySelector("#plannerGoogleSignIn");
   const plannerLoginStatusEl = document.querySelector("#plannerLoginStatus");
   const plannerSignOutButton = document.querySelector("#plannerSignOut");
   const plannerMenuToggleButton = document.querySelector("#plannerMenuToggle");
@@ -86,8 +85,7 @@
   const EventWorkspaceSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
   const STORAGE_KEYS = {
-    auth: "hope-caleb-dashboard-authenticated",
-    authHash: "hope-caleb-dashboard-auth-hash"
+    authToken: "hope-caleb-dashboard-auth-token"
   };
 
   let cachedPeople = [];
@@ -124,9 +122,10 @@
   let plannerSidebarOpen = false;
   let activeTableDrag = null;
   let backendBuildVersion = "";
+  let googleSignInReady = false;
   let viewerProfile = {
     signedIn: false,
-    email: "Dashboard session",
+    email: "",
     isAdmin: false
   };
   let activeTableForGuestModal = null;
@@ -356,6 +355,14 @@
     updateViewerState();
   }
 
+  function getStoredAuthToken() {
+    return String(window.sessionStorage.getItem(STORAGE_KEYS.authToken) || "").trim();
+  }
+
+  function clearStoredAuthToken() {
+    window.sessionStorage.removeItem(STORAGE_KEYS.authToken);
+  }
+
   function setActivePlannerPanel(panelName) {
     const availablePanels = plannerPanels.map((panel) => panel.dataset.plannerPanel);
     const nextPanel = availablePanels.includes(panelName) ? panelName : availablePanels[0];
@@ -401,15 +408,21 @@
   }
 
   function updateViewerState() {
-    plannerSignOutButton.hidden = !viewerProfile.isAdmin;
+    plannerSignOutButton.hidden = !viewerProfile.signedIn;
 
     if (!viewerProfile.signedIn) {
-      viewerStateEl.textContent = "The dashboard is password protected.";
-      plannerGateMessageEl.textContent = "Enter the dashboard password to unlock planning tools.";
+      viewerStateEl.textContent = "Sign in with Google to access the dashboard.";
+      plannerGateMessageEl.textContent = "Use a Google account that has been shared on the planner spreadsheet.";
       return;
     }
 
-    viewerStateEl.textContent = "Dashboard unlocked on this device.";
+    if (!viewerProfile.isAdmin) {
+      viewerStateEl.textContent = `Signed in as ${viewerProfile.email || "your Google account"}.`;
+      plannerGateMessageEl.textContent = "This Google account is signed in, but it has not been shared on the planner spreadsheet yet.";
+      return;
+    }
+
+    viewerStateEl.textContent = `Signed in as ${viewerProfile.email || "your Google account"}.`;
     plannerGateMessageEl.textContent = "Planner unlocked. Use the nav to move between Home, RSVPs, Guests, Tables, P & V, Timeline, Shot List, Todo, and Beds.";
   }
 
@@ -5104,9 +5117,84 @@
     return String(window.PLANNER_CTX.rsvpFeedUrl || "").trim();
   }
 
+  function getGoogleClientId() {
+    return String(window.PLANNER_CTX.googleClientId || "").trim();
+  }
+
+  async function handleGoogleCredentialResponse(response) {
+    const credential = String(response?.credential || "").trim();
+    if (!credential) {
+      setStatus(plannerLoginStatusEl, "Google sign-in did not return a credential.", "error");
+      return;
+    }
+
+    window.sessionStorage.setItem(STORAGE_KEYS.authToken, credential);
+    setStatus(plannerLoginStatusEl, "Checking Google account access...", "pending");
+
+    try {
+      const hasAccess = await refreshViewer();
+      if (!hasAccess) {
+        setStatus(
+          plannerLoginStatusEl,
+          `Signed in as ${viewerProfile.email || "this account"}, but that email is not shared on the planner spreadsheet yet.`,
+          "error"
+        );
+        return;
+      }
+
+      setStatus(plannerLoginStatusEl, "Dashboard access granted.", "success");
+      await maybeLoadPlannerData();
+    } catch (error) {
+      clearStoredAuthToken();
+      viewerProfile = {
+        signedIn: false,
+        email: "",
+        isAdmin: false
+      };
+      renderRoute();
+      setStatus(plannerLoginStatusEl, error.message || "Unable to verify your Google sign-in.", "error");
+    }
+  }
+
+  function renderGoogleSignIn() {
+    if (!plannerGoogleSignInEl) {
+      return;
+    }
+
+    const clientId = getGoogleClientId();
+    if (!clientId) {
+      plannerGoogleSignInEl.replaceChildren();
+      setStatus(plannerLoginStatusEl, "Google sign-in is not configured yet. Add GOOGLE_CLIENT_ID before publishing.", "error");
+      return;
+    }
+
+    if (!window.google?.accounts?.id) {
+      plannerGoogleSignInEl.replaceChildren();
+      setStatus(plannerLoginStatusEl, "Google sign-in is still loading. Refresh the page if the button does not appear.", "pending");
+      return;
+    }
+
+    if (!googleSignInReady) {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredentialResponse
+      });
+      googleSignInReady = true;
+    }
+
+    plannerGoogleSignInEl.replaceChildren();
+    window.google.accounts.id.renderButton(plannerGoogleSignInEl, {
+      theme: "outline",
+      size: "large",
+      shape: "pill",
+      text: "signin_with",
+      width: 280
+    });
+  }
+
   async function backendRequest(method, payload) {
     const rpcUrl = getRpcUrl();
-    const passwordHash = String(window.sessionStorage.getItem(STORAGE_KEYS.authHash) || "").trim();
+    const authToken = getStoredAuthToken();
 
     if (!rpcUrl) {
       throw new Error("Planner backend URL is not configured yet.");
@@ -5120,16 +5208,24 @@
       body: JSON.stringify({
         method,
         payload,
-        passwordHash
+        authToken
       })
     });
 
     const result = await response.json();
     if (!result?.ok) {
-      if (passwordHash && /Please sign in first\./i.test(String(result?.error || ""))) {
-        throw new Error("Planner backend password mismatch. This dashboard page unlocked, but the Apps Script deployment is using a different DASHBOARD_PASSWORD_HASH.");
+      const message = String(result?.error || "Planner request failed.");
+      if (/Please sign in with Google first\./i.test(message)) {
+        clearStoredAuthToken();
+        viewerProfile = {
+          signedIn: false,
+          email: "",
+          isAdmin: false
+        };
+        renderRoute();
+        throw new Error("Please sign in with a Google account that has access to the planner sheet.");
       }
-      throw new Error(result?.error || "Planner request failed.");
+      throw new Error(message);
     }
 
     return result.data;
@@ -5228,13 +5324,35 @@
     return failures;
   }
 
-  function refreshViewer() {
-    const signedIn = window.sessionStorage.getItem(STORAGE_KEYS.auth) === "true";
+  async function refreshViewer() {
+    const authToken = getStoredAuthToken();
+    if (!authToken) {
+      viewerProfile = {
+        signedIn: false,
+        email: "",
+        isAdmin: false
+      };
+      renderRoute();
+      return false;
+    }
+
+    const profile = await backendRequest("getViewerProfile", {});
     viewerProfile = {
-      signedIn,
-      email: "Dashboard session",
-      isAdmin: signedIn
+      signedIn: Boolean(profile?.signedIn),
+      email: String(profile?.email || "").trim(),
+      name: String(profile?.name || "").trim(),
+      isAdmin: Boolean(profile?.isAdmin)
     };
+
+    if (!viewerProfile.signedIn) {
+      clearStoredAuthToken();
+      viewerProfile = {
+        signedIn: false,
+        email: "",
+        isAdmin: false
+      };
+    }
+
     renderRoute();
     return viewerProfile.isAdmin;
   }
@@ -5260,146 +5378,9 @@
     plannerContentEl.hidden = false;
   }
 
-  async function hashPassword(password) {
-    const normalized = String(password || "");
-    const cryptoApi = window.crypto || window.msCrypto;
-
-    if (cryptoApi && cryptoApi.subtle && typeof cryptoApi.subtle.digest === "function" && typeof TextEncoder !== "undefined") {
-      const bytes = new TextEncoder().encode(normalized);
-      const digest = await cryptoApi.subtle.digest("SHA-256", bytes);
-      return Array.from(new Uint8Array(digest)).map((value) => value.toString(16).padStart(2, "0")).join("");
-    }
-
-    return sha256Fallback(normalized);
-  }
-
-  function sha256Fallback(input) {
-    const words = [];
-    const ascii = unescape(encodeURIComponent(String(input || "")));
-    const bitLength = ascii.length * 8;
-    const hash = [
-      0x6a09e667,
-      0xbb67ae85,
-      0x3c6ef372,
-      0xa54ff53a,
-      0x510e527f,
-      0x9b05688c,
-      0x1f83d9ab,
-      0x5be0cd19
-    ];
-    const roundConstants = [
-      0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
-      0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-      0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
-      0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-      0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
-      0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-      0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
-      0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-      0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
-      0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-      0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3,
-      0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-      0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
-      0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-      0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
-      0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-    ];
-
-    for (let index = 0; index < ascii.length; index += 1) {
-      words[index >> 2] |= ascii.charCodeAt(index) << (24 - (index % 4) * 8);
-    }
-
-    words[bitLength >> 5] |= 0x80 << (24 - bitLength % 32);
-    words[(((bitLength + 64) >> 9) << 4) + 15] = bitLength;
-
-    for (let offset = 0; offset < words.length; offset += 16) {
-      const schedule = new Array(64);
-
-      for (let index = 0; index < 16; index += 1) {
-        schedule[index] = words[offset + index] | 0;
-      }
-
-      for (let index = 16; index < 64; index += 1) {
-        const gamma0x = schedule[index - 15];
-        const gamma1x = schedule[index - 2];
-        const gamma0 = rightRotate(gamma0x, 7) ^ rightRotate(gamma0x, 18) ^ (gamma0x >>> 3);
-        const gamma1 = rightRotate(gamma1x, 17) ^ rightRotate(gamma1x, 19) ^ (gamma1x >>> 10);
-        schedule[index] = add32(schedule[index - 16], gamma0, schedule[index - 7], gamma1);
-      }
-
-      let a = hash[0];
-      let b = hash[1];
-      let c = hash[2];
-      let d = hash[3];
-      let e = hash[4];
-      let f = hash[5];
-      let g = hash[6];
-      let h = hash[7];
-
-      for (let index = 0; index < 64; index += 1) {
-        const sigma1 = rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25);
-        const choice = (e & f) ^ (~e & g);
-        const temp1 = add32(h, sigma1, choice, roundConstants[index], schedule[index]);
-        const sigma0 = rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22);
-        const majority = (a & b) ^ (a & c) ^ (b & c);
-        const temp2 = add32(sigma0, majority);
-
-        h = g;
-        g = f;
-        f = e;
-        e = add32(d, temp1);
-        d = c;
-        c = b;
-        b = a;
-        a = add32(temp1, temp2);
-      }
-
-      hash[0] = add32(hash[0], a);
-      hash[1] = add32(hash[1], b);
-      hash[2] = add32(hash[2], c);
-      hash[3] = add32(hash[3], d);
-      hash[4] = add32(hash[4], e);
-      hash[5] = add32(hash[5], f);
-      hash[6] = add32(hash[6], g);
-      hash[7] = add32(hash[7], h);
-    }
-
-    return hash.map((value) => (value >>> 0).toString(16).padStart(8, "0")).join("");
-  }
-
-  function rightRotate(value, amount) {
-    return (value >>> amount) | (value << (32 - amount));
-  }
-
-  function add32() {
-    let total = 0;
-    for (let index = 0; index < arguments.length; index += 1) {
-      total = (total + (arguments[index] | 0)) | 0;
-    }
-    return total;
-  }
-
-  async function unlockDashboard(password) {
-    const expectedHash = String(window.PLANNER_CTX.dashboardPasswordHash || "").trim().toLowerCase();
-    if (!expectedHash) {
-      throw new Error("Dashboard password is not configured yet.");
-    }
-
-    const actualHash = await hashPassword(password.trim());
-    if (actualHash !== expectedHash) {
-      throw new Error("That password did not match.");
-    }
-
-    window.sessionStorage.setItem(STORAGE_KEYS.auth, "true");
-    window.sessionStorage.setItem(STORAGE_KEYS.authHash, actualHash);
-    refreshViewer();
-    await maybeLoadPlannerData();
-  }
-
   function requirePlannerAccess() {
     if (!viewerProfile.isAdmin) {
-      throw new Error("Unlock the dashboard first.");
+      throw new Error("Sign in with a Google account that has access to the planner sheet first.");
     }
   }
 
@@ -6117,26 +6098,19 @@ function sortTables(items) {
     }
   }
 
-  plannerLoginForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    setStatus(plannerLoginStatusEl, "", "");
-
-    try {
-      await unlockDashboard(plannerPasswordInput.value);
-      plannerLoginForm.reset();
-      setStatus(plannerLoginStatusEl, "Dashboard unlocked.", "success");
-    } catch (error) {
-      setStatus(plannerLoginStatusEl, error.message || "Unable to unlock dashboard.", "error");
-    }
-  });
-
   plannerSignOutButton.addEventListener("click", () => {
-    window.sessionStorage.removeItem(STORAGE_KEYS.auth);
-    window.sessionStorage.removeItem(STORAGE_KEYS.authHash);
+    clearStoredAuthToken();
+    if (window.google?.accounts?.id?.disableAutoSelect) {
+      window.google.accounts.id.disableAutoSelect();
+    }
     openPlannerSidebar();
-    refreshViewer();
+    viewerProfile = {
+      signedIn: false,
+      email: "",
+      isAdmin: false
+    };
     renderRoute();
-    setStatus(plannerLoginStatusEl, "Dashboard locked.", "success");
+    setStatus(plannerLoginStatusEl, "Signed out of the dashboard.", "success");
   });
 
   plannerMenuToggleButton.addEventListener("click", () => {
@@ -7217,7 +7191,8 @@ function sortTables(items) {
   });
 
   window.addEventListener("load", async () => {
-    refreshViewer();
+    renderGoogleSignIn();
+    await refreshViewer();
     renderRoute();
     renderPlannerVersionInfo();
     await maybeLoadPlannerData();

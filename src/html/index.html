@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Hope & Caleb Wedding</title>
     <meta name="robots" content="noindex, nofollow, noarchive">
-    <meta name="planner-dashboard-password-hash" content="<?= dashboardPasswordHash ?>">
+    <meta name="planner-google-client-id" content="<?= googleClientId ?>">
     <meta name="planner-rsvp-feed-url" content="<?= rsvpFeedUrl ?>">
     <meta name="planner-script-base-url" content="<?= scriptBaseUrl ?>">
     <meta name="planner-build-version" content="<?= plannerBuildVersion ?>">
@@ -16,6 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
       (function () {
         var pathname = String(window.location.pathname || "").toLowerCase();
@@ -3361,7 +3362,7 @@
 
     <section class="signin-strip" data-view="home">
       <div class="auth-row">
-        <div class="meta" id="viewerState">The dashboard is password protected.</div>
+        <div class="meta" id="viewerState">Sign in with Google to access the dashboard.</div>
       </div>
     </section>
 
@@ -3507,7 +3508,7 @@
             </div>
           </div>
           <div class="planner-summary" id="plannerGate">
-            <div id="plannerGateMessage" class="meta">Enter the dashboard password to continue.</div>
+            <div id="plannerGateMessage" class="meta">Sign in with Google to continue.</div>
           </div>
           <p class="meta" id="plannerVersionInfo"></p>
           <p class="status" id="plannerSyncStatus"></p>
@@ -3516,15 +3517,10 @@
         <div class="planner-shell__layout is-sidebar-open" id="plannerLayout">
           <aside class="planner-sidebar" id="plannerSidebar">
             <section class="planner-banner" id="plannerLocked" aria-labelledby="planner-locked-heading">
-              <h3 id="planner-locked-heading">Unlock Dashboard</h3>
-              <p class="meta">Use one shared password for the planner dashboard on this device.</p>
-              <form id="plannerLoginForm">
-                <label>Password <input id="plannerPassword" name="password" type="password" autocomplete="current-password" required></label>
-                <div class="toolbar">
-                  <button class="button" type="submit">Unlock</button>
-                </div>
-                <p class="status" id="plannerLoginStatus"></p>
-              </form>
+              <h3 id="planner-locked-heading">Sign In</h3>
+              <p class="meta">Use a Google account that has been shared on the planner spreadsheet.</p>
+              <div id="plannerGoogleSignIn" class="toolbar"></div>
+              <p class="status" id="plannerLoginStatus"></p>
             </section>
 
             <div id="plannerUnlocked" hidden>
