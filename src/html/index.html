@@ -3065,7 +3065,7 @@
           z-index: 39;
         }
 
-        .planner-shell__layout.is-sidebar-open::before {
+        .planner-shell__layout.is-sidebar-overlay::before {
           opacity: 1;
           pointer-events: auto;
         }
@@ -3091,6 +3091,12 @@
           transform: translateX(0);
           opacity: 1;
           pointer-events: auto;
+        }
+
+        #plannerLocked,
+        #plannerGoogleSignIn {
+          position: relative;
+          z-index: 1;
         }
 
         .planner-sections {

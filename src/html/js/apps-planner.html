@@ -388,7 +388,9 @@
     const showPlanner = currentView === "planner";
     const isMobileSidebar = plannerSidebarMediaQuery.matches;
     const shouldOpen = showPlanner && (!isMobileSidebar || !viewerProfile.isAdmin || plannerSidebarOpen);
+    const shouldShowOverlay = showPlanner && isMobileSidebar && viewerProfile.isAdmin && plannerSidebarOpen;
     plannerLayoutEl.classList.toggle("is-sidebar-open", shouldOpen);
+    plannerLayoutEl.classList.toggle("is-sidebar-overlay", shouldShowOverlay);
     plannerMenuToggleButton.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
   }
 
