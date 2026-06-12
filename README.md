@@ -186,7 +186,17 @@ The dashboard loads RSVPs with JSONP, so it avoids the CORS problem you hit when
 
 ## Publish on GitHub Pages
 
-Upload these files to the repository hosted at `https://bel-caylor.github.io/hope-caleb/` and enable GitHub Pages for the branch that contains `index.html`.
+This repo can publish the built standalone site from `dist-standalone/` with GitHub Actions.
+
+1. In GitHub, go to **Settings > Pages**.
+2. Set **Source** to **GitHub Actions**.
+3. In **Settings > Secrets and variables > Actions > Variables**, add:
+   - `PUBLIC_RSVP_FEED_URL`
+   - `PLANNER_PROXY_URL`
+   - `GOOGLE_CLIENT_ID`
+4. Push to the `wedding` branch.
+
+The workflow at `.github/workflows/deploy-pages.yml` builds `dist-standalone/` and deploys it, so `/dashboard.html` is published even though the generated file is gitignored locally.
 
 ## Share Links
 
