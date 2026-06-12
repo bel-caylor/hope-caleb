@@ -836,6 +836,19 @@
         margin: 0;
       }
 
+      .list-header--tables .list-header__copy {
+        flex: 0 0 auto;
+      }
+
+      .list-header--tables .meta {
+        margin: 0;
+      }
+
+      .tables-unseated-status {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+
       .button--icon {
         min-width: 2.25rem;
         min-height: 2.25rem;
@@ -878,6 +891,26 @@
         background: #fffdf9;
         color: var(--ink);
         font: inherit;
+      }
+
+      .planner-panel__title--mobile-only {
+        display: block;
+      }
+
+      .planner-filter-field label[for="guestTypeFilter"] {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+      }
+
+      @media (min-width: 761px) {
+        .planner-panel__title--mobile-only {
+          display: none;
+        }
+
+        .list-header--tables .list-header__copy {
+          display: none;
+        }
       }
 
       .planner-filter-dropdown {
@@ -1195,8 +1228,9 @@
         align-items: center;
         justify-content: center;
         color: transparent;
-        background: #fffdf9;
-        border-color: rgba(153, 85, 102, 0.34);
+        background: #fff8f9;
+        border-color: rgba(122, 35, 64, 0.58);
+        box-shadow: inset 0 0 0 1px rgba(122, 35, 64, 0.14);
       }
 
       .shot-card__check[aria-pressed="true"] {
@@ -1504,6 +1538,102 @@
         justify-content: flex-end;
       }
 
+      .event-detail-tabs {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0;
+        border-bottom: 1px solid rgba(111, 29, 42, 0.18);
+      }
+
+      .event-detail-tab {
+        padding: 0.9rem 1rem 0.8rem;
+        border: 0;
+        border-bottom: 3px solid transparent;
+        border-radius: 0;
+        background: transparent;
+        color: var(--ink);
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+      }
+
+      .event-detail-tab[aria-selected="true"] {
+        color: #6f1d2a;
+        border-bottom-color: #a43e50;
+        background: linear-gradient(180deg, rgba(244, 230, 227, 0.45), rgba(244, 230, 227, 0));
+      }
+
+      .event-detail-tab:hover {
+        color: #6f1d2a;
+      }
+
+      .event-detail-tab:focus-visible {
+        outline: none;
+        box-shadow: inset 0 0 0 2px rgba(164, 62, 80, 0.18);
+      }
+
+      .event-detail-panels,
+      .event-detail-panel-stack {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .event-detail-accordion {
+        display: none;
+        gap: 0.85rem;
+      }
+
+      .event-detail-accordion-item {
+        border: 1px solid var(--planner-border);
+        border-radius: 14px;
+        background: #fffdf9;
+        overflow: hidden;
+      }
+
+      .event-detail-accordion-trigger {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.05rem;
+        border: 0;
+        background: linear-gradient(180deg, rgba(244, 230, 227, 0.45), rgba(255, 253, 249, 0.92));
+        color: var(--ink);
+        font: inherit;
+        font-weight: 700;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .event-detail-accordion-trigger::after {
+        content: "+";
+        color: #7a2340;
+        font-size: 1.1rem;
+        line-height: 1;
+      }
+
+      .event-detail-accordion-trigger[aria-expanded="true"]::after {
+        content: "-";
+      }
+
+      .event-detail-accordion-trigger:focus-visible {
+        outline: none;
+        box-shadow: inset 0 0 0 2px rgba(164, 62, 80, 0.18);
+      }
+
+      .event-detail-accordion-panel {
+        padding: 0 0.75rem 0.75rem;
+      }
+
+      .event-detail-accordion-panel .event-detail-card {
+        border: 0;
+        border-radius: 0;
+        padding-inline: 0.35rem;
+        padding-bottom: 0.25rem;
+      }
+
       .event-detail-grid {
         display: grid;
         grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
@@ -1561,9 +1691,45 @@
         gap: 0.85rem;
       }
 
+      .event-detail-ai-field {
+        display: grid;
+        gap: 0;
+      }
+
+      .event-detail-ai-field-label {
+        font-weight: 700;
+      }
+
       .event-detail-ai-form textarea {
         min-height: 9rem;
         resize: vertical;
+      }
+
+      .event-detail-ai-input-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin: 0.45rem 0 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .event-detail-ai-mic-button {
+        white-space: nowrap;
+      }
+
+      .event-detail-ai-mic-button--active {
+        border-color: rgba(164, 62, 80, 0.45);
+        background: rgba(244, 230, 227, 0.9);
+        box-shadow: inset 0 0 0 1px rgba(164, 62, 80, 0.08);
+      }
+
+      .event-detail-ai-mic-status {
+        flex: 1 1 16rem;
+      }
+
+      .event-detail-ai-mic-status--error {
+        color: #9f2231;
       }
 
       .event-detail-ai-options {
@@ -1573,19 +1739,38 @@
       }
 
       .event-detail-ai-option {
+        width: 100%;
         display: flex;
         align-items: center;
-        gap: 0.55rem;
+        justify-content: center;
         padding: 0.75rem 0.8rem;
         border: 1px solid var(--planner-border);
         border-radius: 10px;
         background: #fff8f9;
+        appearance: none;
+        color: var(--ink);
         font-size: 0.92rem;
         font-weight: 700;
+        font-family: inherit;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
       }
 
-      .event-detail-ai-option input {
-        margin: 0;
+      .event-detail-ai-option[aria-pressed="true"] {
+        border-color: rgba(111, 29, 42, 0.3);
+        background: rgba(244, 230, 227, 0.78);
+        box-shadow: inset 0 0 0 1px rgba(111, 29, 42, 0.08);
+      }
+
+      .event-detail-ai-option:hover {
+        border-color: rgba(111, 29, 42, 0.28);
+      }
+
+      .event-detail-ai-option:focus-visible {
+        outline: none;
+        border-color: rgba(164, 62, 80, 0.6);
+        box-shadow: 0 0 0 3px rgba(164, 62, 80, 0.14);
       }
 
       .event-detail-prompt-output {
@@ -1603,7 +1788,7 @@
 
       .event-detail-stats {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 0.75rem;
       }
 
@@ -1633,9 +1818,55 @@
         font-size: 1.55rem;
       }
 
+      .event-detail-included {
+        display: grid;
+        gap: 0.55rem;
+        align-content: start;
+      }
+
+      .event-detail-included p {
+        margin: 0;
+      }
+
+      .event-detail-included button {
+        justify-self: start;
+      }
+
+      .event-included-list {
+        display: grid;
+        gap: 0.65rem;
+      }
+
+      .event-included-person {
+        display: grid;
+        padding: 0.8rem 0.9rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 10px;
+        background: #fffdf9;
+      }
+
+      .event-included-person strong {
+        display: block;
+        line-height: 1.45;
+      }
+
       .event-detail-shot-list {
         display: grid;
         gap: 0.7rem;
+      }
+
+      .event-detail-inline-form {
+        display: grid;
+        gap: 0.65rem;
+        padding: 0.85rem;
+        border: 1px dashed rgba(89, 0, 0, 0.18);
+        border-radius: 10px;
+        background: rgba(244, 230, 227, 0.3);
+      }
+
+      .event-detail-inline-form textarea {
+        min-height: 4.5rem;
+        resize: vertical;
       }
 
       .event-detail-shot-list .shot-card {
@@ -1647,6 +1878,27 @@
         display: inline-flex;
         align-items: center;
         gap: 0.45rem;
+      }
+
+      .event-todo-quick-edit {
+        display: grid;
+        gap: 0.35rem;
+        margin-top: 0.55rem;
+      }
+
+      .event-todo-quick-edit--inline {
+        grid-template-columns: 7rem minmax(0, 1fr);
+        align-items: center;
+      }
+
+      .event-todo-quick-edit label {
+        font-size: 0.92rem;
+        font-weight: 800;
+      }
+
+      .event-todo-quick-edit textarea {
+        min-height: 4.75rem;
+        resize: vertical;
       }
 
       .event-detail-shot-delete {
@@ -1694,6 +1946,13 @@
         background: #fff8f9;
       }
 
+      .event-ai-plan__card-header {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
       .event-ai-plan__card strong,
       .event-ai-plan__card p {
         display: block;
@@ -1703,8 +1962,79 @@
         margin: 0.25rem 0 0;
       }
 
+      .event-ai-plan__field {
+        display: grid;
+        gap: 0.35rem;
+        margin-top: 0.7rem;
+      }
+
+      .event-ai-plan__field--inline {
+        grid-template-columns: 8rem minmax(0, 1fr);
+        align-items: center;
+      }
+
+      .event-ai-plan__field--inline label {
+        font-size: 0.92rem;
+        font-weight: 800;
+      }
+
+      .event-ai-plan__field-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .event-ai-plan__field textarea {
+        min-height: 5.5rem;
+        resize: vertical;
+      }
+
+      .event-ai-plan__small-button {
+        min-height: 0;
+        padding: 0.35rem 0.55rem;
+        font-size: 0.82rem;
+      }
+
       .event-ai-plan__list {
         padding-left: 1.1rem;
+      }
+
+      .event-checklist {
+        display: grid;
+        gap: 0.55rem;
+        justify-items: start;
+        align-items: start;
+        text-align: left;
+      }
+
+      .event-checklist__item {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: start;
+        gap: 0.7rem;
+        width: 100%;
+        text-align: left;
+      }
+
+      .event-checklist__item input {
+        width: auto;
+        margin: 0.22rem 0 0;
+        accent-color: #8d1d1d;
+      }
+
+      .event-checklist__label {
+        display: block;
+        line-height: 1.45;
+        text-align: left;
+        font-size: 0.98rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .event-checklist__item--checked .event-checklist__label {
+        color: var(--muted);
+        text-decoration: line-through;
       }
 
       #tablesList {
@@ -1747,6 +2077,7 @@
         flex: 1 1 auto;
         min-height: 0;
         max-height: none;
+        align-content: start;
       }
 
       .planner-panel[data-planner-panel="guests"] #guestsStatus {
@@ -1815,6 +2146,10 @@
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 0.65rem 0.8rem;
+      }
+
+      .type-options__empty {
+        margin: 0;
       }
 
       label.type-option {
@@ -1888,6 +2223,15 @@
         background: #f4fbf1;
       }
 
+      .guest-card--declined summary {
+        background: #ead5da;
+        color: #6f1d2a;
+      }
+
+      .guest-card--declined .guest-card__body {
+        background: #fff7f8;
+      }
+
       .guest-card summary::-webkit-details-marker {
         display: none;
       }
@@ -1941,6 +2285,85 @@
         flex: 0 0 auto;
         margin-left: auto;
         text-align: right;
+      }
+
+      .guest-summary-actions {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .guest-summary-rsvp {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.15rem;
+        height: 2.15rem;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        color: inherit;
+      }
+
+      .guest-summary-rsvp svg,
+      .guest-type-edit svg {
+        width: 1rem;
+        height: 1rem;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .guest-summary-rsvp svg {
+        width: 1.85rem;
+        height: 1.2rem;
+      }
+
+      .guest-summary-rsvp--yes {
+        background: transparent;
+      }
+
+      .guest-summary-rsvp--no {
+        background: transparent;
+      }
+
+      .guest-summary-rsvp--maybe {
+        background: transparent;
+      }
+
+      .guest-summary-rsvp:hover,
+      .guest-summary-rsvp:focus-visible {
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .guest-type-summary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+
+      .guest-type-edit {
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        color: inherit;
+        width: 1.8rem;
+        height: 1.8rem;
+        min-width: 1.8rem;
+        min-height: 1.8rem;
+        padding: 0.25rem;
+      }
+
+      .guest-type-edit:hover,
+      .guest-type-edit:focus-visible {
+        background: rgba(255, 255, 255, 0.3);
       }
 
       .guest-card[open] .accordion-toggle {
@@ -2192,7 +2615,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 0.75rem;
+        gap: 0;
       }
 
       .table-assignment-row strong {
@@ -2210,15 +2633,22 @@
 
       .table-assignment-row__actions {
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: flex-end;
-        gap: 0.5rem;
+        gap: 0.15rem;
         flex: 0 0 auto;
         margin-left: auto;
       }
 
+      .table-assignment-row__plus-one {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #8f2f4c;
+        white-space: nowrap;
+      }
+
       .table-drag-handle {
-        min-width: 1.9rem;
         min-height: 1.9rem;
         padding: 0.25rem;
         display: inline-flex;
@@ -2364,6 +2794,27 @@
         cursor: default;
       }
 
+      @media (min-width: 1201px) and (max-width: 1400px) {
+        .table-control-row {
+          margin: calc(-0.75rem - 0.2vw) calc(-0.8rem - 0.25vw) 0;
+          padding: clamp(0.72rem, -0.18rem + 1.2vw, 0.9rem);
+        }
+
+        .table-assignment-list {
+          gap: clamp(0.55rem, 0.05rem + 0.67vw, 0.65rem) clamp(0.55rem, -0.7rem + 1.67vw, 0.8rem);
+        }
+
+        .table-seat {
+          padding: clamp(0.62rem, -0.28rem + 1.2vw, 0.8rem) clamp(0.52rem, -1.08rem + 2.13vw, 0.84rem);
+        }
+      }
+
+      @media (max-width: 449px) {
+        .table-seat {
+          padding: clamp(0.62rem, 0.35rem + 1.2vw, 0.72rem) clamp(0.5rem, 0.15rem + 1.5vw, 0.62rem);
+        }
+      }
+
       form {
         display: grid;
         gap: 0.85rem;
@@ -2494,6 +2945,10 @@
         border-radius: 10px;
         background: var(--planner-panel);
         box-shadow: 0 22px 56px rgba(43, 30, 29, 0.18);
+      }
+
+      .modal__dialog--wide {
+        width: min(100%, 62rem);
       }
 
       .modal__header {
@@ -2739,6 +3194,10 @@
           white-space: normal;
         }
 
+        .planner-panel__title--mobile-only {
+          display: block;
+        }
+
         .table-control-row {
           align-items: flex-start;
         }
@@ -2825,6 +3284,15 @@
           grid-area: title;
         }
 
+        .event-detail-tabs--desktop,
+        .event-detail-panels--desktop {
+          display: none;
+        }
+
+        .event-detail-accordion {
+          display: grid;
+        }
+
         .event-detail-grid,
         .event-detail-meta,
         .event-detail-ai-options,
@@ -2840,9 +3308,10 @@
           width: 100%;
           justify-content: flex-start;
         }
+
       }
 
-      @media (min-width: 861px) {
+      @media (min-width: 1201px) {
         #tablesList {
           grid-template-columns: repeat(3, minmax(0, 1fr));
           align-items: start;
@@ -3122,12 +3591,21 @@
             </section>
 
             <section class="panel planner-panel" data-planner-panel="guests" hidden>
-          <h3>Guests</h3>
-          <div class="guest-filter">
-            <label for="guestTypeFilter">Filter by type</label>
-            <select id="guestTypeFilter">
-              <option value="">All types</option>
-            </select>
+          <div class="planner-filter-row">
+            <div class="planner-filter-field">
+              <span class="planner-filter-field__label">
+                <span class="planner-panel__title--mobile-only">Guests</span>
+                <span>Filter by type</span>
+              </span>
+              <details class="planner-filter-dropdown" id="guestTypeFilterDropdown">
+                <summary aria-label="Filter guests by type">
+                  <span id="guestTypeFilterSummary" class="planner-filter-dropdown__summary">All types</span>
+                </summary>
+                <div id="guestTypeFilter" class="planner-filter-checklist" role="group" aria-label="Filter guests by type">
+                  <span class="planner-filter-checklist--empty">All types</span>
+                </div>
+              </details>
+            </div>
           </div>
           <div class="list" id="guestsList">
             <p class="meta">No guests feed loaded yet.</p>
@@ -3136,10 +3614,11 @@
             </section>
 
             <section class="panel planner-panel" data-planner-panel="tables" hidden>
-          <div class="list-header">
+          <div class="list-header list-header--tables">
             <div class="list-header__copy">
               <h3>Tables</h3>
             </div>
+            <p class="meta tables-unseated-status" id="tablesUnseatedCount"></p>
             <button class="button button--icon" type="button" id="openTableModal" aria-label="Add table">+</button>
           </div>
           <p class="status" id="tableStatus"></p>
@@ -3199,13 +3678,6 @@
             </section>
 
             <section class="panel planner-panel" data-planner-panel="event-detail" hidden>
-          <div class="list-header">
-            <div class="list-header__copy">
-              <h3>Event Workspace</h3>
-              <p class="meta">See the full event context and draft an AI planning prompt before creating linked tasks and lists.</p>
-            </div>
-            <button class="button button--light" type="button" id="eventDetailBackButton">Back to Timeline</button>
-          </div>
           <div id="eventDetailShell" class="event-detail-shell">
             <div class="event-detail-empty">
               <h4>Select an event</h4>
@@ -3327,6 +3799,8 @@
                 <div id="eventAssignedTypeOptions" class="type-options__grid"></div>
               </fieldset>
               <label>Additional Types <input name="assignedToExtra" placeholder="Bridesmaids, Parents"></label>
+              <label>Specific People <input name="assignedPeople" list="eventAssignedPeopleSuggestions" placeholder="Jane Doe, John Doe"></label>
+              <datalist id="eventAssignedPeopleSuggestions"></datalist>
               <label>Reminder Minutes <input name="reminderMinutes" type="number" min="0" value="15"></label>
               <label>Message Template <textarea name="messageTemplate" placeholder="Hope & Caleb update: Family photos at 3:15 PM in the courtyard. Please head there by 3:00 PM."></textarea></label>
               <label>Notes <textarea name="notes" placeholder="Use this for shot list notes, fallback locations, or vendor context."></textarea></label>
@@ -3343,6 +3817,43 @@
               </div>
               <p class="status" id="eventStatus"></p>
             </form>
+          </div>
+        </section>
+
+        <section class="modal" id="eventIncludedPeopleModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-event-included-people-modal></div>
+          <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="eventIncludedPeopleModalTitle">
+            <button class="modal__close" type="button" data-close-event-included-people-modal aria-label="Close dialog">X</button>
+            <div class="modal__header">
+              <div>
+                <h3 id="eventIncludedPeopleModalTitle">Included People</h3>
+                <p class="meta" id="eventIncludedPeopleModalSummary">Names included in this event.</p>
+              </div>
+            </div>
+            <div id="eventIncludedPeopleModalList" class="event-included-list">
+              <p class="meta">No included people yet.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="modal" id="eventPromptModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-event-prompt-modal></div>
+          <div class="modal__dialog modal__dialog--wide" role="dialog" aria-modal="true" aria-labelledby="eventPromptModalTitle">
+            <button class="modal__close" type="button" data-close-event-prompt-modal aria-label="Close dialog">X</button>
+            <div class="modal__header">
+              <div>
+                <h3 id="eventPromptModalTitle">Prompt Draft</h3>
+                <p class="meta">Review, copy, or send this prompt to ChatGPT.</p>
+              </div>
+            </div>
+            <div class="event-detail-prompt-output">
+              <textarea id="eventPromptOutput" data-event-workspace-output></textarea>
+              <div class="toolbar">
+                <button class="button" type="button" data-event-workspace-generate-modal>Generate In App</button>
+                <button class="button button--light" type="button" data-event-workspace-copy>Copy Prompt</button>
+                <a class="button" href="https://chatgpt.com/" target="_blank" rel="noreferrer">Open ChatGPT</a>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -3444,6 +3955,12 @@
             </div>
             <form id="todoForm">
               <input type="hidden" name="id">
+              <label>
+                Event
+                <select name="eventId">
+                  <option value="">No linked event</option>
+                </select>
+              </label>
               <div class="split">
                 <label>Title <input name="title" required placeholder="Mail invitations"></label>
                 <label>Assigned To <input name="assignedTo" placeholder="Hope"></label>
@@ -3497,6 +4014,46 @@
           </div>
         </section>
 
+        <section class="modal" id="eventListModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-event-list-modal></div>
+          <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="eventListModalTitle">
+            <button class="modal__close" type="button" data-close-event-list-modal aria-label="Close dialog">X</button>
+            <div class="modal__header">
+              <div>
+                <h3 id="eventListModalTitle">Add List</h3>
+                <p class="meta">Save a shopping, packing, or setup list. Items can be line delimited, and you can use [x] or [ ] to keep checkbox state.</p>
+              </div>
+            </div>
+            <form id="eventListForm">
+              <input type="hidden" name="id">
+              <label>
+                Event
+                <select name="eventId" required>
+                  <option value="">Select event</option>
+                </select>
+              </label>
+              <div class="split">
+                <label>List Title <input name="title" required placeholder="Breakfast shopping list"></label>
+                <label>
+                  List Type
+                  <select name="type">
+                    <option value="shopping">Shopping</option>
+                    <option value="packing">Packing</option>
+                    <option value="setup">Setup</option>
+                    <option value="checklist">Checklist</option>
+                  </select>
+                </label>
+              </div>
+              <label>Items <textarea name="items" required placeholder="[ ] Eggs&#10;[ ] Coffee&#10;[x] Fruit tray"></textarea></label>
+              <label>Notes <textarea name="notes" placeholder="Optional notes, aisle reminders, or store details."></textarea></label>
+              <div class="toolbar">
+                <button class="button" type="submit">Save List</button>
+                <button class="button button--light" type="button" data-reset-event-list>Clear</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
         <section class="modal" id="tableModal" hidden aria-hidden="true">
           <div class="modal__backdrop" data-close-table-modal></div>
           <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="tableModalTitle">
@@ -3540,6 +4097,34 @@
               <div class="toolbar">
                 <button class="button" type="submit">Add Table</button>
               </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="modal" id="guestTypeModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-guest-type-modal></div>
+          <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="guestTypeModalTitle">
+            <button class="modal__close" type="button" data-close-guest-type-modal aria-label="Close dialog">X</button>
+            <div class="modal__header">
+              <div>
+                <h3 id="guestTypeModalTitle">Edit Guest Type</h3>
+                <p class="meta">Pick existing types or add new ones for this guest.</p>
+              </div>
+            </div>
+            <form id="guestTypeForm">
+              <input type="hidden" name="rowNumber">
+              <fieldset class="type-options">
+                <legend>Guest Types</legend>
+                <div id="guestTypeOptions" class="type-options__grid">
+                  <p class="meta type-options__empty">No guest types loaded yet.</p>
+                </div>
+              </fieldset>
+              <label>New Types <input name="guestTypeExtra" placeholder="Church, Coworkers"></label>
+              <div class="toolbar">
+                <button class="button" type="submit">Save Type</button>
+                <button class="button button--light" type="button" data-reset-guest-type>Clear</button>
+              </div>
+              <p class="status" id="guestTypeStatus"></p>
             </form>
           </div>
         </section>

@@ -13,24 +13,32 @@
   const personModal = document.querySelector("#personModal");
   const openPersonModalButton = document.querySelector("#openPersonModal");
   const eventModal = document.querySelector("#eventModal");
+  const eventIncludedPeopleModal = document.querySelector("#eventIncludedPeopleModal");
+  const eventPromptModal = document.querySelector("#eventPromptModal");
   const openEventModalButton = document.querySelector("#openEventModal");
   const shotModal = document.querySelector("#shotModal");
   const openShotModalButton = document.querySelector("#openShotModal");
   const bedModal = document.querySelector("#bedModal");
   const todoModal = document.querySelector("#todoModal");
+  const eventListModal = document.querySelector("#eventListModal");
   const tableModal = document.querySelector("#tableModal");
+  const guestTypeModal = document.querySelector("#guestTypeModal");
   const addGuestModal = document.querySelector("#addGuestModal");
   const openTodoModalButton = document.querySelector("#openTodoModal");
   const openTableModalButton = document.querySelector("#openTableModal");
   const tableForm = document.querySelector("#tableForm");
   const tableTypeOptionsEl = document.querySelector("#tableTypeOptions");
+  const guestTypeForm = document.querySelector("#guestTypeForm");
+  const guestTypeOptionsEl = document.querySelector("#guestTypeOptions");
   const personForm = document.querySelector("#personForm");
   const eventForm = document.querySelector("#eventForm");
   const eventPromptFillButton = document.querySelector("#eventPromptFillButton");
   const eventAssignedTypeOptionsEl = document.querySelector("#eventAssignedTypeOptions");
+  const eventAssignedPeopleSuggestionsEl = document.querySelector("#eventAssignedPeopleSuggestions");
   const shotForm = document.querySelector("#shotForm");
   const bedForm = document.querySelector("#bedForm");
   const todoForm = document.querySelector("#todoForm");
+  const eventListForm = document.querySelector("#eventListForm");
   const addGuestForm = document.querySelector("#addGuestForm");
   const peopleListEl = document.querySelector("#peopleList");
   const eventsListEl = document.querySelector("#eventsList");
@@ -40,7 +48,9 @@
   const eventAssignedToFilterEl = document.querySelector("#eventAssignedToFilter");
   const eventAssignedToFilterSummaryEl = document.querySelector("#eventAssignedToFilterSummary");
   const eventDetailShellEl = document.querySelector("#eventDetailShell");
-  const eventDetailBackButton = document.querySelector("#eventDetailBackButton");
+  const eventIncludedPeopleModalSummaryEl = document.querySelector("#eventIncludedPeopleModalSummary");
+  const eventIncludedPeopleModalListEl = document.querySelector("#eventIncludedPeopleModalList");
+  const eventPromptOutputFieldEl = document.querySelector("#eventPromptOutput");
   const bedsListEl = document.querySelector("#bedsList");
   const tablesListEl = document.querySelector("#tablesList");
   const todosListEl = document.querySelector("#todosList");
@@ -53,12 +63,16 @@
   const shotFormStatusEl = document.querySelector("#shotFormStatus");
   const bedStatusEl = document.querySelector("#bedStatus");
   const tableStatusEl = document.querySelector("#tableStatus");
+  const tablesUnseatedCountEl = document.querySelector("#tablesUnseatedCount");
   const todoStatusEl = document.querySelector("#todoStatus");
+  const guestTypeStatusEl = document.querySelector("#guestTypeStatus");
   const addGuestStatusEl = document.querySelector("#addGuestStatus");
   const rsvpStatusEl = document.querySelector("#rsvpStatus");
   const guestsListEl = document.querySelector("#guestsList");
   const guestsStatusEl = document.querySelector("#guestsStatus");
+  const guestTypeFilterDropdownEl = document.querySelector("#guestTypeFilterDropdown");
   const guestTypeFilterEl = document.querySelector("#guestTypeFilter");
+  const guestTypeFilterSummaryEl = document.querySelector("#guestTypeFilterSummary");
   const refreshRsvpsButton = document.querySelector("#refreshRsvps");
   const routeLinks = Array.from(document.querySelectorAll("[data-route-link]"));
   const routedViews = Array.from(document.querySelectorAll("[data-view]"));
@@ -69,6 +83,7 @@
   const plannerSectionButtons = Array.from(document.querySelectorAll("[data-planner-section]"));
   const plannerPanels = Array.from(document.querySelectorAll("[data-planner-panel]"));
   const plannerSidebarMediaQuery = window.matchMedia("(max-width: 860px)");
+  const EventWorkspaceSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
   const STORAGE_KEYS = {
     auth: "hope-caleb-dashboard-authenticated",
@@ -81,17 +96,26 @@
   let cachedBeds = [];
   let cachedTables = [];
   let cachedTodos = [];
+  let cachedEventLists = [];
   let cachedRsvps = [];
   let cachedGuests = [];
   const BED_SAVE_DEBOUNCE_MS = 500;
   const bedSaveTimers = new Map();
   const bedSaveChains = new Map();
-  let selectedGuestType = "";
+  let selectedGuestTypes = [];
   let selectedEventDate = "";
   let selectedEventAssignedTo = [];
   let selectedEventDetailId = "";
+  let activeEventDetailTab = "overview";
+  const openEventDetailAccordionSections = new Set();
   const eventAiPlans = new Map();
   const eventAiDrafts = new Map();
+  const eventAiVoiceStates = new Map();
+  let activeEventVoiceRecognition = null;
+  let eventListModalReturnFocusEl = null;
+  let eventIncludedPeopleModalReturnFocusEl = null;
+  let eventPromptModalReturnFocusEl = null;
+  let guestTypeModalReturnFocusEl = null;
   let addGuestModalReturnFocusEl = null;
   let rsvpFeedConnected = false;
   let plannerCountdownTimer = null;
@@ -106,6 +130,7 @@
     isAdmin: false
   };
   let activeTableForGuestModal = null;
+  let activeGuestTypeRowNumber = 0;
 
   function createClientId(prefix) {
     return `${String(prefix || "item").trim()}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -202,6 +227,14 @@
     renderSummary();
   }
 
+  function rerenderGuestDrivenEventUi() {
+    renderEventAssignedPeopleSuggestions();
+    renderEventDetail();
+    if (!eventIncludedPeopleModal?.hidden && selectedEventDetailId) {
+      openEventIncludedPeopleModal(selectedEventDetailId, { returnFocusEl: eventIncludedPeopleModalReturnFocusEl });
+    }
+  }
+
   function rerenderShotData() {
     renderShots();
     renderEventDetail();
@@ -215,7 +248,12 @@
 
   function rerenderTodoData() {
     renderTodos();
+    renderEventDetail();
     renderSummary();
+  }
+
+  function rerenderEventListData() {
+    renderEventDetail();
   }
 
   function rerenderTableData() {
@@ -250,6 +288,11 @@
   function upsertCachedTodo(todo) {
     cachedTodos = sortTodos(upsertItemById(cachedTodos, todo));
     rerenderTodoData();
+  }
+
+  function upsertCachedEventList(eventList) {
+    cachedEventLists = sortEventLists(upsertItemById(cachedEventLists, eventList));
+    rerenderEventListData();
   }
 
   function upsertCachedTable(table) {
@@ -454,6 +497,10 @@
 
   function getEventAssignedToTokens(event) {
     return dedupeTokens(getTypeTokens(getEventAssignedToFilterValue(event)));
+  }
+
+  function getEventAssignedPeopleTokens(event) {
+    return dedupeTokens(getTypeTokens(String(event?.assignedPeople || "").trim()));
   }
 
   function parseEventDateTime(event) {
@@ -838,14 +885,6 @@
         return true;
       }
 
-      const familyMatch = normalizedType.match(/^family\s+(.+)$/i);
-      if (familyMatch) {
-        const familyName = String(familyMatch[1] || "").trim();
-        if (familyName && new RegExp(`\\b(?:family\\s+${escapeRegex(familyName)}|${escapeRegex(familyName)}\\s+family|${escapeRegex(familyName)})\\b`, "i").test(text)) {
-          return true;
-        }
-      }
-
       return false;
     });
 
@@ -1069,6 +1108,72 @@
     clearEventForm();
   }
 
+  function openEventIncludedPeopleModal(eventId, options = {}) {
+    const eventItem = getEventById(eventId);
+    if (!eventItem || !eventIncludedPeopleModal || !eventIncludedPeopleModalListEl || !eventIncludedPeopleModalSummaryEl) {
+      return;
+    }
+
+    const includedPeople = resolveIncludedPeopleForEvent(eventItem);
+    eventIncludedPeopleModalReturnFocusEl = options.returnFocusEl instanceof HTMLElement ? options.returnFocusEl : null;
+    eventIncludedPeopleModal.querySelector("#eventIncludedPeopleModalTitle").textContent = `Included People for ${eventItem.title || "Event"}`;
+    eventIncludedPeopleModalSummaryEl.textContent = includedPeople.length
+      ? `${includedPeople.length} ${includedPeople.length === 1 ? "person is" : "people are"} included in this event.`
+      : "No included people yet for this event.";
+    eventIncludedPeopleModalListEl.innerHTML = includedPeople.length
+      ? includedPeople.map((person) => `
+          <article class="event-included-person">
+            <strong>${escapeHtml(`${person.name} - ${person.detail}`)}</strong>
+          </article>
+        `).join("")
+      : '<p class="meta">No included people yet.</p>';
+    eventIncludedPeopleModal.hidden = false;
+    eventIncludedPeopleModal.setAttribute("aria-hidden", "false");
+    eventIncludedPeopleModal.querySelector("[data-close-event-included-people-modal]")?.focus();
+  }
+
+  function closeEventIncludedPeopleModal() {
+    const returnFocusEl = eventIncludedPeopleModalReturnFocusEl;
+    if (document.activeElement instanceof HTMLElement && eventIncludedPeopleModal?.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
+    eventIncludedPeopleModal.hidden = true;
+    eventIncludedPeopleModal.setAttribute("aria-hidden", "true");
+    eventIncludedPeopleModalReturnFocusEl = null;
+    if (returnFocusEl) {
+      window.setTimeout(() => returnFocusEl.focus(), 0);
+    }
+  }
+
+  function openEventPromptModal(options = {}) {
+    if (!eventPromptModal) {
+      return;
+    }
+
+    updateEventPromptActions();
+    eventPromptModalReturnFocusEl = options.returnFocusEl instanceof HTMLElement ? options.returnFocusEl : null;
+    eventPromptModal.hidden = false;
+    eventPromptModal.setAttribute("aria-hidden", "false");
+    eventPromptModal.querySelector("[data-close-event-prompt-modal]")?.focus();
+  }
+
+  function closeEventPromptModal() {
+    if (!eventPromptModal) {
+      return;
+    }
+
+    const returnFocusEl = eventPromptModalReturnFocusEl;
+    if (document.activeElement instanceof HTMLElement && eventPromptModal.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
+    eventPromptModal.hidden = true;
+    eventPromptModal.setAttribute("aria-hidden", "true");
+    eventPromptModalReturnFocusEl = null;
+    if (returnFocusEl) {
+      window.setTimeout(() => returnFocusEl.focus(), 0);
+    }
+  }
+
   function renderShotEventOptions(selectedEventId = "") {
     const eventField = shotForm?.elements?.namedItem("eventId");
     if (!eventField) {
@@ -1078,6 +1183,49 @@
     const mainEvents = cachedEvents.filter((event) => event.main);
     eventField.innerHTML = `
       <option value="">${mainEvents.length ? "Select event" : "No main events yet"}</option>
+      ${mainEvents.map((event) => `
+        <option value="${escapeHtml(String(event.id || "").trim())}">
+          ${escapeHtml([event.title || "Untitled event", formatEventSchedule(event)].filter(Boolean).join(" | "))}
+        </option>
+      `).join("")}
+    `;
+    const normalizedSelectedEventId = String(selectedEventId || "").trim();
+    eventField.value = mainEvents.some((event) => String(event.id || "").trim() === normalizedSelectedEventId)
+      ? normalizedSelectedEventId
+      : "";
+    eventField.disabled = mainEvents.length === 0;
+  }
+
+  function renderTodoEventOptions(selectedEventId = "") {
+    const eventField = todoForm?.elements?.namedItem("eventId");
+    if (!eventField) {
+      return;
+    }
+
+    const mainEvents = cachedEvents.filter((event) => event.main);
+    eventField.innerHTML = `
+      <option value="">No linked event</option>
+      ${mainEvents.map((event) => `
+        <option value="${escapeHtml(String(event.id || "").trim())}">
+          ${escapeHtml([event.title || "Untitled event", formatEventSchedule(event)].filter(Boolean).join(" | "))}
+        </option>
+      `).join("")}
+    `;
+    const normalizedSelectedEventId = String(selectedEventId || "").trim();
+    eventField.value = mainEvents.some((event) => String(event.id || "").trim() === normalizedSelectedEventId)
+      ? normalizedSelectedEventId
+      : "";
+  }
+
+  function renderEventListEventOptions(selectedEventId = "") {
+    const eventField = eventListForm?.elements?.namedItem("eventId");
+    if (!eventField) {
+      return;
+    }
+
+    const mainEvents = cachedEvents.filter((event) => event.main);
+    eventField.innerHTML = `
+      <option value="">Select event</option>
       ${mainEvents.map((event) => `
         <option value="${escapeHtml(String(event.id || "").trim())}">
           ${escapeHtml([event.title || "Untitled event", formatEventSchedule(event)].filter(Boolean).join(" | "))}
@@ -1148,14 +1296,17 @@
   function clearTodoForm() {
     todoForm.reset();
     todoForm.elements.namedItem("id").value = "";
+    todoForm.elements.namedItem("eventId").value = "";
     todoForm.elements.namedItem("priority").value = "Medium";
     todoForm.elements.namedItem("status").value = "Not Started";
     todoForm.elements.namedItem("isComplete").value = "false";
+    renderTodoEventOptions();
     setStatus(todoStatusEl, "", "");
   }
 
   function openTodoModal(title, values = {}) {
     clearTodoForm();
+    renderTodoEventOptions(values.eventId);
     fillForm(todoForm, values);
     todoModal.querySelector("#todoModalTitle").textContent = title;
     todoModal.hidden = false;
@@ -1170,6 +1321,58 @@
     todoModal.hidden = true;
     todoModal.setAttribute("aria-hidden", "true");
     clearTodoForm();
+  }
+
+  function clearEventListForm() {
+    if (!eventListForm) {
+      return;
+    }
+
+    eventListForm.reset();
+    eventListForm.elements.namedItem("id").value = "";
+    eventListForm.elements.namedItem("type").value = "shopping";
+    renderEventListEventOptions();
+    setStatus(eventDetailStatusEl, "", "");
+  }
+
+  function openEventListModal(title, values = {}, options = {}) {
+    if (!eventListModal || !eventListForm) {
+      return;
+    }
+
+    clearEventListForm();
+    renderEventListEventOptions(values.eventId);
+    fillForm(eventListForm, {
+      ...values,
+      items: formatEventListItemsForEditor(values.items)
+    });
+    eventListModal.querySelector("#eventListModalTitle").textContent = title;
+    eventListModal.hidden = false;
+    eventListModal.setAttribute("aria-hidden", "false");
+    eventListModalReturnFocusEl = options.returnFocusEl instanceof HTMLElement ? options.returnFocusEl : null;
+    const firstField = eventListForm.elements.namedItem("title");
+    if (firstField) {
+      firstField.focus();
+    }
+  }
+
+  function closeEventListModal() {
+    if (!eventListModal) {
+      return;
+    }
+
+    if (document.activeElement instanceof HTMLElement && eventListModal.contains(document.activeElement)) {
+      if (eventListModalReturnFocusEl && document.contains(eventListModalReturnFocusEl) && !eventListModalReturnFocusEl.disabled) {
+        eventListModalReturnFocusEl.focus();
+      } else {
+        eventDetailShellEl?.focus?.();
+      }
+    }
+
+    eventListModal.hidden = true;
+    eventListModal.setAttribute("aria-hidden", "true");
+    eventListModalReturnFocusEl = null;
+    clearEventListForm();
   }
 
   function clearTableForm() {
@@ -1194,6 +1397,74 @@
     tableModal.hidden = true;
     tableModal.setAttribute("aria-hidden", "true");
     clearTableForm();
+  }
+
+  function clearGuestTypeForm() {
+    if (!guestTypeForm) {
+      return;
+    }
+
+    guestTypeForm.reset();
+    guestTypeForm.elements.namedItem("rowNumber").value = "";
+    guestTypeForm.elements.namedItem("guestTypeExtra").value = "";
+    setStatus(guestTypeStatusEl, "", "");
+    activeGuestTypeRowNumber = 0;
+  }
+
+  function renderGuestTypeEditorOptions(selectedTypeValue = "") {
+    if (!guestTypeOptionsEl) {
+      return;
+    }
+
+    const selectedLookup = new Set(getTypeTokens(selectedTypeValue).map((token) => token.toLowerCase()));
+    const knownTypes = getGuestTypeOptions();
+
+    if (!knownTypes.length) {
+      guestTypeOptionsEl.innerHTML = '<p class="meta type-options__empty">No guest types loaded yet. Add one below.</p>';
+      return;
+    }
+
+    guestTypeOptionsEl.innerHTML = knownTypes.map((type) => `
+      <label class="type-option">
+        <input type="checkbox" name="guestType" value="${escapeHtml(type)}" ${selectedLookup.has(type.toLowerCase()) ? "checked" : ""}>
+        <span>${escapeHtml(type)}</span>
+      </label>
+    `).join("");
+  }
+
+  function openGuestTypeModal(rowNumber, options = {}) {
+    const numericRowNumber = Number(rowNumber || 0);
+    const guestRow = cachedGuests.find((row) => getGuestRowNumber(row) === numericRowNumber);
+    if (!guestRow || !guestTypeForm || !guestTypeModal) {
+      return;
+    }
+
+    clearGuestTypeForm();
+    activeGuestTypeRowNumber = numericRowNumber;
+    guestTypeModalReturnFocusEl = options.returnFocusEl instanceof HTMLElement ? options.returnFocusEl : null;
+    guestTypeForm.elements.namedItem("rowNumber").value = String(numericRowNumber);
+    guestTypeModal.querySelector("#guestTypeModalTitle").textContent = `Edit Type for ${getGuestDisplayName(guestRow) || "Guest"}`;
+    renderGuestTypeEditorOptions(getGuestTypeValue(guestRow));
+    guestTypeModal.hidden = false;
+    guestTypeModal.setAttribute("aria-hidden", "false");
+    const firstInput = guestTypeModal.querySelector('input[name="guestType"], input[name="guestTypeExtra"]');
+    firstInput?.focus?.();
+  }
+
+  function closeGuestTypeModal() {
+    const returnFocusEl = guestTypeModalReturnFocusEl;
+    if (document.activeElement instanceof HTMLElement && guestTypeModal?.contains(document.activeElement)) {
+      if (returnFocusEl && document.contains(returnFocusEl) && !returnFocusEl.disabled) {
+        returnFocusEl.focus();
+      } else {
+        guestsListEl?.focus?.();
+      }
+    }
+
+    guestTypeModal.hidden = true;
+    guestTypeModal.setAttribute("aria-hidden", "true");
+    clearGuestTypeForm();
+    guestTypeModalReturnFocusEl = null;
   }
 
   function clearAddGuestForm() {
@@ -1387,6 +1658,78 @@
     return cachedShots.filter((shot) => String(shot.eventId || "").trim() === normalizedEventId);
   }
 
+  function getTodosForEvent(eventId) {
+    const normalizedEventId = String(eventId || "").trim();
+    return cachedTodos.filter((todo) => String(todo.eventId || "").trim() === normalizedEventId);
+  }
+
+  function getEventListsForEvent(eventId) {
+    const normalizedEventId = String(eventId || "").trim();
+    return cachedEventLists.filter((list) => String(list.eventId || "").trim() === normalizedEventId);
+  }
+
+  function parseDelimitedValues(value) {
+    return String(value || "")
+      .split(/[\n,;]+/)
+      .map((item) => String(item || "").trim())
+      .filter(Boolean);
+  }
+
+  function formatDelimitedValues(items) {
+    return Array.isArray(items)
+      ? items.map((item) => String(item || "").trim()).filter(Boolean).join(", ")
+      : "";
+  }
+
+  function parseEventListItems(value) {
+    const normalized = String(value || "").replace(/\r/g, "").trim();
+    if (!normalized) {
+      return [];
+    }
+
+    const rawItems = normalized.includes("\n")
+      ? normalized.split(/\n+/)
+      : normalized.split(/[;,]+/);
+
+    return rawItems
+      .map((item) => String(item || "").trim())
+      .filter(Boolean)
+      .map((item) => {
+        const match = item.match(/^\[(x|X| )\]\s*(.+)$/);
+        if (match) {
+          return {
+            label: String(match[2] || "").trim(),
+            checked: String(match[1] || "").trim().toLowerCase() === "x"
+          };
+        }
+
+        return {
+          label: item,
+          checked: false
+        };
+      })
+      .filter((item) => item.label);
+  }
+
+  function serializeEventListItems(items) {
+    return Array.isArray(items)
+      ? items
+        .map((item) => {
+          const label = String(item?.label || item || "").trim();
+          if (!label) {
+            return "";
+          }
+          return `[${item?.checked ? "x" : " "}] ${label}`;
+        })
+        .filter(Boolean)
+        .join("\n")
+      : "";
+  }
+
+  function formatEventListItemsForEditor(value) {
+    return serializeEventListItems(parseEventListItems(value));
+  }
+
   function buildEventAiPrompts(eventItem, options = {}) {
     if (!eventItem) {
       return {
@@ -1457,10 +1800,10 @@
     }
 
     const planningNotesField = eventDetailShellEl.querySelector("[data-event-workspace-note]");
-    const promptOutputField = eventDetailShellEl.querySelector("[data-event-workspace-output]");
-    const copyButton = eventDetailShellEl.querySelector("[data-event-workspace-copy]");
-    const goals = Array.from(eventDetailShellEl.querySelectorAll("[data-event-workspace-goal]:checked"))
-      .map((input) => String(input.value || "").trim())
+    const promptOutputField = eventPromptOutputFieldEl;
+    const copyButtons = Array.from(document.querySelectorAll("[data-event-workspace-copy]"));
+    const goals = Array.from(eventDetailShellEl.querySelectorAll("[data-event-workspace-goal][aria-pressed='true']"))
+      .map((button) => String(button.dataset.eventWorkspaceGoalValue || "").trim())
       .filter(Boolean);
 
     if (!planningNotesField || !promptOutputField) {
@@ -1477,17 +1820,17 @@
       goals
     }).copyPrompt;
 
-    if (copyButton) {
-      copyButton.disabled = !String(promptOutputField.value || "").trim();
-    }
+    copyButtons.forEach((button) => {
+      button.disabled = !String(promptOutputField.value || "").trim();
+    });
   }
 
   async function copyEventPromptToClipboard() {
-    if (!eventDetailShellEl) {
+    if (!eventPromptOutputFieldEl) {
       return;
     }
 
-    const promptOutputField = eventDetailShellEl.querySelector("[data-event-workspace-output]");
+    const promptOutputField = eventPromptOutputFieldEl;
     if (!promptOutputField || !String(promptOutputField.value || "").trim()) {
       setStatus(eventDetailStatusEl, "There is no AI prompt to copy yet.", "error");
       return;
@@ -1523,6 +1866,205 @@
     };
   }
 
+  function getEventAiVoiceState(eventId) {
+    const normalizedEventId = String(eventId || "").trim();
+    if (!normalizedEventId) {
+      return {
+        isListening: false,
+        status: EventWorkspaceSpeechRecognition ? "Tap the mic to dictate your notes." : "Voice input works in supported browsers like Chrome.",
+        error: false
+      };
+    }
+
+    if (!eventAiVoiceStates.has(normalizedEventId)) {
+      eventAiVoiceStates.set(normalizedEventId, {
+        isListening: false,
+        status: EventWorkspaceSpeechRecognition ? "Tap the mic to dictate your notes." : "Voice input works in supported browsers like Chrome.",
+        error: false
+      });
+    }
+
+    return eventAiVoiceStates.get(normalizedEventId);
+  }
+
+  function setEventAiVoiceState(eventId, nextState = {}) {
+    const normalizedEventId = String(eventId || "").trim();
+    if (!normalizedEventId) {
+      return;
+    }
+
+    const currentState = getEventAiVoiceState(normalizedEventId);
+    const mergedState = {
+      ...currentState,
+      ...nextState
+    };
+    eventAiVoiceStates.set(normalizedEventId, mergedState);
+
+    if (!eventDetailShellEl || selectedEventDetailId !== normalizedEventId) {
+      return;
+    }
+
+    eventDetailShellEl.querySelectorAll("[data-event-workspace-mic]").forEach((button) => {
+      button.textContent = mergedState.isListening ? "Stop Dictation" : "Start Dictation";
+      button.setAttribute("aria-pressed", mergedState.isListening ? "true" : "false");
+      button.classList.toggle("event-detail-ai-mic-button--active", mergedState.isListening);
+      button.disabled = !EventWorkspaceSpeechRecognition;
+    });
+    eventDetailShellEl.querySelectorAll("[data-event-workspace-mic-status]").forEach((statusEl) => {
+      statusEl.textContent = mergedState.status || "";
+      statusEl.classList.toggle("event-detail-ai-mic-status--error", Boolean(mergedState.error));
+    });
+  }
+
+  function mergeVoiceTranscriptIntoNotes(existingValue, transcript) {
+    const currentValue = String(existingValue || "").trim();
+    const nextTranscript = String(transcript || "").trim();
+    if (!nextTranscript) {
+      return currentValue;
+    }
+    return currentValue ? `${currentValue} ${nextTranscript}` : nextTranscript;
+  }
+
+  function stopEventWorkspaceVoiceRecognition(nextStatus, isError = false) {
+    const activeRecognition = activeEventVoiceRecognition;
+    if (!activeRecognition) {
+      return;
+    }
+
+    activeEventVoiceRecognition = null;
+    activeRecognition.__codexStoppedManually = true;
+
+    try {
+      activeRecognition.stop();
+    } catch (error) {
+      // Some browsers throw if stop() is called during teardown.
+    }
+
+    if (activeRecognition.__eventId) {
+      setEventAiVoiceState(activeRecognition.__eventId, {
+        isListening: false,
+        status: nextStatus || "Dictation stopped.",
+        error: isError
+      });
+    }
+  }
+
+  function toggleEventWorkspaceVoiceInput() {
+    const eventItem = getEventById(selectedEventDetailId);
+    if (!eventItem || !eventDetailShellEl) {
+      return;
+    }
+
+    const normalizedEventId = String(eventItem.id || "").trim();
+    if (!EventWorkspaceSpeechRecognition) {
+      setEventAiVoiceState(normalizedEventId, {
+        isListening: false,
+        status: "Voice input works in supported browsers like Chrome.",
+        error: true
+      });
+      return;
+    }
+
+    if (activeEventVoiceRecognition?.__eventId === normalizedEventId) {
+      stopEventWorkspaceVoiceRecognition("Dictation stopped.");
+      return;
+    }
+
+    if (activeEventVoiceRecognition) {
+      stopEventWorkspaceVoiceRecognition("Dictation stopped.");
+    }
+
+    const planningNotesField = eventDetailShellEl.querySelector("[data-event-workspace-note]");
+    if (!planningNotesField) {
+      return;
+    }
+
+    const recognition = new EventWorkspaceSpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    recognition.__eventId = normalizedEventId;
+    recognition.__baseValue = planningNotesField.value;
+    recognition.__finalTranscript = "";
+    recognition.__codexStoppedManually = false;
+
+    recognition.onstart = () => {
+      setEventAiVoiceState(normalizedEventId, {
+        isListening: true,
+        status: "Listening... speak naturally and tap again to stop.",
+        error: false
+      });
+    };
+
+    recognition.onresult = (event) => {
+      let interimTranscript = "";
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const transcript = String(result?.[0]?.transcript || "").trim();
+        if (!transcript) {
+          continue;
+        }
+        if (result.isFinal) {
+          recognition.__finalTranscript = mergeVoiceTranscriptIntoNotes(recognition.__finalTranscript, transcript);
+        } else {
+          interimTranscript = mergeVoiceTranscriptIntoNotes(interimTranscript, transcript);
+        }
+      }
+
+      planningNotesField.value = mergeVoiceTranscriptIntoNotes(
+        recognition.__baseValue,
+        mergeVoiceTranscriptIntoNotes(recognition.__finalTranscript, interimTranscript)
+      );
+      planningNotesField.dispatchEvent(new Event("input", { bubbles: true }));
+      setEventAiVoiceState(normalizedEventId, {
+        isListening: true,
+        status: interimTranscript ? "Listening... release when your thought is complete." : "Listening...",
+        error: false
+      });
+    };
+
+    recognition.onerror = (event) => {
+      const errorCode = String(event?.error || "").trim();
+      const message = errorCode === "not-allowed"
+        ? "Microphone permission was blocked."
+        : errorCode === "no-speech"
+          ? "No speech was detected. Try again and speak a little closer to the mic."
+          : "Voice input ran into a browser error.";
+      activeEventVoiceRecognition = null;
+      setEventAiVoiceState(normalizedEventId, {
+        isListening: false,
+        status: message,
+        error: true
+      });
+    };
+
+    recognition.onend = () => {
+      const finalStatus = recognition.__finalTranscript
+        ? "Dictation added to your notes."
+        : "Dictation stopped.";
+      const wasManualStop = recognition.__codexStoppedManually;
+      activeEventVoiceRecognition = null;
+      setEventAiVoiceState(normalizedEventId, {
+        isListening: false,
+        status: wasManualStop ? "Dictation stopped." : finalStatus,
+        error: false
+      });
+    };
+
+    activeEventVoiceRecognition = recognition;
+
+    try {
+      recognition.start();
+    } catch (error) {
+      activeEventVoiceRecognition = null;
+      setEventAiVoiceState(normalizedEventId, {
+        isListening: false,
+        status: "Voice input could not start right now. Please try again.",
+        error: true
+      });
+    }
+  }
+
   function setEventAiDraft(eventId, patch = {}) {
     const normalizedEventId = String(eventId || "").trim();
     if (!normalizedEventId) {
@@ -1536,7 +2078,75 @@
     });
   }
 
-  function renderAiPlanSection(plan) {
+  function toDateInputValue(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return "";
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return raw;
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      return "";
+    }
+
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+  }
+
+  function toTimeInputValue(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return "";
+    }
+
+    const twentyFourHourMatch = raw.match(/\b(\d{1,2}):(\d{2})\b/);
+    if (twentyFourHourMatch && !/[AP]M/i.test(raw)) {
+      return `${String(Number(twentyFourHourMatch[1]) % 24).padStart(2, "0")}:${twentyFourHourMatch[2]}`;
+    }
+
+    const meridiemMatch = raw.match(/\b(\d{1,2}):(\d{2})\s*([AP]M)\b/i);
+    if (meridiemMatch) {
+      let hours = Number(meridiemMatch[1]) % 12;
+      if (meridiemMatch[3].toUpperCase() === "PM") {
+        hours += 12;
+      }
+      return `${String(hours).padStart(2, "0")}:${meridiemMatch[2]}`;
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      return "";
+    }
+
+    return `${String(parsed.getHours()).padStart(2, "0")}:${String(parsed.getMinutes()).padStart(2, "0")}`;
+  }
+
+  function formatAiTodoSchedule(todo) {
+    const dateLabel = formatEventDate(todo?.dueDate) || "";
+    const timeLabel = formatEventTimeRange(toTimeInputValue(todo?.dueTiming || ""), "") || "";
+    return [dateLabel, timeLabel].filter(Boolean).join(", ") || String(todo?.dueTiming || "").trim() || "No due timing suggested";
+  }
+
+  function updateEventAiPlan(eventId, recipe) {
+    const normalizedEventId = String(eventId || "").trim();
+    const currentPlan = getEventAiPlan(normalizedEventId);
+    if (!normalizedEventId || !currentPlan || typeof recipe !== "function") {
+      return;
+    }
+
+    const nextPlan = recipe(currentPlan);
+    if (!nextPlan) {
+      return;
+    }
+
+    eventAiPlans.set(normalizedEventId, nextPlan);
+    renderEventDetail();
+  }
+
+  function renderAiPlanSection(eventItem, plan) {
     if (!plan) {
       return `
         <div class="event-detail-empty">
@@ -1544,6 +2154,9 @@
         </div>
       `;
     }
+
+    const includedPeople = eventItem ? resolveIncludedPeopleForEvent(eventItem) : [];
+    const includedPersonNames = includedPeople.map((person) => person.name).filter(Boolean);
 
     return `
       <div class="event-ai-plan">
@@ -1563,13 +2176,78 @@
           <h4>Suggested Todos</h4>
           ${Array.isArray(plan.todos) && plan.todos.length ? `
             <div class="event-ai-plan__cards">
-              ${plan.todos.map((todo) => `
+              ${plan.todos.map((todo, index) => `
                 <article class="event-ai-plan__card">
-                  <strong>${escapeHtml(todo.title || "Untitled todo")}</strong>
-                  <p class="meta">${escapeHtml([todo.ownerSuggestion, todo.dueTiming].filter(Boolean).join(" | ") || "No owner or timing suggested")}</p>
-                  ${todo.notes ? `<p>${escapeHtml(todo.notes)}</p>` : ""}
+                  <div class="event-ai-plan__card-header">
+                    <strong>${escapeHtml(todo.title || "Untitled todo")}</strong>
+                    <button
+                      class="button button--icon button--light event-detail-shot-delete"
+                      type="button"
+                      data-delete-ai-plan-todo="${escapeHtml(String(eventItem?.id || ""))}"
+                      data-ai-todo-index="${escapeHtml(String(index))}"
+                      aria-label="Delete ${escapeHtml(todo.title || "todo")}">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M3 6h18"></path>
+                        <path d="M8 6V4h8v2"></path>
+                        <path d="M19 6l-1 14H6L5 6"></path>
+                        <path d="M10 11v6"></path>
+                        <path d="M14 11v6"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <p class="meta">${escapeHtml(formatAiTodoSchedule(todo))}</p>
+                  <div class="event-ai-plan__field event-ai-plan__field--inline">
+                    <label for="ai-todo-owner-${escapeHtml(String(eventItem?.id || ""))}-${escapeHtml(String(index))}">Assigned To</label>
+                    <select
+                      id="ai-todo-owner-${escapeHtml(String(eventItem?.id || ""))}-${escapeHtml(String(index))}"
+                      data-update-ai-todo-owner="${escapeHtml(String(eventItem?.id || ""))}"
+                      data-ai-todo-index="${escapeHtml(String(index))}">
+                      <option value="">Unassigned</option>
+                      ${!includedPersonNames.includes(todo.ownerSuggestion) && todo.ownerSuggestion ? `<option value="${escapeHtml(todo.ownerSuggestion)}" selected>${escapeHtml(todo.ownerSuggestion)}</option>` : ""}
+                      ${includedPersonNames.map((name) => `<option value="${escapeHtml(name)}" ${name === todo.ownerSuggestion ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}
+                    </select>
+                  </div>
+                  <div class="event-ai-plan__field event-ai-plan__field--inline">
+                    <label for="ai-todo-due-date-${escapeHtml(String(eventItem?.id || ""))}-${escapeHtml(String(index))}">Due Date</label>
+                    <input
+                      id="ai-todo-due-date-${escapeHtml(String(eventItem?.id || ""))}-${escapeHtml(String(index))}"
+                      type="date"
+                      value="${escapeHtml(toDateInputValue(todo.dueDate || todo.dueTiming))}"
+                      data-update-ai-todo-due-date="${escapeHtml(String(eventItem?.id || ""))}"
+                      data-ai-todo-index="${escapeHtml(String(index))}">
+                  </div>
+                  <div class="event-ai-plan__field event-ai-plan__field--inline">
+                    <label for="ai-todo-due-time-${escapeHtml(String(eventItem?.id || ""))}-${escapeHtml(String(index))}">Time</label>
+                    <input
+                      id="ai-todo-due-time-${escapeHtml(String(eventItem?.id || ""))}-${escapeHtml(String(index))}"
+                      type="time"
+                      value="${escapeHtml(toTimeInputValue(todo.dueTiming))}"
+                      data-update-ai-todo-due-time="${escapeHtml(String(eventItem?.id || ""))}"
+                      data-ai-todo-index="${escapeHtml(String(index))}">
+                  </div>
+                  <div class="event-ai-plan__field">
+                    <div class="event-ai-plan__field-header">
+                      <label for="ai-todo-notes-${escapeHtml(String(eventItem?.id || ""))}-${escapeHtml(String(index))}">Description</label>
+                      <button
+                        class="button button--light event-ai-plan__small-button"
+                        type="button"
+                        data-clear-ai-todo-notes="${escapeHtml(String(eventItem?.id || ""))}"
+                        data-ai-todo-index="${escapeHtml(String(index))}">Clear Description</button>
+                    </div>
+                    <textarea
+                      id="ai-todo-notes-${escapeHtml(String(eventItem?.id || ""))}-${escapeHtml(String(index))}"
+                      data-update-ai-todo-notes="${escapeHtml(String(eventItem?.id || ""))}"
+                      data-ai-todo-index="${escapeHtml(String(index))}"
+                      placeholder="Add or edit the todo description.">${escapeHtml(todo.notes || "")}</textarea>
+                  </div>
                 </article>
               `).join("")}
+            </div>
+            <div class="toolbar">
+              <button
+                class="button button--light"
+                type="button"
+                data-add-ai-plan-todos="${escapeHtml(String(eventItem?.id || ""))}">Add to Todos</button>
             </div>
           ` : '<p class="meta">No todo suggestions returned.</p>'}
         </div>
@@ -1591,6 +2269,12 @@
                 </article>
               `).join("")}
             </div>
+            <div class="toolbar">
+              <button
+                class="button button--light"
+                type="button"
+                data-add-ai-plan-lists="${escapeHtml(String(eventItem?.id || ""))}">Add to Lists</button>
+            </div>
           ` : '<p class="meta">No shopping or packing suggestions returned.</p>'}
         </div>
         <div class="event-ai-plan__section">
@@ -1603,6 +2287,12 @@
                   ${idea.reason ? `<p>${escapeHtml(idea.reason)}</p>` : ""}
                 </article>
               `).join("")}
+            </div>
+            <div class="toolbar">
+              <button
+                class="button button--light"
+                type="button"
+                data-add-ai-plan-shots="${escapeHtml(String(eventItem?.id || ""))}">Add to Shot List</button>
             </div>
           ` : '<p class="meta">No new shot ideas returned.</p>'}
         </div>
@@ -1626,8 +2316,8 @@
 
     const planningNotesField = eventDetailShellEl.querySelector("[data-event-workspace-note]");
     const generateButton = eventDetailShellEl.querySelector("[data-event-workspace-generate]");
-    const goals = Array.from(eventDetailShellEl.querySelectorAll("[data-event-workspace-goal]:checked"))
-      .map((input) => String(input.value || "").trim())
+    const goals = Array.from(eventDetailShellEl.querySelectorAll("[data-event-workspace-goal][aria-pressed='true']"))
+      .map((button) => String(button.dataset.eventWorkspaceGoalValue || "").trim())
       .filter(Boolean);
     const planningNotes = String(planningNotesField?.value || "").trim();
 
@@ -1677,7 +2367,458 @@
     }
   }
 
+  function normalizeLookupValue(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function buildAiTodoNotes(todo) {
+    const sections = [];
+    if (todo?.notes) {
+      sections.push(String(todo.notes).trim());
+    }
+    if (todo?.dueTiming) {
+      sections.push(`Suggested timing: ${String(todo.dueTiming).trim()}`);
+    }
+    return sections.filter(Boolean).join("\n\n");
+  }
+
+  function formatAiChecklistItems(items) {
+    return serializeEventListItems((items || []).map((item) => ({
+      label: [
+        item?.item,
+        item?.quantity ? `(${item.quantity})` : "",
+        item?.notes ? `- ${item.notes}` : ""
+      ].filter(Boolean).join(" "),
+      checked: false
+    })));
+  }
+
+  function countAiChecklistItems(checklists) {
+    return (Array.isArray(checklists) ? checklists : []).reduce((total, checklist) => {
+      return total + (Array.isArray(checklist?.items) ? checklist.items.length : 0);
+    }, 0);
+  }
+
+  function normalizeEventListType(value) {
+    const normalized = normalizeLookupValue(value);
+    return normalized.includes("pack") ? "packing" : "shopping";
+  }
+
+  function setActiveEventDetailTab(tabId) {
+    const nextTab = normalizeLookupValue(tabId) || "overview";
+    activeEventDetailTab = nextTab;
+
+    if (!eventDetailShellEl) {
+      return;
+    }
+
+    eventDetailShellEl.querySelectorAll("[data-event-detail-tab-toggle]").forEach((button) => {
+      const isActive = normalizeLookupValue(button.dataset.eventDetailTabToggle) === nextTab;
+      button.setAttribute("aria-selected", isActive ? "true" : "false");
+      button.setAttribute("tabindex", isActive ? "0" : "-1");
+    });
+    eventDetailShellEl.querySelectorAll("[data-event-detail-panel]").forEach((panel) => {
+      panel.hidden = normalizeLookupValue(panel.dataset.eventDetailPanel) !== nextTab;
+    });
+  }
+
+  function openEventDetailSection(sectionId) {
+    const normalizedSectionId = normalizeLookupValue(sectionId);
+    if (!normalizedSectionId) {
+      return;
+    }
+
+    setActiveEventDetailTab(normalizedSectionId);
+    openEventDetailAccordionSections.clear();
+    openEventDetailAccordionSections.add(normalizedSectionId);
+
+    if (!eventDetailShellEl) {
+      return;
+    }
+
+    eventDetailShellEl.querySelectorAll("[data-event-detail-accordion-toggle]").forEach((button) => {
+      const isOpen = normalizeLookupValue(button.dataset.eventDetailAccordionToggle) === normalizedSectionId;
+      button.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+    eventDetailShellEl.querySelectorAll("[data-event-detail-accordion-panel]").forEach((panel) => {
+      panel.hidden = normalizeLookupValue(panel.dataset.eventDetailAccordionPanel) !== normalizedSectionId;
+    });
+  }
+
+  function isEventDetailAccordionOpen(sectionId) {
+    return openEventDetailAccordionSections.has(normalizeLookupValue(sectionId));
+  }
+
+  function toggleEventDetailAccordionSection(sectionId) {
+    const normalizedSectionId = normalizeLookupValue(sectionId);
+    if (!normalizedSectionId) {
+      return;
+    }
+
+    if (openEventDetailAccordionSections.has(normalizedSectionId)) {
+      openEventDetailAccordionSections.delete(normalizedSectionId);
+    } else {
+      openEventDetailAccordionSections.add(normalizedSectionId);
+    }
+
+    if (!eventDetailShellEl) {
+      return;
+    }
+
+    eventDetailShellEl.querySelectorAll("[data-event-detail-accordion-toggle]").forEach((button) => {
+      const isOpen = normalizeLookupValue(button.dataset.eventDetailAccordionToggle) === normalizedSectionId
+        ? openEventDetailAccordionSections.has(normalizedSectionId)
+        : openEventDetailAccordionSections.has(normalizeLookupValue(button.dataset.eventDetailAccordionToggle));
+      button.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+    eventDetailShellEl.querySelectorAll("[data-event-detail-accordion-panel]").forEach((panel) => {
+      panel.hidden = !openEventDetailAccordionSections.has(normalizeLookupValue(panel.dataset.eventDetailAccordionPanel));
+    });
+  }
+
+  async function addAiPlanTodosToEvent(eventId, todos) {
+    const normalizedEventId = String(eventId || "").trim();
+    const suggestions = Array.isArray(todos) ? todos : [];
+    if (!normalizedEventId || !suggestions.length) {
+      throw new Error("Generate todo suggestions first.");
+    }
+
+    const previousTodos = cachedTodos;
+    const existingTitles = new Set(getTodosForEvent(normalizedEventId).map((todo) => normalizeLookupValue(todo.title)));
+    const savedTodos = [];
+    let skippedCount = 0;
+
+    try {
+      requirePlannerAccess();
+      setStatus(eventDetailStatusEl, "Adding AI todos...", "pending");
+      for (const todo of suggestions) {
+        const title = String(todo?.title || "").trim();
+        const normalizedTitle = normalizeLookupValue(title);
+        if (!normalizedTitle || existingTitles.has(normalizedTitle)) {
+          skippedCount += 1;
+          continue;
+        }
+
+        existingTitles.add(normalizedTitle);
+        const optimisticTodo = {
+          id: createClientId("todo"),
+          eventId: normalizedEventId,
+          title,
+          notes: buildAiTodoNotes(todo),
+          assignedTo: String(todo?.ownerSuggestion || "").trim(),
+          startDate: "",
+          dueDate: toDateInputValue(todo?.dueDate || todo?.dueTiming),
+          priority: "Medium",
+          status: "Not Started",
+          isComplete: false,
+          completedAt: "",
+          imageUrl: "",
+          smsMessage: "",
+          reminderDate: "",
+          category: "Event",
+          tags: "AI Generated",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        upsertCachedTodo(optimisticTodo);
+        const savedTodo = await backendRequest("saveTodo", optimisticTodo);
+        savedTodos.push(savedTodo);
+      }
+
+      cachedTodos = sortTodos(previousTodos);
+      savedTodos.forEach((todo) => upsertCachedTodo(todo));
+      if (!savedTodos.length) {
+        setStatus(eventDetailStatusEl, "All suggested todos were already linked to this event.", "pending");
+        return;
+      }
+
+      openEventDetailSection("todos");
+      const skippedMessage = skippedCount ? ` Skipped ${skippedCount} duplicate${skippedCount === 1 ? "" : "s"}.` : "";
+      setStatus(eventDetailStatusEl, `Added ${savedTodos.length} AI todo${savedTodos.length === 1 ? "" : "s"}.${skippedMessage}`, "success");
+    } catch (error) {
+      cachedTodos = previousTodos;
+      rerenderTodoData();
+      throw error;
+    }
+  }
+
+  function updateAiTodoField(eventId, index, patch = {}) {
+    updateEventAiPlan(eventId, (currentPlan) => ({
+      ...currentPlan,
+      todos: (Array.isArray(currentPlan.todos) ? currentPlan.todos : []).map((todo, todoIndex) => (
+        todoIndex === Number(index)
+          ? { ...todo, ...patch }
+          : todo
+      ))
+    }));
+  }
+
+  function deleteAiTodoSuggestion(eventId, index) {
+    updateEventAiPlan(eventId, (currentPlan) => ({
+      ...currentPlan,
+      todos: (Array.isArray(currentPlan.todos) ? currentPlan.todos : []).filter((_, todoIndex) => todoIndex !== Number(index))
+    }));
+  }
+
+  async function addAiPlanListsToEvent(eventId, checklists) {
+    const normalizedEventId = String(eventId || "").trim();
+    const suggestions = Array.isArray(checklists) ? checklists : [];
+    if (!normalizedEventId || !suggestions.length) {
+      throw new Error("Generate list suggestions first.");
+    }
+
+    const previousLists = cachedEventLists;
+    const existingTitles = new Set(getEventListsForEvent(normalizedEventId).map((list) => normalizeLookupValue(list.title)));
+    const savedLists = [];
+    let skippedCount = 0;
+
+    try {
+      requirePlannerAccess();
+      setStatus(eventDetailStatusEl, "Adding AI lists...", "pending");
+      for (const checklist of suggestions) {
+        const title = String(checklist?.title || "").trim();
+        const normalizedTitle = normalizeLookupValue(title);
+        const items = formatAiChecklistItems(checklist?.items);
+        if (!normalizedTitle || !items || existingTitles.has(normalizedTitle)) {
+          skippedCount += 1;
+          continue;
+        }
+
+        existingTitles.add(normalizedTitle);
+        const optimisticList = {
+          id: createClientId("event_list"),
+          eventId: normalizedEventId,
+          title,
+          type: normalizeEventListType(checklist?.type),
+          items,
+          notes: checklist?.type ? `AI list type: ${String(checklist.type).trim()}` : "",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        upsertCachedEventList(optimisticList);
+        const savedList = await backendRequest("saveEventList", optimisticList);
+        savedLists.push(savedList);
+      }
+
+      cachedEventLists = sortEventLists(previousLists);
+      savedLists.forEach((list) => upsertCachedEventList(list));
+      if (!savedLists.length) {
+        setStatus(eventDetailStatusEl, "All suggested lists were already linked to this event.", "pending");
+        return;
+      }
+
+      openEventDetailSection("lists");
+      const savedItemCount = countAiChecklistItems(savedLists.map((list) => {
+        const matchingChecklist = suggestions.find((checklist) => normalizeLookupValue(checklist?.title) === normalizeLookupValue(list.title));
+        return matchingChecklist || { items: parseEventListItems(list.items).map((item) => ({ item: item.label })) };
+      }));
+      const itemMessage = savedItemCount
+        ? ` with ${savedItemCount} item${savedItemCount === 1 ? "" : "s"}`
+        : "";
+      const skippedMessage = skippedCount ? ` Skipped ${skippedCount} duplicate${skippedCount === 1 ? "" : "s"}.` : "";
+      setStatus(eventDetailStatusEl, `Added ${savedLists.length} AI list${savedLists.length === 1 ? "" : "s"}${itemMessage}.${skippedMessage}`, "success");
+    } catch (error) {
+      cachedEventLists = previousLists;
+      rerenderEventListData();
+      throw error;
+    }
+  }
+
+  async function addAiPlanShotsToEvent(eventId, shotIdeas) {
+    const normalizedEventId = String(eventId || "").trim();
+    const suggestions = Array.isArray(shotIdeas) ? shotIdeas : [];
+    if (!normalizedEventId || !suggestions.length) {
+      throw new Error("Generate shot suggestions first.");
+    }
+
+    const previousShots = cachedShots;
+    const existingTitles = new Set(getShotsForEvent(normalizedEventId).map((shot) => normalizeLookupValue(shot.title)));
+    const savedShots = [];
+    let skippedCount = 0;
+
+    try {
+      requirePlannerAccess();
+      setStatus(eventDetailStatusEl, "Adding AI shot ideas...", "pending");
+      for (const idea of suggestions) {
+        const title = String(idea?.title || "").trim();
+        const normalizedTitle = normalizeLookupValue(title);
+        if (!normalizedTitle || existingTitles.has(normalizedTitle)) {
+          skippedCount += 1;
+          continue;
+        }
+
+        existingTitles.add(normalizedTitle);
+        const optimisticShot = {
+          id: createClientId("shot"),
+          eventId: normalizedEventId,
+          title,
+          description: String(idea?.reason || "").trim(),
+          peopleNeeded: "",
+          priority: "Medium",
+          sortOrder: 0,
+          notes: "AI generated suggestion",
+          isComplete: false,
+          completedAt: "",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        upsertCachedShot(optimisticShot);
+        const savedShot = await backendRequest("saveShot", optimisticShot);
+        savedShots.push(savedShot);
+      }
+
+      cachedShots = sortShots(previousShots);
+      savedShots.forEach((shot) => upsertCachedShot(shot));
+      if (!savedShots.length) {
+        setStatus(eventDetailStatusEl, "All suggested shots were already linked to this event.", "pending");
+        return;
+      }
+
+      openEventDetailSection("shot-list");
+      const skippedMessage = skippedCount ? ` Skipped ${skippedCount} duplicate${skippedCount === 1 ? "" : "s"}.` : "";
+      setStatus(eventDetailStatusEl, `Added ${savedShots.length} AI shot${savedShots.length === 1 ? "" : "s"}.${skippedMessage}`, "success");
+    } catch (error) {
+      cachedShots = previousShots;
+      rerenderShotData();
+      throw error;
+    }
+  }
+
+  async function toggleEventListItemChecked(listId, itemIndex) {
+    const normalizedListId = String(listId || "").trim();
+    const index = Number(itemIndex);
+    const eventList = cachedEventLists.find((item) => String(item.id || "").trim() === normalizedListId);
+    if (!eventList || !Number.isInteger(index) || index < 0) {
+      return;
+    }
+
+    const items = parseEventListItems(eventList.items);
+    if (!items[index]) {
+      return;
+    }
+
+    const previousLists = cachedEventLists;
+    const serializedItems = serializeEventListItems(items.map((item, currentIndex) => currentIndex === index
+      ? { ...item, checked: !item.checked }
+      : item));
+
+    try {
+      requirePlannerAccess();
+      upsertCachedEventList({
+        ...eventList,
+        items: serializedItems,
+        updatedAt: new Date().toISOString()
+      });
+      const savedList = await backendRequest("saveEventList", {
+        id: normalizedListId,
+        eventId: String(eventList.eventId || "").trim(),
+        title: String(eventList.title || "").trim(),
+        type: String(eventList.type || "shopping").trim(),
+        items: serializedItems,
+        notes: String(eventList.notes || "").trim()
+      });
+      upsertCachedEventList(savedList);
+    } catch (error) {
+      cachedEventLists = previousLists;
+      rerenderEventListData();
+      setStatus(eventDetailStatusEl, error.message || "Unable to update list item.", "error");
+    }
+  }
+
+  async function toggleEventTodoComplete(todoId) {
+    const normalizedTodoId = String(todoId || "").trim();
+    const todo = cachedTodos.find((item) => String(item.id || "").trim() === normalizedTodoId);
+    if (!todo) {
+      return;
+    }
+
+    const previousTodos = cachedTodos;
+    const nextIsComplete = !todo.isComplete;
+
+    try {
+      requirePlannerAccess();
+      setStatus(eventDetailStatusEl, nextIsComplete ? `Marking ${todo.title || "task"} complete...` : `Marking ${todo.title || "task"} incomplete...`, "pending");
+      upsertCachedTodo({
+        ...todo,
+        isComplete: nextIsComplete,
+        status: nextIsComplete ? "Done" : (String(todo.status || "").trim() === "Done" ? "Assigned" : String(todo.status || "Assigned").trim()),
+        completedAt: nextIsComplete ? (todo.completedAt || new Date().toISOString()) : "",
+        updatedAt: new Date().toISOString()
+      });
+      const savedTodo = await backendRequest("saveTodo", {
+        id: String(todo.id || "").trim(),
+        eventId: String(todo.eventId || "").trim(),
+        title: String(todo.title || "").trim(),
+        notes: String(todo.notes || "").trim(),
+        assignedTo: String(todo.assignedTo || "").trim(),
+        startDate: String(todo.startDate || "").trim(),
+        dueDate: String(todo.dueDate || "").trim(),
+        priority: String(todo.priority || "Medium").trim(),
+        status: nextIsComplete ? "Done" : (String(todo.status || "").trim() === "Done" ? "Assigned" : String(todo.status || "Assigned").trim()),
+        isComplete: nextIsComplete,
+        completedAt: nextIsComplete ? (todo.completedAt || "") : "",
+        imageUrl: String(todo.imageUrl || "").trim(),
+        smsMessage: String(todo.smsMessage || "").trim(),
+        reminderDate: String(todo.reminderDate || "").trim(),
+        category: String(todo.category || "").trim(),
+        tags: String(todo.tags || "").trim()
+      });
+      upsertCachedTodo(savedTodo);
+      setStatus(eventDetailStatusEl, nextIsComplete ? `${todo.title || "Task"} marked complete.` : `${todo.title || "Task"} marked incomplete.`, "success");
+    } catch (error) {
+      cachedTodos = previousTodos;
+      rerenderTodoData();
+      setStatus(eventDetailStatusEl, error.message || "Unable to update task.", "error");
+    }
+  }
+
+  async function updateEventTodoField(todoId, patch = {}) {
+    const normalizedTodoId = String(todoId || "").trim();
+    const todo = cachedTodos.find((item) => String(item.id || "").trim() === normalizedTodoId);
+    if (!todo) {
+      return;
+    }
+
+    const previousTodos = cachedTodos;
+    const nextTodo = {
+      ...todo,
+      ...patch,
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      requirePlannerAccess();
+      upsertCachedTodo(nextTodo);
+      const savedTodo = await backendRequest("saveTodo", {
+        id: String(nextTodo.id || "").trim(),
+        eventId: String(nextTodo.eventId || "").trim(),
+        title: String(nextTodo.title || "").trim(),
+        notes: String(nextTodo.notes || "").trim(),
+        assignedTo: String(nextTodo.assignedTo || "").trim(),
+        startDate: String(nextTodo.startDate || "").trim(),
+        dueDate: String(nextTodo.dueDate || "").trim(),
+        priority: String(nextTodo.priority || "Medium").trim(),
+        status: String(nextTodo.status || (nextTodo.isComplete ? "Done" : "Assigned")).trim(),
+        isComplete: Boolean(nextTodo.isComplete),
+        completedAt: String(nextTodo.completedAt || "").trim(),
+        imageUrl: String(nextTodo.imageUrl || "").trim(),
+        smsMessage: String(nextTodo.smsMessage || "").trim(),
+        reminderDate: String(nextTodo.reminderDate || "").trim(),
+        category: String(nextTodo.category || "").trim(),
+        tags: String(nextTodo.tags || "").trim()
+      });
+      upsertCachedTodo(savedTodo);
+      setStatus(eventDetailStatusEl, `${nextTodo.title || "Task"} updated.`, "success");
+    } catch (error) {
+      cachedTodos = previousTodos;
+      rerenderTodoData();
+      setStatus(eventDetailStatusEl, error.message || "Unable to update task.", "error");
+    }
+  }
+
   function renderEventDetail() {
+    stopEventWorkspaceVoiceRecognition("Dictation stopped.");
+
     if (!eventDetailShellEl) {
       return;
     }
@@ -1697,8 +2838,319 @@
     }
 
     const relatedShots = getShotsForEvent(eventItem.id);
+    const relatedTodos = getTodosForEvent(eventItem.id);
+    const relatedEventLists = getEventListsForEvent(eventItem.id);
+    const includedPeople = resolveIncludedPeopleForEvent(eventItem);
+    const includedPersonNames = includedPeople.map((person) => person.name).filter(Boolean);
     const aiPlan = getEventAiPlan(eventItem.id);
     const aiDraft = getEventAiDraft(eventItem.id);
+    const aiVoiceState = getEventAiVoiceState(eventItem.id);
+    const overviewPanelHtml = `
+      <section class="event-detail-card">
+        <div class="event-detail-section__header">
+          <h4>Event Overview</h4>
+          <p class="meta">This will become the planning hub for the event.</p>
+        </div>
+        <div class="event-detail-stats">
+          <div class="event-detail-stat">
+            <span>Shots</span>
+            <strong>${escapeHtml(String(relatedShots.length))}</strong>
+          </div>
+          <div class="event-detail-stat">
+            <span>Todos</span>
+            <strong>${escapeHtml(String(relatedTodos.length))}</strong>
+          </div>
+          <div class="event-detail-stat">
+            <span>Lists</span>
+            <strong>${escapeHtml(String(relatedEventLists.length))}</strong>
+          </div>
+          <div class="event-detail-stat">
+            <span>Included</span>
+            <strong>${escapeHtml(String(includedPeople.length))}</strong>
+          </div>
+        </div>
+        <div class="event-detail-meta">
+          <div class="guest-card__field">
+            <span>Date & Time</span>
+            <strong>${escapeHtml(formatEventSchedule(eventItem) || "No schedule yet")}</strong>
+          </div>
+          <div class="guest-card__field">
+            <span>Location</span>
+            <strong>${escapeHtml(eventItem.location || "No location yet")}</strong>
+          </div>
+          <div class="guest-card__field">
+            <span>Assigned To</span>
+            <strong>${escapeHtml(eventItem.assignedTo || "No assignee yet")}</strong>
+          </div>
+          <div class="guest-card__field">
+            <span>Specific People</span>
+            <strong>${escapeHtml(eventItem.assignedPeople || "No specific people yet")}</strong>
+          </div>
+          <div class="guest-card__field">
+            <span>Reminder</span>
+            <strong>${escapeHtml(`Remind ${eventItem.reminderMinutes || 15} minutes ahead`)}</strong>
+          </div>
+          <div class="guest-card__field guest-card__field--full">
+            <span>Included</span>
+            <div class="event-detail-included">
+              <strong>${escapeHtml(`${includedPeople.length} ${includedPeople.length === 1 ? "person" : "people"} included`)}</strong>
+              <p class="meta">${escapeHtml(includedPeople.length ? includedPeople.map((person) => person.name).slice(0, 4).join(", ") : "Pick guest types or add specific people by name to build the included list.")}${includedPeople.length > 4 ? escapeHtml(` +${includedPeople.length - 4} more`) : ""}</p>
+              ${includedPeople.length ? `<button class="button button--light" type="button" data-open-included-people-modal="${escapeHtml(String(eventItem.id || ""))}">View Names</button>` : ""}
+            </div>
+          </div>
+          <div class="guest-card__field guest-card__field--full">
+            <span>Notes</span>
+            <strong>${escapeHtml(eventItem.notes || "No notes yet")}</strong>
+          </div>
+        </div>
+      </section>
+    `;
+    const aiPlannerPanelHtml = `
+      <section class="event-detail-card">
+        <div class="event-detail-section__header">
+          <h4>AI Planner</h4>
+          <p class="meta">Describe what you have in mind and generate a planning draft inside the app.</p>
+        </div>
+        <div class="event-detail-ai-form">
+          <div class="event-detail-ai-field">
+            <span class="event-detail-ai-field-label">What are you thinking about this event?</span>
+            <div class="event-detail-ai-input-toolbar">
+              <button
+                class="button button--light event-detail-ai-mic-button ${aiVoiceState.isListening ? "event-detail-ai-mic-button--active" : ""}"
+                type="button"
+                data-event-workspace-mic
+                aria-pressed="${aiVoiceState.isListening ? "true" : "false"}"
+                ${EventWorkspaceSpeechRecognition ? "" : "disabled"}>
+                ${aiVoiceState.isListening ? "Stop Dictation" : "Start Dictation"}
+              </button>
+              <span class="meta event-detail-ai-mic-status ${aiVoiceState.error ? "event-detail-ai-mic-status--error" : ""}" data-event-workspace-mic-status>${escapeHtml(aiVoiceState.status || "")}</span>
+            </div>
+            <textarea
+              data-event-workspace-note
+              placeholder="Example: Family breakfast for about 18 people at the main house. We want a casserole, fruit, coffee, juice, paper goods, simple setup, and a quick cleanup plan.">${escapeHtml(aiDraft.planningNotes || "")}</textarea>
+          </div>
+          <div class="event-detail-ai-options">
+            <button class="event-detail-ai-option" type="button" data-event-workspace-goal data-event-workspace-goal-value="todo items" aria-pressed="${aiDraft.goals.includes("todo items") ? "true" : "false"}">
+              <span>Todo items</span>
+            </button>
+            <button class="event-detail-ai-option" type="button" data-event-workspace-goal data-event-workspace-goal-value="shopping or packing lists" aria-pressed="${aiDraft.goals.includes("shopping or packing lists") ? "true" : "false"}">
+              <span>Shopping list</span>
+            </button>
+            <button class="event-detail-ai-option" type="button" data-event-workspace-goal data-event-workspace-goal-value="photo shot ideas" aria-pressed="${aiDraft.goals.includes("photo shot ideas") ? "true" : "false"}">
+              <span>Shot ideas</span>
+            </button>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button class="button" type="button" data-event-workspace-generate>Generate In App</button>
+          <button class="button button--light" type="button" data-open-event-prompt-modal>View Prompt</button>
+          <a class="button" href="https://chatgpt.com/" target="_blank" rel="noreferrer">Open ChatGPT</a>
+        </div>
+      </section>
+
+      <section class="event-detail-card">
+        <div class="event-detail-section__header">
+          <h4>AI Plan Draft</h4>
+          <p class="meta">Review this before we turn it into real planner records.</p>
+        </div>
+        ${renderAiPlanSection(eventItem, aiPlan)}
+      </section>
+    `;
+    const shotListPanelHtml = `
+      <section class="event-detail-card">
+        <div class="event-detail-section__header">
+          <h4>Linked Shot List</h4>
+          <div class="toolbar">
+            <button class="button button--light" type="button" data-event-workspace-add-shot="${escapeHtml(String(eventItem.id || ""))}">Add Shot</button>
+          </div>
+        </div>
+        <div class="event-detail-shot-list">
+          ${relatedShots.length ? relatedShots.map((shot) => {
+            const priority = getShotPriorityMeta(shot.priority);
+            return `
+              <article class="card shot-card ${shot.isComplete ? "shot-card--complete" : "shot-card--pending"}">
+                <div class="shot-card__title-row">
+                  <span class="shot-card__title-main event-detail-shot-title">
+                    <h4>${escapeHtml(shot.title || "Untitled shot")}</h4>
+                    <button
+                      class="button button--icon button--light event-card__edit"
+                      type="button"
+                      data-edit-event-shot="${escapeHtml(String(shot.id || ""))}"
+                      aria-label="Edit ${escapeHtml(shot.title || "shot")}">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path>
+                      </svg>
+                    </button>
+                    <button
+                      class="button button--icon button--light event-detail-shot-delete"
+                      type="button"
+                      data-delete-event-shot="${escapeHtml(String(shot.id || ""))}"
+                      aria-label="Delete ${escapeHtml(shot.title || "shot")}">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M3 6h18"></path>
+                        <path d="M8 6V4h8v2"></path>
+                        <path d="M19 6l-1 14H6L5 6"></path>
+                        <path d="M10 11v6"></path>
+                        <path d="M14 11v6"></path>
+                      </svg>
+                    </button>
+                  </span>
+                  <span class="shot-card__priority ${priority.className}">
+                    <span class="shot-card__priority-icon" aria-hidden="true"></span>
+                    ${escapeHtml(priority.label)}
+                  </span>
+                </div>
+                ${shot.description ? `<p>${escapeHtml(shot.description)}</p>` : ""}
+                ${shot.notes ? `<p class="meta">${escapeHtml(shot.notes)}</p>` : ""}
+              </article>
+            `;
+          }).join("") : `
+            <div class="event-detail-empty">
+              <p class="meta">No shots are linked to this event yet. Use "Add Shot" when you are ready.</p>
+            </div>
+          `}
+        </div>
+      </section>
+    `;
+    const todosPanelHtml = `
+      <section class="event-detail-card">
+        <div class="event-detail-section__header">
+          <h4>Event Todos</h4>
+          <div class="toolbar">
+            <button class="button button--light" type="button" data-event-workspace-add-todo="${escapeHtml(String(eventItem.id || ""))}">Add Task</button>
+          </div>
+        </div>
+        <div class="event-detail-shot-list">
+          ${relatedTodos.length ? relatedTodos.map((todo) => `
+            <article class="card shot-card ${todo.isComplete ? "shot-card--complete" : "shot-card--pending"}">
+              <div class="shot-card__title-row">
+                <span class="shot-card__title-main event-detail-shot-title">
+                  <button
+                    class="button button--light shot-card__check"
+                    type="button"
+                    data-toggle-event-todo-complete="${escapeHtml(String(todo.id || ""))}"
+                    aria-pressed="${todo.isComplete ? "true" : "false"}"
+                    aria-label="${todo.isComplete ? "Mark incomplete" : "Mark complete"}: ${escapeHtml(todo.title || "task")}">
+                    ${todo.isComplete ? "✓" : ""}
+                  </button>
+                  <h4>${escapeHtml(todo.title || "Untitled task")}</h4>
+                  <button
+                    class="button button--icon button--light event-card__edit"
+                    type="button"
+                    data-edit-event-todo="${escapeHtml(String(todo.id || ""))}"
+                    aria-label="Edit ${escapeHtml(todo.title || "task")}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M12 20h9"></path>
+                      <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path>
+                    </svg>
+                  </button>
+                  <button
+                    class="button button--icon button--light event-detail-shot-delete"
+                    type="button"
+                    data-delete-event-todo="${escapeHtml(String(todo.id || ""))}"
+                    aria-label="Delete ${escapeHtml(todo.title || "task")}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M3 6h18"></path>
+                      <path d="M8 6V4h8v2"></path>
+                      <path d="M19 6l-1 14H6L5 6"></path>
+                      <path d="M10 11v6"></path>
+                      <path d="M14 11v6"></path>
+                    </svg>
+                  </button>
+                </span>
+                <span class="shot-card__priority ${escapeHtml(todo.isComplete ? "shot-card__priority--low" : "shot-card__priority--medium")}">
+                  ${escapeHtml(todo.isComplete ? "Done" : (todo.assignedTo || "Assigned To"))}
+                </span>
+              </div>
+              <div class="event-todo-quick-edit event-todo-quick-edit--inline">
+                <label for="event-todo-assigned-${escapeHtml(String(todo.id || ""))}">Assigned To</label>
+                <select
+                  id="event-todo-assigned-${escapeHtml(String(todo.id || ""))}"
+                  data-update-event-todo-assigned="${escapeHtml(String(todo.id || ""))}">
+                  <option value="">Assigned To</option>
+                  ${!includedPersonNames.includes(todo.assignedTo) && todo.assignedTo ? `<option value="${escapeHtml(todo.assignedTo)}" selected>${escapeHtml(todo.assignedTo)}</option>` : ""}
+                  ${includedPersonNames.map((name) => `<option value="${escapeHtml(name)}" ${name === todo.assignedTo ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}
+                </select>
+              </div>
+              <div class="event-todo-quick-edit">
+                <label for="event-todo-notes-${escapeHtml(String(todo.id || ""))}">Description</label>
+                <textarea
+                  id="event-todo-notes-${escapeHtml(String(todo.id || ""))}"
+                  data-update-event-todo-notes="${escapeHtml(String(todo.id || ""))}"
+                  placeholder="Add task description.">${escapeHtml(todo.notes || "")}</textarea>
+              </div>
+            </article>
+          `).join("") : `
+            <div class="event-detail-empty">
+              <p class="meta">No event-linked tasks yet. Use the task modal or add AI suggestions from the planner tab.</p>
+            </div>
+          `}
+        </div>
+      </section>
+    `;
+    const listsPanelHtml = `
+      <section class="event-detail-card">
+        <div class="event-detail-section__header">
+          <h4>Shopping / Packing Lists</h4>
+          <div class="toolbar">
+            <button class="button button--light" type="button" data-event-workspace-add-list="${escapeHtml(String(eventItem.id || ""))}">Add List</button>
+          </div>
+        </div>
+        <div class="event-detail-shot-list">
+          ${relatedEventLists.length ? relatedEventLists.map((list) => `
+            <article class="card shot-card">
+              <div class="shot-card__title-row">
+                <span class="shot-card__title-main event-detail-shot-title">
+                  <h4>${escapeHtml(list.title || "Untitled list")}</h4>
+                  <button
+                    class="button button--icon button--light event-card__edit"
+                    type="button"
+                    data-edit-event-list="${escapeHtml(String(list.id || ""))}"
+                    aria-label="Edit ${escapeHtml(list.title || "list")}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M12 20h9"></path>
+                      <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path>
+                    </svg>
+                  </button>
+                  <button
+                    class="button button--icon button--light event-detail-shot-delete"
+                    type="button"
+                    data-delete-event-list="${escapeHtml(String(list.id || ""))}"
+                    aria-label="Delete ${escapeHtml(list.title || "list")}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M3 6h18"></path>
+                      <path d="M8 6V4h8v2"></path>
+                      <path d="M19 6l-1 14H6L5 6"></path>
+                      <path d="M10 11v6"></path>
+                      <path d="M14 11v6"></path>
+                    </svg>
+                  </button>
+                </span>
+                <span class="shot-card__priority shot-card__priority--medium">
+                  ${escapeHtml(list.type || "List")}
+                </span>
+              </div>
+              ${parseEventListItems(list.items).length ? `
+                <div class="event-checklist">
+                  ${parseEventListItems(list.items).map((item, index) => `
+                    <div class="event-checklist__item ${item.checked ? "event-checklist__item--checked" : ""}">
+                      <input id="event-list-item-${escapeHtml(String(list.id || ""))}-${escapeHtml(String(index))}" type="checkbox" data-toggle-event-list-item="${escapeHtml(String(list.id || ""))}" data-event-list-item-index="${escapeHtml(String(index))}" ${item.checked ? "checked" : ""}>
+                      <label for="event-list-item-${escapeHtml(String(list.id || ""))}-${escapeHtml(String(index))}" class="event-checklist__label">${escapeHtml(item.label)}</label>
+                    </div>
+                  `).join("")}
+                </div>
+              ` : '<p class="meta">No items yet</p>'}
+              ${list.notes ? `<p>${escapeHtml(list.notes)}</p>` : ""}
+            </article>
+          `).join("") : `
+            <div class="event-detail-empty">
+              <p class="meta">No saved lists yet. Add one manually or bring in AI suggestions from the planner tab.</p>
+            </div>
+          `}
+        </div>
+      </section>
+    `;
     eventDetailShellEl.innerHTML = `
       <div class="event-detail-header">
         <div class="event-detail-header__copy">
@@ -1707,185 +3159,202 @@
           <p class="meta">${escapeHtml(formatEventSchedule(eventItem) || "No schedule yet")}</p>
         </div>
         <div class="event-detail-actions">
+          <button class="button button--light" type="button" data-event-detail-back>Back to Timeline</button>
           <button class="button button--light" type="button" data-event-workspace-edit="${escapeHtml(String(eventItem.id || ""))}">Edit Event</button>
           <button class="button" type="button" data-event-workspace-add-shot="${escapeHtml(String(eventItem.id || ""))}">Add Shot</button>
         </div>
       </div>
 
-      <div class="event-detail-stats">
-        <div class="event-detail-stat">
-          <span>Shots</span>
-          <strong>${escapeHtml(String(relatedShots.length))}</strong>
+      <div class="event-detail-tabs event-detail-tabs--desktop" role="tablist" aria-label="Event workspace sections">
+        <button class="event-detail-tab" type="button" role="tab" aria-selected="${activeEventDetailTab === "overview" ? "true" : "false"}" tabindex="${activeEventDetailTab === "overview" ? "0" : "-1"}" data-event-detail-tab-toggle="overview">Overview</button>
+        <button class="event-detail-tab" type="button" role="tab" aria-selected="${activeEventDetailTab === "ai-planner" ? "true" : "false"}" tabindex="${activeEventDetailTab === "ai-planner" ? "0" : "-1"}" data-event-detail-tab-toggle="ai-planner">AI Planner</button>
+        <button class="event-detail-tab" type="button" role="tab" aria-selected="${activeEventDetailTab === "todos" ? "true" : "false"}" tabindex="${activeEventDetailTab === "todos" ? "0" : "-1"}" data-event-detail-tab-toggle="todos">Todos</button>
+        <button class="event-detail-tab" type="button" role="tab" aria-selected="${activeEventDetailTab === "lists" ? "true" : "false"}" tabindex="${activeEventDetailTab === "lists" ? "0" : "-1"}" data-event-detail-tab-toggle="lists">Lists</button>
+        <button class="event-detail-tab" type="button" role="tab" aria-selected="${activeEventDetailTab === "shot-list" ? "true" : "false"}" tabindex="${activeEventDetailTab === "shot-list" ? "0" : "-1"}" data-event-detail-tab-toggle="shot-list">Shot List</button>
+      </div>
+
+      <div class="event-detail-panels event-detail-panels--desktop">
+        <div class="event-detail-panel-stack" data-event-detail-panel="overview" ${activeEventDetailTab === "overview" ? "" : "hidden"}>
+          ${overviewPanelHtml}
         </div>
-        <div class="event-detail-stat">
-          <span>Todos</span>
-          <strong>0</strong>
+        <div class="event-detail-panel-stack" data-event-detail-panel="ai-planner" ${activeEventDetailTab === "ai-planner" ? "" : "hidden"}>
+          ${aiPlannerPanelHtml}
         </div>
-        <div class="event-detail-stat">
-          <span>Lists</span>
-          <strong>0</strong>
+        <div class="event-detail-panel-stack" data-event-detail-panel="todos" ${activeEventDetailTab === "todos" ? "" : "hidden"}>
+          ${todosPanelHtml}
+        </div>
+        <div class="event-detail-panel-stack" data-event-detail-panel="lists" ${activeEventDetailTab === "lists" ? "" : "hidden"}>
+          ${listsPanelHtml}
+        </div>
+        <div class="event-detail-panel-stack" data-event-detail-panel="shot-list" ${activeEventDetailTab === "shot-list" ? "" : "hidden"}>
+          ${shotListPanelHtml}
         </div>
       </div>
 
-      <div class="event-detail-grid">
-        <div class="event-detail-main">
-          <section class="event-detail-card">
-            <div class="event-detail-section__header">
-              <h4>Event Overview</h4>
-              <p class="meta">This will become the planning hub for the event.</p>
-            </div>
-            <div class="event-detail-meta">
-              <div class="guest-card__field">
-                <span>Date & Time</span>
-                <strong>${escapeHtml(formatEventSchedule(eventItem) || "No schedule yet")}</strong>
-              </div>
-              <div class="guest-card__field">
-                <span>Location</span>
-                <strong>${escapeHtml(eventItem.location || "No location yet")}</strong>
-              </div>
-              <div class="guest-card__field">
-                <span>Assigned To</span>
-                <strong>${escapeHtml(eventItem.assignedTo || "No assignee yet")}</strong>
-              </div>
-              <div class="guest-card__field">
-                <span>Reminder</span>
-                <strong>${escapeHtml(`Remind ${eventItem.reminderMinutes || 15} minutes ahead`)}</strong>
-              </div>
-              <div class="guest-card__field guest-card__field--full">
-                <span>Notes</span>
-                <strong>${escapeHtml(eventItem.notes || "No notes yet")}</strong>
-              </div>
-            </div>
-          </section>
-
-          <section class="event-detail-card">
-            <div class="event-detail-section__header">
-              <h4>AI Planner</h4>
-              <p class="meta">Describe what you have in mind and generate a planning draft inside the app.</p>
-            </div>
-            <div class="event-detail-ai-form">
-              <label>
-                What are you thinking about this event?
-                <textarea
-                  data-event-workspace-note
-                  placeholder="Example: Family breakfast for about 18 people at the main house. We want a casserole, fruit, coffee, juice, paper goods, simple setup, and a quick cleanup plan.">${escapeHtml(aiDraft.planningNotes || "")}</textarea>
-              </label>
-              <div class="event-detail-ai-options">
-                <label class="event-detail-ai-option">
-                  <input type="checkbox" data-event-workspace-goal value="todo items" ${aiDraft.goals.includes("todo items") ? "checked" : ""}>
-                  <span>Todo items</span>
-                </label>
-                <label class="event-detail-ai-option">
-                  <input type="checkbox" data-event-workspace-goal value="shopping or packing lists" ${aiDraft.goals.includes("shopping or packing lists") ? "checked" : ""}>
-                  <span>Shopping list</span>
-                </label>
-                <label class="event-detail-ai-option">
-                  <input type="checkbox" data-event-workspace-goal value="photo shot ideas" ${aiDraft.goals.includes("photo shot ideas") ? "checked" : ""}>
-                  <span>Shot ideas</span>
-                </label>
-              </div>
-            </div>
-            <div class="event-detail-prompt-output">
-              <h4>Prompt Draft</h4>
-              <textarea data-event-workspace-output></textarea>
-              <div class="toolbar">
-                <button class="button" type="button" data-event-workspace-generate>Generate In App</button>
-                <button class="button button--light" type="button" data-event-workspace-copy>Copy Prompt</button>
-                <a class="button" href="https://chatgpt.com/" target="_blank" rel="noreferrer">Open ChatGPT</a>
-              </div>
-            </div>
-          </section>
-
-          <section class="event-detail-card">
-            <div class="event-detail-section__header">
-              <h4>AI Plan Draft</h4>
-              <p class="meta">Review this before we turn it into real planner records.</p>
-            </div>
-            ${renderAiPlanSection(aiPlan)}
-          </section>
-        </div>
-
-        <aside class="event-detail-side">
-          <section class="event-detail-card">
-            <div class="event-detail-section__header">
-              <h4>Linked Shot List</h4>
-              <p class="meta">Existing shots tied to this event.</p>
-            </div>
-            <div class="event-detail-shot-list">
-              ${relatedShots.length ? relatedShots.map((shot) => {
-                const priority = getShotPriorityMeta(shot.priority);
-                return `
-                  <article class="card shot-card ${shot.isComplete ? "shot-card--complete" : "shot-card--pending"}">
-                    <div class="shot-card__title-row">
-                      <span class="shot-card__title-main event-detail-shot-title">
-                        <h4>${escapeHtml(shot.title || "Untitled shot")}</h4>
-                        <button
-                          class="button button--icon button--light event-detail-shot-delete"
-                          type="button"
-                          data-delete-event-shot="${escapeHtml(String(shot.id || ""))}"
-                          aria-label="Delete ${escapeHtml(shot.title || "shot")}">
-                          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                            <path d="M3 6h18"></path>
-                            <path d="M8 6V4h8v2"></path>
-                            <path d="M19 6l-1 14H6L5 6"></path>
-                            <path d="M10 11v6"></path>
-                            <path d="M14 11v6"></path>
-                          </svg>
-                        </button>
-                      </span>
-                      <span class="shot-card__priority ${priority.className}">
-                        <span class="shot-card__priority-icon" aria-hidden="true"></span>
-                        ${escapeHtml(priority.label)}
-                      </span>
-                    </div>
-                    ${shot.description ? `<p>${escapeHtml(shot.description)}</p>` : ""}
-                    ${shot.notes ? `<p class="meta">${escapeHtml(shot.notes)}</p>` : ""}
-                  </article>
-                `;
-              }).join("") : `
-                <div class="event-detail-empty">
-                  <p class="meta">No shots are linked to this event yet. Use "Add Shot" when you are ready.</p>
-                </div>
-              `}
-            </div>
-          </section>
-
-          <section class="event-detail-card">
-            <div class="event-detail-section__header">
-              <h4>Event Todos</h4>
-              <p class="meta">Next step</p>
-            </div>
-            <div class="event-detail-empty">
-              <p class="meta">Event-linked todo items will live here once we add the event-to-todo relationship.</p>
-            </div>
-          </section>
-
-          <section class="event-detail-card">
-            <div class="event-detail-section__header">
-              <h4>Shopping / Packing Lists</h4>
-              <p class="meta">Next step</p>
-            </div>
-            <div class="event-detail-empty">
-              <p class="meta">This section is reserved for shopping, packing, and setup lists generated from your event plan.</p>
-            </div>
-          </section>
-        </aside>
+      <div class="event-detail-accordion">
+        <section class="event-detail-accordion-item">
+          <button class="event-detail-accordion-trigger" type="button" aria-expanded="${isEventDetailAccordionOpen("overview") ? "true" : "false"}" data-event-detail-accordion-toggle="overview">
+            <span>Overview</span>
+          </button>
+          <div class="event-detail-accordion-panel" data-event-detail-accordion-panel="overview" ${isEventDetailAccordionOpen("overview") ? "" : "hidden"}>
+            ${overviewPanelHtml}
+          </div>
+        </section>
+        <section class="event-detail-accordion-item">
+          <button class="event-detail-accordion-trigger" type="button" aria-expanded="${isEventDetailAccordionOpen("ai-planner") ? "true" : "false"}" data-event-detail-accordion-toggle="ai-planner">
+            <span>AI Planner</span>
+          </button>
+          <div class="event-detail-accordion-panel" data-event-detail-accordion-panel="ai-planner" ${isEventDetailAccordionOpen("ai-planner") ? "" : "hidden"}>
+            ${aiPlannerPanelHtml}
+          </div>
+        </section>
+        <section class="event-detail-accordion-item">
+          <button class="event-detail-accordion-trigger" type="button" aria-expanded="${isEventDetailAccordionOpen("todos") ? "true" : "false"}" data-event-detail-accordion-toggle="todos">
+            <span>Todos</span>
+          </button>
+          <div class="event-detail-accordion-panel" data-event-detail-accordion-panel="todos" ${isEventDetailAccordionOpen("todos") ? "" : "hidden"}>
+            ${todosPanelHtml}
+          </div>
+        </section>
+        <section class="event-detail-accordion-item">
+          <button class="event-detail-accordion-trigger" type="button" aria-expanded="${isEventDetailAccordionOpen("lists") ? "true" : "false"}" data-event-detail-accordion-toggle="lists">
+            <span>Lists</span>
+          </button>
+          <div class="event-detail-accordion-panel" data-event-detail-accordion-panel="lists" ${isEventDetailAccordionOpen("lists") ? "" : "hidden"}>
+            ${listsPanelHtml}
+          </div>
+        </section>
+        <section class="event-detail-accordion-item">
+          <button class="event-detail-accordion-trigger" type="button" aria-expanded="${isEventDetailAccordionOpen("shot-list") ? "true" : "false"}" data-event-detail-accordion-toggle="shot-list">
+            <span>Shot List</span>
+          </button>
+          <div class="event-detail-accordion-panel" data-event-detail-accordion-panel="shot-list" ${isEventDetailAccordionOpen("shot-list") ? "" : "hidden"}>
+            ${shotListPanelHtml}
+          </div>
+        </section>
       </div>
     `;
 
-    eventDetailShellEl.querySelector("[data-event-workspace-note]")?.addEventListener("input", () => {
-      updateEventPromptActions();
+    eventDetailShellEl.querySelectorAll("[data-event-detail-tab-toggle]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        setActiveEventDetailTab(event.currentTarget.dataset.eventDetailTabToggle);
+      });
     });
-    eventDetailShellEl.querySelectorAll("[data-event-workspace-goal]").forEach((input) => {
-      input.addEventListener("change", () => {
+    eventDetailShellEl.querySelector("[data-event-detail-back]")?.addEventListener("click", () => {
+      setActivePlannerPanel("events");
+      setStatus(eventDetailStatusEl, "", "");
+    });
+    eventDetailShellEl.querySelectorAll("[data-event-detail-accordion-toggle]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        toggleEventDetailAccordionSection(event.currentTarget.dataset.eventDetailAccordionToggle);
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-delete-ai-plan-todo]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const currentButton = event.currentTarget;
+        deleteAiTodoSuggestion(currentButton.dataset.deleteAiPlanTodo, currentButton.dataset.aiTodoIndex);
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-update-ai-todo-owner]").forEach((field) => {
+      field.addEventListener("change", (event) => {
+        const input = event.currentTarget;
+        updateAiTodoField(input.dataset.updateAiTodoOwner, input.dataset.aiTodoIndex, {
+          ownerSuggestion: String(input.value || "").trim()
+        });
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-update-ai-todo-due-date]").forEach((field) => {
+      field.addEventListener("change", (event) => {
+        const input = event.currentTarget;
+        updateAiTodoField(input.dataset.updateAiTodoDueDate, input.dataset.aiTodoIndex, {
+          dueDate: String(input.value || "").trim()
+        });
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-update-ai-todo-due-time]").forEach((field) => {
+      field.addEventListener("change", (event) => {
+        const input = event.currentTarget;
+        updateAiTodoField(input.dataset.updateAiTodoDueTime, input.dataset.aiTodoIndex, {
+          dueTiming: String(input.value || "").trim()
+        });
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-update-ai-todo-notes]").forEach((field) => {
+      field.addEventListener("change", (event) => {
+        const input = event.currentTarget;
+        updateAiTodoField(input.dataset.updateAiTodoNotes, input.dataset.aiTodoIndex, {
+          notes: String(input.value || "").trim()
+        });
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-clear-ai-todo-notes]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const currentButton = event.currentTarget;
+        updateAiTodoField(currentButton.dataset.clearAiTodoNotes, currentButton.dataset.aiTodoIndex, {
+          notes: ""
+        });
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-event-workspace-note]").forEach((field) => {
+      field.addEventListener("input", () => {
         updateEventPromptActions();
       });
     });
-    eventDetailShellEl.querySelector("[data-event-workspace-copy]")?.addEventListener("click", async () => {
-      await copyEventPromptToClipboard();
+    eventDetailShellEl.querySelectorAll("[data-event-workspace-mic]").forEach((button) => {
+      button.addEventListener("click", () => {
+        toggleEventWorkspaceVoiceInput();
+      });
     });
-    eventDetailShellEl.querySelector("[data-event-workspace-generate]")?.addEventListener("click", async () => {
-      await generateEventPlanInApp();
+    eventDetailShellEl.querySelectorAll("[data-open-event-prompt-modal]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        openEventPromptModal({ returnFocusEl: event.currentTarget });
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-event-workspace-goal]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const isPressed = button.getAttribute("aria-pressed") === "true";
+        button.setAttribute("aria-pressed", isPressed ? "false" : "true");
+        updateEventPromptActions();
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-event-workspace-generate]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        await generateEventPlanInApp();
+      });
+    });
+    setEventAiVoiceState(String(eventItem.id || "").trim(), aiVoiceState);
+    eventDetailShellEl.querySelectorAll("[data-add-ai-plan-todos]").forEach((button) => {
+      button.addEventListener("click", async (event) => {
+        const currentButton = event.currentTarget;
+        const plan = getEventAiPlan(currentButton.dataset.addAiPlanTodos);
+        try {
+          await addAiPlanTodosToEvent(String(currentButton.dataset.addAiPlanTodos || "").trim(), plan?.todos);
+        } catch (error) {
+          setStatus(eventDetailStatusEl, error.message || "Unable to add AI todos.", "error");
+        }
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-add-ai-plan-lists]").forEach((button) => {
+      button.addEventListener("click", async (event) => {
+        const currentButton = event.currentTarget;
+        const plan = getEventAiPlan(currentButton.dataset.addAiPlanLists);
+        try {
+          await addAiPlanListsToEvent(String(currentButton.dataset.addAiPlanLists || "").trim(), plan?.checklists);
+        } catch (error) {
+          setStatus(eventDetailStatusEl, error.message || "Unable to add AI lists.", "error");
+        }
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-add-ai-plan-shots]").forEach((button) => {
+      button.addEventListener("click", async (event) => {
+        const currentButton = event.currentTarget;
+        const plan = getEventAiPlan(currentButton.dataset.addAiPlanShots);
+        try {
+          await addAiPlanShotsToEvent(String(currentButton.dataset.addAiPlanShots || "").trim(), plan?.shotIdeas);
+        } catch (error) {
+          setStatus(eventDetailStatusEl, error.message || "Unable to add AI shot ideas.", "error");
+        }
+      });
     });
     eventDetailShellEl.querySelector("[data-event-workspace-edit]")?.addEventListener("click", (event) => {
       const button = event.currentTarget;
@@ -1901,14 +3370,61 @@
       });
       setStatus(eventDetailStatusEl, `Editing ${detailEvent.title}.`, "success");
     });
-    eventDetailShellEl.querySelector("[data-event-workspace-add-shot]")?.addEventListener("click", (event) => {
-      const button = event.currentTarget;
-      const detailEvent = getEventById(button.dataset.eventWorkspaceAddShot);
-      if (!detailEvent) return;
-      openShotModal("Add Shot", {
-        eventId: String(detailEvent.id || "").trim()
+    eventDetailShellEl.querySelectorAll("[data-event-workspace-add-shot]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const detailEvent = getEventById(event.currentTarget.dataset.eventWorkspaceAddShot);
+        if (!detailEvent) return;
+        openShotModal("Add Shot", {
+          eventId: String(detailEvent.id || "").trim()
+        });
+        setStatus(eventDetailStatusEl, `Adding a shot to ${detailEvent.title}.`, "success");
       });
-      setStatus(eventDetailStatusEl, `Adding a shot to ${detailEvent.title}.`, "success");
+    });
+    eventDetailShellEl.querySelectorAll("[data-event-workspace-add-todo]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+      const button = event.currentTarget;
+      const detailEvent = getEventById(button.dataset.eventWorkspaceAddTodo);
+      if (!detailEvent) return;
+      openTodoModal("Add Task", {
+        eventId: String(detailEvent.id || "").trim(),
+        category: "Event"
+      });
+      setStatus(eventDetailStatusEl, `Adding a task to ${detailEvent.title}.`, "success");
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-event-workspace-add-list]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const button = event.currentTarget;
+        const detailEvent = getEventById(button.dataset.eventWorkspaceAddList);
+        if (!detailEvent) return;
+        openEventListModal("Add List", {
+          eventId: String(detailEvent.id || "").trim(),
+          type: "shopping"
+        }, { returnFocusEl: button });
+        setStatus(eventDetailStatusEl, `Adding a list to ${detailEvent.title}.`, "success");
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-open-included-people-modal]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const modalButton = event.currentTarget;
+        openEventIncludedPeopleModal(String(modalButton.dataset.openIncludedPeopleModal || "").trim(), {
+          returnFocusEl: modalButton
+        });
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-edit-event-shot]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const shotId = String(event.currentTarget.dataset.editEventShot || "").trim();
+        const shot = cachedShots.find((item) => String(item.id || "").trim() === shotId);
+        if (!shot) {
+          return;
+        }
+        openShotModal("Edit Shot", {
+          ...shot,
+          isComplete: shot.isComplete ? "true" : "false"
+        });
+        setStatus(eventDetailStatusEl, `Editing ${shot.title}.`, "success");
+      });
     });
     eventDetailShellEl.querySelectorAll("[data-delete-event-shot]").forEach((button) => {
       button.addEventListener("click", async (event) => {
@@ -1935,8 +3451,108 @@
         }
       });
     });
+    eventDetailShellEl.querySelectorAll("[data-edit-event-todo]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const todoId = String(event.currentTarget.dataset.editEventTodo || "").trim();
+        const todo = cachedTodos.find((item) => String(item.id || "").trim() === todoId);
+        if (!todo) {
+          return;
+        }
+        openTodoModal("Edit Task", {
+          ...todo,
+          isComplete: todo.isComplete ? "true" : "false"
+        });
+        setStatus(eventDetailStatusEl, `Editing ${todo.title}.`, "success");
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-toggle-event-todo-complete]").forEach((button) => {
+      button.addEventListener("click", async (event) => {
+        const currentButton = event.currentTarget;
+        await toggleEventTodoComplete(currentButton.dataset.toggleEventTodoComplete);
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-update-event-todo-assigned]").forEach((field) => {
+      field.addEventListener("change", async (event) => {
+        const input = event.currentTarget;
+        await updateEventTodoField(input.dataset.updateEventTodoAssigned, {
+          assignedTo: String(input.value || "").trim()
+        });
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-update-event-todo-notes]").forEach((field) => {
+      field.addEventListener("change", async (event) => {
+        const input = event.currentTarget;
+        await updateEventTodoField(input.dataset.updateEventTodoNotes, {
+          notes: String(input.value || "").trim()
+        });
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-delete-event-todo]").forEach((button) => {
+      button.addEventListener("click", async (event) => {
+        const todoId = String(event.currentTarget.dataset.deleteEventTodo || "").trim();
+        const todo = cachedTodos.find((item) => String(item.id || "").trim() === todoId);
+        if (!todoId || !todo) {
+          return;
+        }
+
+        const previousTodos = cachedTodos;
+        try {
+          requirePlannerAccess();
+          setStatus(eventDetailStatusEl, `Deleting ${todo.title || "task"}...`, "pending");
+          cachedTodos = cachedTodos.filter((item) => String(item.id || "").trim() !== todoId);
+          rerenderTodoData();
+          await backendRequest("deleteTodo", { id: todoId });
+          setStatus(eventDetailStatusEl, `${todo.title || "Task"} deleted.`, "success");
+        } catch (error) {
+          cachedTodos = previousTodos;
+          rerenderTodoData();
+          setStatus(eventDetailStatusEl, error.message || "Unable to delete task.", "error");
+        }
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-edit-event-list]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const listId = String(event.currentTarget.dataset.editEventList || "").trim();
+        const eventList = cachedEventLists.find((item) => String(item.id || "").trim() === listId);
+        if (!eventList) {
+          return;
+        }
+        openEventListModal("Edit List", eventList, { returnFocusEl: event.currentTarget });
+        setStatus(eventDetailStatusEl, `Editing ${eventList.title}.`, "success");
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-toggle-event-list-item]").forEach((checkbox) => {
+      checkbox.addEventListener("change", async (event) => {
+        const input = event.currentTarget;
+        await toggleEventListItemChecked(input.dataset.toggleEventListItem, input.dataset.eventListItemIndex);
+      });
+    });
+    eventDetailShellEl.querySelectorAll("[data-delete-event-list]").forEach((button) => {
+      button.addEventListener("click", async (event) => {
+        const listId = String(event.currentTarget.dataset.deleteEventList || "").trim();
+        const eventList = cachedEventLists.find((item) => String(item.id || "").trim() === listId);
+        if (!listId || !eventList) {
+          return;
+        }
+
+        const previousLists = cachedEventLists;
+        try {
+          requirePlannerAccess();
+          setStatus(eventDetailStatusEl, `Deleting ${eventList.title || "list"}...`, "pending");
+          cachedEventLists = cachedEventLists.filter((item) => String(item.id || "").trim() !== listId);
+          rerenderEventListData();
+          await backendRequest("deleteEventList", { id: listId });
+          setStatus(eventDetailStatusEl, `${eventList.title || "List"} deleted.`, "success");
+        } catch (error) {
+          cachedEventLists = previousLists;
+          rerenderEventListData();
+          setStatus(eventDetailStatusEl, error.message || "Unable to delete list.", "error");
+        }
+      });
+    });
 
     updateEventPromptActions();
+    setActiveEventDetailTab(activeEventDetailTab);
   }
 
   function openEventWorkspace(eventId) {
@@ -1947,6 +3563,8 @@
     }
 
     selectedEventDetailId = String(eventItem.id || "").trim();
+    activeEventDetailTab = "overview";
+    openEventDetailAccordionSections.clear();
     setActivePlannerPanel("event-detail");
     renderEventDetail();
     setStatus(eventDetailStatusEl, `Viewing ${eventItem.title}.`, "success");
@@ -2047,6 +3665,19 @@
                               <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/>
                             </svg>
                           </button>
+                          <button
+                            class="button button--icon button--light event-detail-shot-delete"
+                            type="button"
+                            data-delete-shot="${escapeHtml(String(shot.id || ""))}"
+                            aria-label="Delete ${escapeHtml(shot.title || "shot")}">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                              <path d="M3 6h18"></path>
+                              <path d="M8 6V4h8v2"></path>
+                              <path d="M19 6l-1 14H6L5 6"></path>
+                              <path d="M10 11v6"></path>
+                              <path d="M14 11v6"></path>
+                            </svg>
+                          </button>
                         </span>
                         <span class="shot-card__priority ${priority.className}">
                           <span class="shot-card__priority-icon" aria-hidden="true"></span>
@@ -2101,6 +3732,19 @@
                       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <path d="M12 20h9"/>
                         <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/>
+                      </svg>
+                    </button>
+                    <button
+                      class="button button--icon button--light event-detail-shot-delete"
+                      type="button"
+                      data-delete-todo="${escapeHtml(todo.id)}"
+                      aria-label="Delete ${escapeHtml(todo.title || "task")}">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M3 6h18"></path>
+                        <path d="M8 6V4h8v2"></path>
+                        <path d="M19 6l-1 14H6L5 6"></path>
+                        <path d="M10 11v6"></path>
+                        <path d="M14 11v6"></path>
                       </svg>
                     </button>
                   </span>
@@ -2405,27 +4049,53 @@
     const guestTypes = collectGuestTypes(visibleGuests);
     renderGuestTypeFilter(guestTypes);
 
-    const filteredGuests = selectedGuestType
-      ? visibleGuests.filter((guest) => getTypeTokens(guest.type).includes(selectedGuestType))
+    const selectedGuestTypeLookup = new Set(selectedGuestTypes.map((type) => String(type || "").toLowerCase()));
+    const filteredGuests = selectedGuestTypeLookup.size
+      ? visibleGuests.filter((guest) => getTypeTokens(guest.type).some((type) => selectedGuestTypeLookup.has(type.toLowerCase())))
       : visibleGuests;
 
     if (!filteredGuests.length) {
-      guestsListEl.innerHTML = selectedGuestType
-        ? `<p class="meta">No guest rows match the "${escapeHtml(selectedGuestType)}" type.</p>`
+      guestsListEl.innerHTML = selectedGuestTypes.length
+        ? `<p class="meta">No guest rows match the selected ${selectedGuestTypes.length === 1 ? "type" : "types"}.</p>`
         : '<p class="meta">No guest rows found yet in the `Guests` sheet.</p>';
       return;
     }
 
     guestsListEl.innerHTML = `
       <div class="guest-accordion">
-        ${filteredGuests.map((guest) => `
+        ${filteredGuests.map((guest) => {
+          const rsvpMeta = getGuestRsvpButtonMeta(guest.rsvp);
+          return `
           <details class="guest-card guest-card--${escapeHtml(guest.statusTone)}">
             <summary>
               <span class="accordion-summary__main">
                 <span class="accordion-toggle" aria-hidden="true"></span>
                 <span class="accordion-title">${escapeHtml(guest.title)}</span>
               </span>
-              <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(guest.type || "No type")}</span>
+              <span class="accordion-summary__meta accordion-summary__meta--end guest-summary-actions">
+                <button
+                  class="button button--light guest-summary-rsvp ${escapeHtml(rsvpMeta.className)}"
+                  type="button"
+                  data-toggle-guest-rsvp="${escapeHtml(String(guest.rowNumber))}"
+                  aria-label="Change RSVP for ${escapeHtml(guest.title)} from ${escapeHtml(rsvpMeta.label)} to ${escapeHtml(rsvpMeta.nextLabel)}"
+                  title="RSVP: ${escapeHtml(rsvpMeta.label)}">
+                  ${rsvpMeta.icon}
+                </button>
+                <span class="guest-type-summary">
+                  <span>${escapeHtml(guest.type || "No type")}</span>
+                  <button
+                    class="button button--light guest-type-edit"
+                    type="button"
+                    data-edit-guest-type="${escapeHtml(String(guest.rowNumber))}"
+                    aria-label="Edit guest type for ${escapeHtml(guest.title)}"
+                    title="Edit guest type">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M12 20h9"></path>
+                      <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path>
+                    </svg>
+                  </button>
+                </span>
+              </span>
             </summary>
             <div class="guest-card__body">
               <div class="guest-card__grid">
@@ -2438,12 +4108,20 @@
               </div>
             </div>
           </details>
-        `).join("")}
+        `;
+        }).join("")}
       </div>
     `;
   }
 
   function renderTables() {
+    if (tablesUnseatedCountEl) {
+      const unseatedCount = countUnseatedPeople();
+      tablesUnseatedCountEl.textContent = unseatedCount
+        ? `${unseatedCount} ${unseatedCount === 1 ? "person" : "people"} not seated`
+        : "Everyone is seated";
+    }
+
     if (!cachedTables.length) {
       tablesListEl.innerHTML = '<p class="meta">No tables yet. Add one above to start assigning seats.</p>';
       return;
@@ -2499,8 +4177,9 @@
   function sanitizeGuestRow(row, columns) {
     const titleColumn = findGuestTitleColumn(columns);
     const title = String(row[titleColumn] || "").trim();
+    const rowNumber = getGuestRowNumber(row);
 
-    if (!title || /^total:?$/i.test(title) || /^\d+$/.test(title)) {
+    if (!title || !rowNumber || /^total:?$/i.test(title) || /^\d+$/.test(title)) {
       return null;
     }
 
@@ -2516,6 +4195,7 @@
     if (!fields.length) {
       const rsvp = getGuestRsvpLabel(row);
       return {
+        rowNumber,
         title,
         type: getGuestType(row),
         rsvp,
@@ -2526,6 +4206,7 @@
 
     const rsvp = getGuestRsvpLabel(row);
     return {
+      rowNumber,
       title,
       type: getGuestType(row),
       rsvp,
@@ -2540,7 +4221,127 @@
   }
 
   function getGuestStatusTone(rsvp) {
-    return getRsvpGroup(rsvp) === "yes" ? "attending" : "pending";
+    const group = getRsvpGroup(rsvp);
+    if (group === "yes") return "attending";
+    if (group === "no") return "declined";
+    return "pending";
+  }
+
+  function getGuestRsvpButtonMeta(rsvp) {
+    const group = getRsvpGroup(rsvp);
+    if (group === "yes") {
+      return {
+        className: "guest-summary-rsvp--yes",
+        label: "Attending",
+        nextLabel: "Not Attending",
+        icon: `
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="2.5" y="5.5" width="19" height="13" rx="6.5"></rect>
+            <circle cx="16.5" cy="12" r="3"></circle>
+          </svg>
+        `
+      };
+    }
+
+    if (group === "no") {
+      return {
+        className: "guest-summary-rsvp--no",
+        label: "Not Attending",
+        nextLabel: "Maybe",
+        icon: `
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="2.5" y="5.5" width="19" height="13" rx="6.5"></rect>
+            <circle cx="7.5" cy="12" r="3"></circle>
+          </svg>
+        `
+      };
+    }
+
+    return {
+      className: "guest-summary-rsvp--maybe",
+      label: "Maybe",
+      nextLabel: "Attending",
+      icon: `
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <rect x="2.5" y="5.5" width="19" height="13" rx="6.5"></rect>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      `
+    };
+  }
+
+  function getNextGuestRsvpValue(rsvp) {
+    const group = getRsvpGroup(rsvp);
+    if (group === "yes") return "No";
+    if (group === "no") return "Maybe";
+    return "Yes";
+  }
+
+  function updateCachedGuestDetails(rowNumber, updates = {}) {
+    const numericRowNumber = Number(rowNumber || 0);
+    if (!numericRowNumber) {
+      return null;
+    }
+
+    const guest = cachedGuests.find((row) => getGuestRowNumber(row) === numericRowNumber);
+    if (!guest) {
+      return null;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updates, "type")) {
+      const typeColumn = findGuestColumn(guest, /^type$/i);
+      const nextType = String(updates.type || "").trim();
+      if (typeColumn) {
+        guest[typeColumn] = nextType;
+      } else {
+        guest.Type = nextType;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updates, "rsvp")) {
+      const rsvpColumn = findGuestColumn(guest, /^rsvp$/i);
+      const nextRsvp = String(updates.rsvp || "").trim();
+      if (rsvpColumn) {
+        guest[rsvpColumn] = nextRsvp;
+      } else {
+        guest.RSVP = nextRsvp;
+      }
+    }
+
+    return guest;
+  }
+
+  async function saveGuestTypeSelection(rowNumber, typeValue) {
+    const numericRowNumber = Number(rowNumber || 0);
+    if (!numericRowNumber) {
+      throw new Error("Missing guest row number.");
+    }
+
+    const guest = cachedGuests.find((row) => getGuestRowNumber(row) === numericRowNumber);
+    const nextRsvp = guest ? getGuestRsvpLabel(guest) : "";
+    await backendRequest("saveGuestDetails", {
+      rowNumber: numericRowNumber,
+      type: typeValue,
+      rsvp: nextRsvp
+    });
+    updateCachedGuestDetails(numericRowNumber, { type: typeValue });
+  }
+
+  async function toggleGuestRsvp(rowNumber) {
+    const numericRowNumber = Number(rowNumber || 0);
+    const guest = cachedGuests.find((row) => getGuestRowNumber(row) === numericRowNumber);
+    if (!guest) {
+      throw new Error("Guest row not found.");
+    }
+
+    const nextRsvp = getNextGuestRsvpValue(getGuestRsvpLabel(guest));
+    await backendRequest("saveGuestDetails", {
+      rowNumber: numericRowNumber,
+      type: getGuestTypeValue(guest),
+      rsvp: nextRsvp
+    });
+    updateCachedGuestDetails(numericRowNumber, { rsvp: nextRsvp });
+    return nextRsvp;
   }
 
   function getTypeTokens(value) {
@@ -2572,22 +4373,106 @@
     )).sort((a, b) => a.localeCompare(b));
   }
 
+  function getGuestNameOptions() {
+    return Array.from(new Set(
+      cachedGuests
+        .map((guest) => getGuestDisplayName(guest))
+        .filter(Boolean)
+    )).sort((a, b) => a.localeCompare(b));
+  }
+
+  function renderEventAssignedPeopleSuggestions() {
+    if (!eventAssignedPeopleSuggestionsEl) {
+      return;
+    }
+
+    const names = getGuestNameOptions();
+    eventAssignedPeopleSuggestionsEl.innerHTML = names
+      .map((name) => `<option value="${escapeHtml(name)}"></option>`)
+      .join("");
+  }
+
+  function resolveIncludedPeopleForEvent(event) {
+    const assignedTypes = getEventAssignedToTokens(event);
+    const explicitNames = getEventAssignedPeopleTokens(event);
+    const includedLookup = new Map();
+
+    cachedGuests.forEach((guest) => {
+      const name = getGuestDisplayName(guest);
+      if (!name) {
+        return;
+      }
+
+      const guestTypes = getTypeTokens(getGuestTypeValue(guest));
+      const guestTypeLookup = new Set(guestTypes.map((guestType) => String(guestType || "").trim().toLowerCase()).filter(Boolean));
+      const matchedTypes = assignedTypes.filter((assignedType) => guestTypeLookup.has(String(assignedType || "").trim().toLowerCase()));
+
+      if (!matchedTypes.length) {
+        return;
+      }
+
+      includedLookup.set(name.toLowerCase(), {
+        name,
+        detail: matchedTypes.join(", ")
+      });
+    });
+
+    explicitNames.forEach((name) => {
+      const key = name.toLowerCase();
+      const existing = includedLookup.get(key);
+      if (existing) {
+        return;
+      }
+
+      includedLookup.set(key, {
+        name,
+        detail: "Added by name"
+      });
+    });
+
+    return Array.from(includedLookup.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   function renderGuestTypeFilter(types) {
     if (!guestTypeFilterEl) {
       return;
     }
 
     const normalizedTypes = Array.isArray(types) ? types : [];
-    if (selectedGuestType && !normalizedTypes.includes(selectedGuestType)) {
-      selectedGuestType = "";
+    const typeLookup = new Set(normalizedTypes.map((type) => type.toLowerCase()));
+    selectedGuestTypes = selectedGuestTypes.filter((type) => typeLookup.has(String(type || "").toLowerCase()));
+    updateGuestTypeFilterSummary();
+
+    if (!normalizedTypes.length) {
+      guestTypeFilterEl.innerHTML = '<span class="planner-filter-checklist--empty">All types</span>';
+      return;
     }
 
-    guestTypeFilterEl.innerHTML = `
-      <option value="">All types</option>
-      ${normalizedTypes.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join("")}
-    `;
-    guestTypeFilterEl.value = selectedGuestType;
-    guestTypeFilterEl.disabled = normalizedTypes.length === 0;
+    const selectedLookup = new Set(selectedGuestTypes.map((type) => String(type || "").toLowerCase()));
+    guestTypeFilterEl.innerHTML = normalizedTypes.map((type) => `
+      <label class="planner-filter-checklist__option">
+        <input type="checkbox" value="${escapeHtml(type)}" data-guest-type-filter ${selectedLookup.has(type.toLowerCase()) ? "checked" : ""}>
+        <span>${escapeHtml(type)}</span>
+      </label>
+    `).join("");
+  }
+
+  function updateGuestTypeFilterSummary() {
+    if (!guestTypeFilterSummaryEl) {
+      return;
+    }
+
+    if (!selectedGuestTypes.length) {
+      guestTypeFilterSummaryEl.textContent = "All types";
+      guestTypeFilterSummaryEl.title = "All types";
+      return;
+    }
+
+    const summaryText = selectedGuestTypes.length <= 2
+      ? selectedGuestTypes.join(", ")
+      : `${selectedGuestTypes.length} selected`;
+    guestTypeFilterSummaryEl.textContent = summaryText;
+    guestTypeFilterSummaryEl.title = selectedGuestTypes.join(", ");
   }
 
   function collectEventDateOptions(events) {
@@ -2646,10 +4531,14 @@
   }
 
   function collectEventAssignedToOptions(events) {
+    const knownTypeLookup = new Set(getGuestTypeOptions().map((type) => String(type || "").trim().toLowerCase()));
     return Array.from(new Set(
       (Array.isArray(events) ? events : [])
         .flatMap((event) => getEventAssignedToTokens(event))
-        .filter(Boolean)
+        .filter((token) => {
+          const normalized = String(token || "").trim().toLowerCase();
+          return normalized && knownTypeLookup.has(normalized);
+        })
     )).sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }));
   }
 
@@ -2954,6 +4843,29 @@
     return String(plusOneColumn ? row[plusOneColumn] || "" : "").trim();
   }
 
+  function isPlusOneAttending(plusOneRsvp) {
+    return getRsvpGroup(plusOneRsvp) === "yes";
+  }
+
+  function formatTableGuestName(guest) {
+    return String(guest?.name || "").trim() || "Guest";
+  }
+
+  function countUnseatedPeople() {
+    return cachedGuests
+      .map((row) => ({
+        rowNumber: getGuestRowNumber(row),
+        name: getGuestDisplayName(row),
+        attending: getGuestRsvpLabel(row),
+        plusOneRsvp: getGuestPlusOneRsvp(row),
+        tableNumber: getGuestTableNumber(row)
+      }))
+      .filter((guest) => guest.rowNumber && guest.name)
+      .filter((guest) => getRsvpGroup(guest.attending) === "yes")
+      .filter((guest) => !guest.tableNumber)
+      .reduce((total, guest) => total + 1 + (isPlusOneAttending(guest.plusOneRsvp) ? 1 : 0), 0);
+  }
+
   function getDashboardRsvps() {
     if (cachedGuests.length) {
       return cachedGuests
@@ -3126,6 +5038,17 @@
     });
   }
 
+  function sortEventLists(items) {
+    return [...items].sort((left, right) => {
+      const eventDelta = String(left.eventId || "").localeCompare(String(right.eventId || ""));
+      if (eventDelta !== 0) {
+        return eventDelta;
+      }
+
+      return String(left.title || "").localeCompare(String(right.title || ""));
+    });
+  }
+
   function sortShots(items) {
     const eventOrder = new Map(cachedEvents.map((event, index) => [String(event.id || "").trim(), index]));
     return [...items].sort((left, right) => {
@@ -3213,29 +5136,96 @@
   }
 
   async function refreshPlannerCollections() {
-    const [people, events, shots, beds, todos, tables] = await Promise.all([
-      backendRequest("listPeople", {}),
-      backendRequest("listEvents", {}),
-      backendRequest("listShots", {}).catch((error) => {
-        const message = String(error?.message || "");
-        if (/Unknown RPC method:\s*listShots/i.test(message)) {
-          setStatus(shotStatusEl, "Shot List is hidden until the latest planner backend is deployed.", "pending");
-          return [];
+    const requests = [
+      {
+        key: "people",
+        label: "People",
+        run: () => backendRequest("listPeople", {}),
+        apply: (items) => {
+          cachedPeople = sortByUpdated(Array.isArray(items) ? items : [], "updatedAt");
         }
-        throw error;
-      }),
-      backendRequest("listBeds", {}),
-      backendRequest("listTodos", {}),
-      backendRequest("listTables", {})
-    ]);
+      },
+      {
+        key: "events",
+        label: "Events",
+        run: () => backendRequest("listEvents", {}),
+        apply: (items) => {
+          cachedEvents = sortEvents(Array.isArray(items) ? items : []);
+        }
+      },
+      {
+        key: "shots",
+        label: "Shots",
+        run: () => backendRequest("listShots", {}).catch((error) => {
+          const message = String(error?.message || "");
+          if (/Unknown RPC method:\s*listShots/i.test(message)) {
+            setStatus(shotStatusEl, "Shot List is hidden until the latest planner backend is deployed.", "pending");
+            return [];
+          }
+          throw error;
+        }),
+        apply: (items) => {
+          cachedShots = sortShots(Array.isArray(items) ? items : []);
+        }
+      },
+      {
+        key: "beds",
+        label: "Beds",
+        run: () => backendRequest("listBeds", {}),
+        apply: (items) => {
+          cachedBeds = sortBeds(Array.isArray(items) ? items : []);
+        }
+      },
+      {
+        key: "todos",
+        label: "Todo",
+        run: () => backendRequest("listTodos", {}),
+        apply: (items) => {
+          cachedTodos = sortTodos(Array.isArray(items) ? items : []);
+        }
+      },
+      {
+        key: "eventLists",
+        label: "Event lists",
+        run: () => backendRequest("listEventLists", {}).catch((error) => {
+          const message = String(error?.message || "");
+          if (/Unknown RPC method:\s*listEventLists/i.test(message)) {
+            return [];
+          }
+          throw error;
+        }),
+        apply: (items) => {
+          cachedEventLists = sortEventLists(Array.isArray(items) ? items : []);
+        }
+      },
+      {
+        key: "tables",
+        label: "Tables",
+        run: () => backendRequest("listTables", {}),
+        apply: (items) => {
+          cachedTables = sortTables(Array.isArray(items) ? items : []);
+        }
+      }
+    ];
 
-    cachedPeople = sortByUpdated(Array.isArray(people) ? people : [], "updatedAt");
-    cachedEvents = sortEvents(Array.isArray(events) ? events : []);
-    cachedShots = sortShots(Array.isArray(shots) ? shots : []);
-    cachedBeds = sortBeds(Array.isArray(beds) ? beds : []);
-    cachedTodos = sortTodos(Array.isArray(todos) ? todos : []);
-    cachedTables = sortTables(Array.isArray(tables) ? tables : []);
+    const results = await Promise.allSettled(requests.map((request) => request.run()));
+    const failures = [];
+
+    results.forEach((result, index) => {
+      const request = requests[index];
+      if (result.status === "fulfilled") {
+        request.apply(result.value);
+        return;
+      }
+
+      failures.push({
+        label: request.label,
+        message: String(result.reason?.message || "Planner request failed.")
+      });
+    });
+
     renderPlannerData();
+    return failures;
   }
 
   function refreshViewer() {
@@ -3256,16 +5246,14 @@
     }
 
     try {
-      await refreshPlannerCollections();
-      setStatus(plannerSyncStatusEl, "Planner data synced from Google Sheets.", "success");
+      const failures = await refreshPlannerCollections();
+      if (failures.length) {
+        const labels = failures.map((failure) => failure.label).join(", ");
+        setStatus(plannerSyncStatusEl, `Planner data partially synced. Failed: ${labels}.`, "pending");
+      } else {
+        setStatus(plannerSyncStatusEl, "Planner data synced from Google Sheets.", "success");
+      }
     } catch (error) {
-      cachedPeople = [];
-      cachedEvents = [];
-      cachedShots = [];
-      cachedBeds = [];
-      cachedTables = [];
-      cachedTodos = [];
-      renderPlannerData();
       setStatus(plannerSyncStatusEl, error.message || "Unable to load planner data.", "error");
     }
     await refreshRsvps();
@@ -3683,9 +5671,10 @@ function sortTables(items) {
   function renderTableSeat(table, seatNumber, guest = null) {
     const tableName = String(table?.tableName || "").trim();
     const tableId = String(table?.id || "").trim();
+    const guestName = guest ? formatTableGuestName(guest) : "";
     const reserved = !guest && isReservedOpenSeat(table, seatNumber);
     const dropLabel = guest
-      ? `Move guest to seat ${seatNumber} at ${tableName}`
+      ? `Move ${guestName} to seat ${seatNumber} at ${tableName}`
       : `Place guest in open seat ${seatNumber} at ${tableName}`;
     const isDragSource = guest && activeTableDrag && Number(activeTableDrag.rowNumber || 0) === Number(guest.rowNumber || 0);
     return `
@@ -3695,7 +5684,7 @@ function sortTables(items) {
           <div class="dashboard-entry" data-assigned-guest data-row-number="${escapeHtml(String(guest.rowNumber || ""))}" data-table-name="${escapeHtml(tableName)}">
             <div class="table-assignment-row">
               <div class="table-assignment-row__meta">
-                <button class="button button--light table-drag-handle" type="button" draggable="true" data-table-guest-handle data-row-number="${escapeHtml(String(guest.rowNumber || ""))}" aria-label="Move ${escapeHtml(guest.name)}">
+                <button class="button button--light table-drag-handle" type="button" draggable="true" data-table-guest-handle data-row-number="${escapeHtml(String(guest.rowNumber || ""))}" aria-label="Move ${escapeHtml(guestName)}">
                   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path d="M9 6h.01"></path>
                     <path d="M9 12h.01"></path>
@@ -3705,10 +5694,11 @@ function sortTables(items) {
                     <path d="M15 18h.01"></path>
                   </svg>
                 </button>
-                <strong>${escapeHtml(guest.name)}</strong>
+                <strong>${escapeHtml(guestName)}</strong>
               </div>
               <div class="table-assignment-row__actions">
-                <button class="button button--light table-remove-button" type="button" data-remove-table-guest data-row-number="${escapeHtml(String(guest.rowNumber || ""))}" data-table-name="${escapeHtml(tableName)}" aria-label="Remove ${escapeHtml(guest.name)} from ${escapeHtml(tableName || "table")}">
+                ${isPlusOneAttending(guest.plusOneRsvp) ? '<span class="table-assignment-row__plus-one" title="Plus one attending" aria-label="Plus one attending">+1</span>' : ""}
+                <button class="button button--light table-remove-button" type="button" data-remove-table-guest data-row-number="${escapeHtml(String(guest.rowNumber || ""))}" data-table-name="${escapeHtml(tableName)}" aria-label="Remove ${escapeHtml(guestName)} from ${escapeHtml(tableName || "table")}">
                   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path d="M3 6h18"></path>
                     <path d="M8 6V4h8v2"></path>
@@ -4086,6 +6076,8 @@ function sortTables(items) {
       renderGuests();
       renderTables();
       renderTableTypeOptions();
+      renderEventAssignedTypeOptions(collectEventAssignedToFormValue());
+      rerenderGuestDrivenEventUi();
       renderSummary();
       setStatus(rsvpStatusEl, "No RSVP feed URL configured yet.", "error");
       setStatus(guestsStatusEl, "No Guests feed URL configured yet.", "error");
@@ -4102,6 +6094,8 @@ function sortTables(items) {
       renderGuests();
       renderTables();
       renderTableTypeOptions();
+      renderEventAssignedTypeOptions(collectEventAssignedToFormValue());
+      rerenderGuestDrivenEventUi();
       renderSummary();
       setStatus(rsvpStatusEl, `Loaded ${getDashboardRsvps().length} RSVP rows from Guests.`, "success");
       setStatus(guestsStatusEl, `Loaded ${cachedGuests.length} rows from Guests.`, "success");
@@ -4114,6 +6108,8 @@ function sortTables(items) {
       renderGuests();
       renderTables();
       renderTableTypeOptions();
+      renderEventAssignedTypeOptions(collectEventAssignedToFormValue());
+      rerenderGuestDrivenEventUi();
       renderSummary();
       setStatus(rsvpStatusEl, error.message || "Unable to load RSVPs.", "error");
       setStatus(guestsStatusEl, error.message || "Unable to load Guests.", "error");
@@ -4198,6 +6194,7 @@ function sortTables(items) {
       setStatus(eventStatusEl, "Saving event...", "pending");
       const data = Object.fromEntries(new FormData(eventForm).entries());
       const assignedTo = collectEventAssignedToFormValue();
+      const assignedPeople = dedupeTokens(getTypeTokens(data.assignedPeople)).join(", ");
       const eventId = String(data.id || "").trim() || createClientId("event");
       upsertCachedEvent({
         id: eventId,
@@ -4208,6 +6205,7 @@ function sortTables(items) {
         endsAt: String(data.endsAt || "").trim(),
         location: String(data.location || "").trim(),
         assignedTo,
+        assignedPeople,
         reminderMinutes: Number(data.reminderMinutes || 15),
         messageTemplate: String(data.messageTemplate || "").trim(),
         notes: String(data.notes || "").trim(),
@@ -4223,6 +6221,7 @@ function sortTables(items) {
         endsAt: String(data.endsAt || "").trim(),
         location: String(data.location || "").trim(),
         assignedTo,
+        assignedPeople,
         reminderMinutes: Number(data.reminderMinutes || 15),
         messageTemplate: String(data.messageTemplate || "").trim(),
         notes: String(data.notes || "").trim(),
@@ -4349,6 +6348,7 @@ function sortTables(items) {
       const existingTodo = cachedTodos.find((item) => item.id === todoId);
       const optimisticTodo = {
         id: todoId,
+        eventId: String(data.eventId || "").trim(),
         title: String(data.title || "").trim(),
         notes: String(data.notes || "").trim(),
         assignedTo: String(data.assignedTo || "").trim(),
@@ -4369,6 +6369,7 @@ function sortTables(items) {
       upsertCachedTodo(optimisticTodo);
       const savedTodo = await backendRequest("saveTodo", {
         id: todoId,
+        eventId: String(data.eventId || "").trim(),
         title: String(data.title || "").trim(),
         notes: String(data.notes || "").trim(),
         assignedTo: String(data.assignedTo || "").trim(),
@@ -4395,6 +6396,46 @@ function sortTables(items) {
     }
   });
 
+  eventListForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const previousLists = cachedEventLists;
+    try {
+      requirePlannerAccess();
+      setStatus(eventDetailStatusEl, "Saving list...", "pending");
+      const data = Object.fromEntries(new FormData(eventListForm).entries());
+      const listId = String(data.id || "").trim() || createClientId("event_list");
+      const optimisticList = {
+        id: listId,
+        eventId: String(data.eventId || "").trim(),
+        title: String(data.title || "").trim(),
+        type: String(data.type || "shopping").trim(),
+        items: serializeEventListItems(parseEventListItems(data.items)),
+        notes: String(data.notes || "").trim(),
+        createdAt: previousLists.find((item) => item.id === listId)?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      upsertCachedEventList(optimisticList);
+      const savedList = await backendRequest("saveEventList", {
+        id: listId,
+        eventId: String(data.eventId || "").trim(),
+        title: String(data.title || "").trim(),
+        type: String(data.type || "shopping").trim(),
+        items: serializeEventListItems(parseEventListItems(data.items)),
+        notes: String(data.notes || "").trim()
+      });
+      upsertCachedEventList(savedList);
+      setStatus(eventDetailStatusEl, "List saved to Google Sheets.", "success");
+      window.setTimeout(() => {
+        closeEventListModal();
+      }, 300);
+    } catch (error) {
+      cachedEventLists = previousLists;
+      rerenderEventListData();
+      setStatus(eventDetailStatusEl, error.message || "Unable to save list.", "error");
+    }
+  });
+
   refreshRsvpsButton.addEventListener("click", async () => {
     try {
       requirePlannerAccess();
@@ -4406,7 +6447,15 @@ function sortTables(items) {
   });
 
   guestTypeFilterEl?.addEventListener("change", (event) => {
-    selectedGuestType = String(event.target.value || "");
+    const checkbox = event.target.closest("[data-guest-type-filter]");
+    if (!checkbox) {
+      return;
+    }
+
+    selectedGuestTypes = Array.from(guestTypeFilterEl.querySelectorAll("[data-guest-type-filter]:checked"))
+      .map((input) => String(input.value || "").trim())
+      .filter(Boolean);
+    updateGuestTypeFilterSummary();
     renderGuests();
   });
 
@@ -4429,15 +6478,13 @@ function sortTables(items) {
   });
 
   document.addEventListener("click", (event) => {
-    if (!eventAssignedToDropdownEl?.open) {
-      return;
+    if (eventAssignedToDropdownEl?.open && !eventAssignedToDropdownEl.contains(event.target)) {
+      eventAssignedToDropdownEl.open = false;
     }
 
-    if (eventAssignedToDropdownEl.contains(event.target)) {
-      return;
+    if (guestTypeFilterDropdownEl?.open && !guestTypeFilterDropdownEl.contains(event.target)) {
+      guestTypeFilterDropdownEl.open = false;
     }
-
-    eventAssignedToDropdownEl.open = false;
   });
 
   openPersonModalButton.addEventListener("click", () => {
@@ -4448,11 +6495,6 @@ function sortTables(items) {
   openEventModalButton.addEventListener("click", () => {
     setActivePlannerPanel("events");
     openEventModal("Add Event");
-  });
-
-  eventDetailBackButton.addEventListener("click", () => {
-    setActivePlannerPanel("events");
-    setStatus(eventDetailStatusEl, "", "");
   });
 
   openShotModalButton.addEventListener("click", () => {
@@ -4543,8 +6585,46 @@ function sortTables(items) {
     }
   });
 
+  guestTypeForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    try {
+      requirePlannerAccess();
+      setStatus(guestTypeStatusEl, "Saving guest type...", "pending");
+      const data = new FormData(guestTypeForm);
+      const selectedTypes = data.getAll("guestType");
+      const extraTypes = getTypeTokens(data.get("guestTypeExtra"));
+      const nextTypeValue = dedupeTokens([...selectedTypes, ...extraTypes]).join(", ");
+      await saveGuestTypeSelection(data.get("rowNumber"), nextTypeValue);
+      renderRsvps();
+      renderGuests();
+      renderTables();
+      renderTableTypeOptions();
+      renderEventAssignedTypeOptions(collectEventAssignedToFormValue());
+      rerenderGuestDrivenEventUi();
+      renderSummary();
+      setStatus(guestsStatusEl, "Guest type saved.", "success");
+      setStatus(guestTypeStatusEl, "Guest type saved.", "success");
+      window.setTimeout(() => {
+        closeGuestTypeModal();
+      }, 250);
+    } catch (error) {
+      setStatus(guestTypeStatusEl, error.message || "Unable to save guest type.", "error");
+    }
+  });
+
   document.querySelector("[data-reset-person]").addEventListener("click", () => {
     clearPersonForm();
+  });
+
+  document.querySelector("[data-reset-guest-type]")?.addEventListener("click", () => {
+    if (!guestTypeForm) {
+      return;
+    }
+
+    renderGuestTypeEditorOptions("");
+    guestTypeForm.elements.namedItem("guestTypeExtra").value = "";
+    setStatus(guestTypeStatusEl, "", "");
   });
 
   document.querySelectorAll("[data-close-person-modal]").forEach((button) => {
@@ -4568,6 +6648,30 @@ function sortTables(items) {
   document.querySelectorAll("[data-close-event-modal]").forEach((button) => {
     button.addEventListener("click", () => {
       closeEventModal();
+    });
+  });
+
+  document.querySelectorAll("[data-close-event-included-people-modal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      closeEventIncludedPeopleModal();
+    });
+  });
+
+  document.querySelectorAll("[data-close-event-prompt-modal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      closeEventPromptModal();
+    });
+  });
+
+  document.querySelectorAll("[data-event-workspace-copy]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await copyEventPromptToClipboard();
+    });
+  });
+
+  document.querySelectorAll("[data-event-workspace-generate-modal]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await generateEventPlanInApp();
     });
   });
 
@@ -4601,9 +6705,25 @@ function sortTables(items) {
     });
   });
 
+  document.querySelector("[data-reset-event-list]")?.addEventListener("click", () => {
+    clearEventListForm();
+  });
+
+  document.querySelectorAll("[data-close-event-list-modal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      closeEventListModal();
+    });
+  });
+
   document.querySelectorAll("[data-close-table-modal]").forEach((button) => {
     button.addEventListener("click", () => {
       closeTableModal();
+    });
+  });
+
+  document.querySelectorAll("[data-close-guest-type-modal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      closeGuestTypeModal();
     });
   });
 
@@ -4621,6 +6741,38 @@ function sortTables(items) {
     setActivePlannerPanel("people");
     openPersonModal("Edit Person", person);
     setStatus(personStatusEl, `Editing ${person.name}.`, "success");
+  });
+
+  guestsListEl?.addEventListener("click", async (event) => {
+    const typeButton = event.target.closest("[data-edit-guest-type]");
+    if (typeButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      requirePlannerAccess();
+      openGuestTypeModal(typeButton.dataset.editGuestType, { returnFocusEl: typeButton });
+      return;
+    }
+
+    const rsvpButton = event.target.closest("[data-toggle-guest-rsvp]");
+    if (!rsvpButton) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    try {
+      requirePlannerAccess();
+      setStatus(guestsStatusEl, "Saving RSVP...", "pending");
+      const nextRsvp = await toggleGuestRsvp(rsvpButton.dataset.toggleGuestRsvp);
+      renderRsvps();
+      renderGuests();
+      renderTables();
+      renderSummary();
+      setStatus(guestsStatusEl, `RSVP updated to ${nextRsvp || "blank"}.`, "success");
+    } catch (error) {
+      setStatus(guestsStatusEl, error.message || "Unable to save RSVP.", "error");
+    }
   });
 
   eventsListEl.addEventListener("click", (event) => {
@@ -4664,6 +6816,27 @@ function sortTables(items) {
       return;
     }
 
+    const deleteButton = event.target.closest("[data-delete-shot]");
+    if (deleteButton) {
+      const shot = cachedShots.find((item) => item.id === deleteButton.dataset.deleteShot);
+      if (!shot) return;
+
+      const previousShots = cachedShots;
+      try {
+        requirePlannerAccess();
+        setStatus(shotStatusEl, `Deleting ${shot.title || "shot"}...`, "pending");
+        cachedShots = cachedShots.filter((item) => item.id !== shot.id);
+        rerenderShotData();
+        await backendRequest("deleteShot", { id: shot.id });
+        setStatus(shotStatusEl, `${shot.title || "Shot"} deleted.`, "success");
+      } catch (error) {
+        cachedShots = previousShots;
+        rerenderShotData();
+        setStatus(shotStatusEl, error.message || "Unable to delete shot.", "error");
+      }
+      return;
+    }
+
     const toggleButton = event.target.closest("[data-toggle-shot-complete]");
     if (!toggleButton) return;
 
@@ -4702,17 +6875,38 @@ function sortTables(items) {
     }
   });
 
-  todosListEl.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-edit-todo]");
-    if (!button) return;
-    const todo = cachedTodos.find((item) => item.id === button.dataset.editTodo);
+  todosListEl.addEventListener("click", async (event) => {
+    const editButton = event.target.closest("[data-edit-todo]");
+    if (editButton) {
+      const todo = cachedTodos.find((item) => item.id === editButton.dataset.editTodo);
+      if (!todo) return;
+      setActivePlannerPanel("todos");
+      openTodoModal("Edit Task", {
+        ...todo,
+        isComplete: todo.isComplete ? "true" : "false"
+      });
+      setStatus(todoStatusEl, `Editing ${todo.title}.`, "success");
+      return;
+    }
+
+    const deleteButton = event.target.closest("[data-delete-todo]");
+    if (!deleteButton) return;
+    const todo = cachedTodos.find((item) => item.id === deleteButton.dataset.deleteTodo);
     if (!todo) return;
-    setActivePlannerPanel("todos");
-    openTodoModal("Edit Task", {
-      ...todo,
-      isComplete: todo.isComplete ? "true" : "false"
-    });
-    setStatus(todoStatusEl, `Editing ${todo.title}.`, "success");
+
+    const previousTodos = cachedTodos;
+    try {
+      requirePlannerAccess();
+      setStatus(todoStatusEl, `Deleting ${todo.title || "task"}...`, "pending");
+      cachedTodos = cachedTodos.filter((item) => item.id !== todo.id);
+      rerenderTodoData();
+      await backendRequest("deleteTodo", { id: todo.id });
+      setStatus(todoStatusEl, `${todo.title || "Task"} deleted.`, "success");
+    } catch (error) {
+      cachedTodos = previousTodos;
+      rerenderTodoData();
+      setStatus(todoStatusEl, error.message || "Unable to delete task.", "error");
+    }
   });
 
   bedsListEl.addEventListener("click", (event) => {
@@ -4982,6 +7176,16 @@ function sortTables(items) {
       return;
     }
 
+    if (event.key === "Escape" && eventIncludedPeopleModal && !eventIncludedPeopleModal.hidden) {
+      closeEventIncludedPeopleModal();
+      return;
+    }
+
+    if (event.key === "Escape" && eventPromptModal && !eventPromptModal.hidden) {
+      closeEventPromptModal();
+      return;
+    }
+
     if (event.key === "Escape" && !shotModal.hidden) {
       closeShotModal();
       return;
@@ -4994,6 +7198,11 @@ function sortTables(items) {
 
     if (event.key === "Escape" && !todoModal.hidden) {
       closeTodoModal();
+      return;
+    }
+
+    if (event.key === "Escape" && eventListModal && !eventListModal.hidden) {
+      closeEventListModal();
       return;
     }
 

@@ -1,6 +1,6 @@
 import { syncGuestSummarySheets } from "./features/feed";
 import { getViewerProfile } from "./auth";
-import { deleteShot, listBeds, listEvents, listPeople, listShots, listTables, listTodos, saveBed, saveEvent, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveShot, saveTable, saveTableReservedOpenSeats, saveTodo } from "./features/planner";
+import { deleteEventList, deleteShot, deleteTodo, listBeds, listEventLists, listEvents, listPeople, listShots, listTables, listTodos, saveBed, saveEvent, saveEventList, saveGuestDetails, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveShot, saveTable, saveTableReservedOpenSeats, saveTodo } from "./features/planner";
 import { generateEventPlan } from "./util/ai";
 import { PLANNER_BUILD_VERSION } from "./version";
 
@@ -36,6 +36,14 @@ export function rpc(input: { method: string; payload: unknown }) {
       return listTodos();
     case "saveTodo":
       return saveTodo(payload as Parameters<typeof saveTodo>[0]);
+    case "deleteTodo":
+      return deleteTodo(payload as Parameters<typeof deleteTodo>[0]);
+    case "listEventLists":
+      return listEventLists();
+    case "saveEventList":
+      return saveEventList(payload as Parameters<typeof saveEventList>[0]);
+    case "deleteEventList":
+      return deleteEventList(payload as Parameters<typeof deleteEventList>[0]);
     case "listTables":
       return listTables();
     case "saveTable":
@@ -46,6 +54,8 @@ export function rpc(input: { method: string; payload: unknown }) {
       return saveGuestTableAssignment(payload as Parameters<typeof saveGuestTableAssignment>[0]);
     case "saveGuestTableAssignments":
       return saveGuestTableAssignments(payload as Parameters<typeof saveGuestTableAssignments>[0]);
+    case "saveGuestDetails":
+      return saveGuestDetails(payload as Parameters<typeof saveGuestDetails>[0]);
     case "syncGuestSummarySheets":
       return syncGuestSummarySheets();
     case "generateEventPlan":

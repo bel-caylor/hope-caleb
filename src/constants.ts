@@ -5,6 +5,7 @@ export const SHOTS_SHEET = "Shot List";
 export const BEDS_SHEET = "Beds";
 export const TABLES_SHEET = "Tables";
 export const TODO_SHEET = "Todo";
+export const EVENT_LISTS_SHEET = "Event Lists";
 export const GOOGLE_CLIENT_ID_PROPERTY_KEY = "GOOGLE_CLIENT_ID";
 export const SPREADSHEET_ID_PROPERTY_KEY = "SPREADSHEET_ID";
 export const DASHBOARD_PASSWORD_HASH_PROPERTY_KEY = "DASHBOARD_PASSWORD_HASH";
@@ -38,6 +39,7 @@ export const EVENT_HEADERS = [
   "EndsAt",
   "Location",
   "AssignedTo",
+  "AssignedPeople",
   "ReminderMinutes",
   "MessageTemplate",
   "Notes",
@@ -82,6 +84,7 @@ export const TABLE_HEADERS = [
 ];
 export const TODO_HEADERS = [
   "Id",
+  "EventId",
   "Title",
   "Notes",
   "AssignedTo",
@@ -96,6 +99,16 @@ export const TODO_HEADERS = [
   "ReminderDate",
   "Category",
   "Tags",
+  "CreatedAt",
+  "UpdatedAt"
+];
+export const EVENT_LIST_HEADERS = [
+  "Id",
+  "EventId",
+  "Title",
+  "Type",
+  "Items",
+  "Notes",
   "CreatedAt",
   "UpdatedAt"
 ];

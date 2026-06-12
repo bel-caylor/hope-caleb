@@ -1,4 +1,4 @@
-import { BED_HEADERS, BEDS_SHEET, EVENT_HEADERS, EVENTS_SHEET, GUESTS_SHEET, PEOPLE_HEADERS, PEOPLE_SHEET, SHOT_HEADERS, SHOTS_SHEET, TABLE_HEADERS, TABLES_SHEET, TODO_HEADERS, TODO_SHEET } from "../constants";
+import { BED_HEADERS, BEDS_SHEET, EVENT_HEADERS, EVENT_LIST_HEADERS, EVENT_LISTS_SHEET, EVENTS_SHEET, GUESTS_SHEET, PEOPLE_HEADERS, PEOPLE_SHEET, SHOT_HEADERS, SHOTS_SHEET, TABLE_HEADERS, TABLES_SHEET, TODO_HEADERS, TODO_SHEET } from "../constants";
 import { requirePlannerAccess } from "../auth";
 import { createId, deleteRowById, ensureSheet, getSheetByName, readRows, toIsoString, upsertRow } from "../util/sheets";
 
@@ -21,6 +21,7 @@ type SaveEventInput = {
   endsAt?: string;
   location?: string;
   assignedTo?: string;
+  assignedPeople?: string;
   reminderMinutes?: number | string;
   messageTemplate?: string;
   notes?: string;
@@ -54,6 +55,7 @@ type SaveShotInput = {
 
 type SaveTodoInput = {
   id?: string;
+  eventId?: string;
   title?: string;
   notes?: string;
   assignedTo?: string;
@@ -68,6 +70,15 @@ type SaveTodoInput = {
   reminderDate?: string;
   category?: string;
   tags?: string;
+};
+
+type SaveEventListInput = {
+  id?: string;
+  eventId?: string;
+  title?: string;
+  type?: string;
+  items?: string;
+  notes?: string;
 };
 
 type SaveTableInput = {
@@ -92,6 +103,12 @@ type SaveGuestTableAssignmentInput = {
 
 type SaveGuestTableAssignmentsInput = {
   assignments?: SaveGuestTableAssignmentInput[];
+};
+
+type SaveGuestDetailsInput = {
+  rowNumber?: number | string;
+  type?: string;
+  rsvp?: string;
 };
 
 function normalizeBoolean(value: unknown, fallback = false) {
@@ -342,6 +359,7 @@ function mapEventRow(row: Record<string, unknown>) {
     endsAt: normalizeSheetTime(row.EndsAt),
     location: String(row.Location || ""),
     assignedTo: String(row.AssignedTo || ""),
+    assignedPeople: String(row.AssignedPeople || ""),
     reminderMinutes: Number(row.ReminderMinutes || 15),
     messageTemplate: String(row.MessageTemplate || ""),
     notes: String(row.Notes || ""),
@@ -387,6 +405,7 @@ function mapBedRow(row: Record<string, unknown>) {
 function mapTodoRow(row: Record<string, unknown>) {
   return {
     id: String(row.Id || ""),
+    eventId: String(row.EventId || "").trim(),
     title: String(row.Title || ""),
     notes: String(row.Notes || ""),
     assignedTo: String(row.AssignedTo || ""),
@@ -401,6 +420,19 @@ function mapTodoRow(row: Record<string, unknown>) {
     reminderDate: normalizeSheetDate(row.ReminderDate),
     category: String(row.Category || ""),
     tags: String(row.Tags || ""),
+    createdAt: toIsoString(row.CreatedAt),
+    updatedAt: toIsoString(row.UpdatedAt)
+  };
+}
+
+function mapEventListRow(row: Record<string, unknown>) {
+  return {
+    id: String(row.Id || "").trim(),
+    eventId: String(row.EventId || "").trim(),
+    title: String(row.Title || "").trim(),
+    type: String(row.Type || "shopping").trim(),
+    items: String(row.Items || "").trim(),
+    notes: String(row.Notes || "").trim(),
     createdAt: toIsoString(row.CreatedAt),
     updatedAt: toIsoString(row.UpdatedAt)
   };
@@ -650,6 +682,20 @@ function ensureColumn(sheet: GoogleAppsScript.Spreadsheet.Sheet, header: string)
   return nextColumn;
 }
 
+function ensureColumnCaseInsensitive(
+  sheet: GoogleAppsScript.Spreadsheet.Sheet,
+  headers: string[],
+  header: string
+) {
+  const normalizedHeader = String(header || "").trim().toLowerCase();
+  const existingIndex = headers.findIndex((value) => String(value || "").trim().toLowerCase() === normalizedHeader);
+  if (existingIndex >= 0) {
+    return existingIndex + 1;
+  }
+
+  return ensureColumn(sheet, header);
+}
+
 function saveGuestTableAssignmentInternal(
   guestsSheet: GoogleAppsScript.Spreadsheet.Sheet,
   headers: string[],
@@ -781,6 +827,7 @@ export function saveEvent(input: SaveEventInput) {
     EndsAt: String(input.endsAt || "").trim(),
     Location: String(input.location || "").trim(),
     AssignedTo: String(input.assignedTo || "").trim(),
+    AssignedPeople: String(input.assignedPeople || "").trim(),
     ReminderMinutes: Number(input.reminderMinutes || 15),
     MessageTemplate: String(input.messageTemplate || "").trim(),
     Notes: String(input.notes || "").trim(),
@@ -887,6 +934,26 @@ export function listTodos() {
   return readRows(TODO_SHEET)
     .filter((row) => String(row.Title || row.Notes || row.AssignedTo || row.DueDate || "").trim())
     .map(mapTodoRow);
+}
+
+export function deleteTodo(input: { id?: string }) {
+  requirePlannerAccess();
+  const id = String(input?.id || "").trim();
+  if (!id) {
+    throw new Error("Missing todo id.");
+  }
+
+  deleteRowById(TODO_SHEET, TODO_HEADERS, id);
+  return { ok: true, id };
+}
+
+export function listEventLists() {
+  requirePlannerAccess();
+  ensureSheet(EVENT_LISTS_SHEET, EVENT_LIST_HEADERS);
+
+  return readRows(EVENT_LISTS_SHEET)
+    .filter((row) => String(row.Title || row.Items || row.EventId || "").trim())
+    .map(mapEventListRow);
 }
 
 export function listTables() {
@@ -1012,6 +1079,39 @@ export function saveGuestTableAssignments(input: SaveGuestTableAssignmentsInput)
   return assignments.map((assignment) => saveGuestTableAssignmentInternal(guestsSheet, headers, assignment));
 }
 
+export function saveGuestDetails(input: SaveGuestDetailsInput) {
+  requirePlannerAccess();
+
+  const guestsSheet = getSheetByName(GUESTS_SHEET);
+  if (!guestsSheet || guestsSheet.getLastRow() < 1) {
+    throw new Error("Guests sheet not found.");
+  }
+
+  const rowNumber = Number(input.rowNumber || 0);
+  if (!Number.isInteger(rowNumber) || rowNumber < 2) {
+    throw new Error("Missing guest row number.");
+  }
+
+  const headers = guestsSheet
+    .getRange(1, 1, 1, guestsSheet.getLastColumn())
+    .getDisplayValues()[0]
+    .map((header) => String(header || "").trim());
+
+  const typeColumnIndex = ensureColumnCaseInsensitive(guestsSheet, headers, "Type");
+  const rsvpColumnIndex = ensureColumnCaseInsensitive(guestsSheet, headers, "RSVP");
+  const typeValue = String(input.type || "").trim();
+  const rsvpValue = String(input.rsvp || "").trim();
+
+  guestsSheet.getRange(rowNumber, typeColumnIndex).setValue(typeValue);
+  guestsSheet.getRange(rowNumber, rsvpColumnIndex).setValue(rsvpValue);
+
+  return {
+    rowNumber,
+    type: typeValue,
+    rsvp: rsvpValue
+  };
+}
+
 export function saveTodo(input: SaveTodoInput) {
   requirePlannerAccess();
 
@@ -1025,6 +1125,7 @@ export function saveTodo(input: SaveTodoInput) {
 
   const savedRow = {
     Id: id,
+    EventId: String(input.eventId || "").trim(),
     Title: String(input.title || "").trim(),
     Notes: String(input.notes || "").trim(),
     AssignedTo: String(input.assignedTo || "").trim(),
@@ -1046,6 +1147,39 @@ export function saveTodo(input: SaveTodoInput) {
   upsertRow(TODO_SHEET, TODO_HEADERS, id, savedRow);
 
   return mapTodoRow(savedRow);
+}
+
+export function saveEventList(input: SaveEventListInput) {
+  requirePlannerAccess();
+
+  const id = String(input.id || "").trim() || createId("event_list");
+  const now = new Date().toISOString();
+  const existing = listEventLists().find((list) => list.id === id);
+  const savedRow = {
+    Id: id,
+    EventId: String(input.eventId || "").trim(),
+    Title: String(input.title || "").trim(),
+    Type: String(input.type || existing?.type || "shopping").trim(),
+    Items: String(input.items || "").trim(),
+    Notes: String(input.notes || "").trim(),
+    CreatedAt: existing?.createdAt || now,
+    UpdatedAt: now
+  };
+
+  upsertRow(EVENT_LISTS_SHEET, EVENT_LIST_HEADERS, id, savedRow);
+
+  return mapEventListRow(savedRow);
+}
+
+export function deleteEventList(input: { id?: string }) {
+  requirePlannerAccess();
+  const id = String(input?.id || "").trim();
+  if (!id) {
+    throw new Error("Missing event list id.");
+  }
+
+  deleteRowById(EVENT_LISTS_SHEET, EVENT_LIST_HEADERS, id);
+  return { ok: true, id };
 }
 
 export function initializeBedsSheet() {

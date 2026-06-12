@@ -10,7 +10,35 @@
 
   function setStatus(element, message, tone) {
     if (!element) return;
-    element.textContent = message || "";
+    const nextMessage = String(message || "").trim();
+    const placeholder = element.__statusPlaceholder || null;
+
+    if (!nextMessage) {
+      element.textContent = "";
+      element.className = "status";
+      delete element.dataset.tone;
+
+      if (element.isConnected && element.parentNode) {
+        const nextPlaceholder = placeholder || document.createComment(`status:${element.id || "anonymous"}`);
+        element.__statusPlaceholder = nextPlaceholder;
+        element.parentNode.insertBefore(nextPlaceholder, element);
+        element.remove();
+      }
+      return;
+    }
+
+    if (!element.isConnected) {
+      const parentNode = placeholder?.parentNode || element.__statusParent || null;
+      if (parentNode) {
+        parentNode.insertBefore(element, placeholder || null);
+      }
+      if (placeholder?.parentNode) {
+        placeholder.remove();
+      }
+    }
+
+    element.__statusParent = element.parentNode || element.__statusParent || null;
+    element.textContent = nextMessage;
     element.className = `status ${tone || ""}`.trim();
     if (tone) {
       element.dataset.tone = tone;

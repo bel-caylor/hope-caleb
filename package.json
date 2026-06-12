@@ -7,7 +7,7 @@
     "build:core": "rimraf dist && node esbuild.config.mjs && npm run copy:html && npm run copy:json && npm run copy:gas",
     "build": "npm run build:core && node scripts/build-standalone.cjs",
     "build:standalone": "npm run build",
-    "watch:standalone": "chokidar \"src/**/*\" \"index.html\" \"site.css\" \"slideshow.html\" \"styles.css\" \"script.js\" \"slideshow.css\" \"slideshow.js\" \"images/**/*\" -c \"npm run build\" --initial",
+    "watch:standalone": "chokidar \"src/**/*\" \"index.html\" \"site.css\" \"slideshow.html\" \"styles.css\" \"script.js\" \"slideshow.css\" \"slideshow.js\" \"images/**/*\" \".env.standalone.local\" \".env.standalone.example\" -c \"npm run build\" --initial",
     "copy:html": "copyfiles -f \"src/html/**/*.html\" dist",
     "copy:json": "copyfiles -u 1 \"src/**/*.json\" dist/",
     "copy:gas": "copyfiles -u 1 \"src/**/*.gs\" dist/",
