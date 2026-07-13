@@ -54,6 +54,12 @@
         overflow-x: hidden;
       }
 
+      @media (min-width: 901px) {
+        html {
+          font-size: 17px;
+        }
+      }
+
       body {
         margin: 0;
         background:
@@ -192,19 +198,21 @@
       h3 {
         margin: 0;
         line-height: 1.03;
-        font-family: Georgia, "Times New Roman", serif;
         font-weight: 500;
       }
 
       h1 {
+        font-family: Georgia, "Times New Roman", serif;
         font-size: clamp(2.1rem, 6vw, 5.1rem);
       }
 
       h2 {
+        font-family: "Great Vibes", "Brush Script MT", "Lucida Handwriting", cursive;
         font-size: clamp(2rem, 4.8vw, 3.8rem);
       }
 
       h3 {
+        font-family: "Great Vibes", "Brush Script MT", "Lucida Handwriting", cursive;
         font-size: clamp(1.2rem, 2.4vw, 1.8rem);
       }
 
@@ -3490,9 +3498,9 @@
         </div>
       </section>
 
-      <section class="section" data-view="home" aria-labelledby="home-engagement-heading">
-        <p class="eyebrow">Engagement</p>
-        <h2 id="home-engagement-heading">Photos from the season before the wedding.</h2>
+      <section class="section section--slider" data-view="home" aria-labelledby="home-engagement-heading">
+        <p class="eyebrow">Summer Photos</p>
+        <h2 id="home-engagement-heading">Young and in Love!</h2>
         <div class="engagement-gallery-grid">
           <div class="story-slider story-slider--square" data-slider data-interval="2800" aria-label="Square engagement photo gallery">
             <div class="story-slider__viewport story-slider__viewport--wide">

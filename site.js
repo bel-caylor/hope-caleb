@@ -1,9 +1,5 @@
 const HOME_EVENT = {
-  weddingDateLabel: "Friday, January 8, 2027",
-  countdownTargetIso: "2027-01-08T16:00:00-06:00",
-  nextMainEvent: {
-    title: "Ceremony begins"
-  }
+  weddingDateLabel: "Friday, January 8, 2027"
 };
 
 const AMAZON_REGISTRY = {
@@ -14,55 +10,6 @@ const AMAZON_REGISTRY = {
 document.querySelectorAll("[data-wedding-date]").forEach((element) => {
   element.textContent = HOME_EVENT.weddingDateLabel;
 });
-
-const countdownEls = {
-  days: document.querySelector("[data-countdown-days]"),
-  hours: document.querySelector("[data-countdown-hours]"),
-  minutes: document.querySelector("[data-countdown-minutes]"),
-  seconds: document.querySelector("[data-countdown-seconds]"),
-  summary: document.querySelector("[data-countdown-summary]")
-};
-
-const countdownTarget = new Date(HOME_EVENT.countdownTargetIso);
-
-function updateCountdown() {
-  if (!countdownEls.days || Number.isNaN(countdownTarget.getTime())) {
-    return;
-  }
-
-  const diffMs = countdownTarget.getTime() - Date.now();
-
-  if (diffMs <= 0) {
-    countdownEls.days.textContent = "0";
-    countdownEls.hours.textContent = "0";
-    countdownEls.minutes.textContent = "0";
-    countdownEls.seconds.textContent = "0";
-
-    if (countdownEls.summary) {
-      countdownEls.summary.textContent = `${HOME_EVENT.nextMainEvent.title} is here.`;
-    }
-
-    return;
-  }
-
-  const totalSeconds = Math.floor(diffMs / 1000);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  countdownEls.days.textContent = String(days);
-  countdownEls.hours.textContent = String(hours).padStart(2, "0");
-  countdownEls.minutes.textContent = String(minutes).padStart(2, "0");
-  countdownEls.seconds.textContent = String(seconds).padStart(2, "0");
-
-  if (countdownEls.summary) {
-    countdownEls.summary.textContent = `${days} days until ${HOME_EVENT.nextMainEvent.title.toLowerCase()} on ${HOME_EVENT.weddingDateLabel}.`;
-  }
-}
-
-updateCountdown();
-window.setInterval(updateCountdown, 1000);
 
 const registryLink = document.querySelector("[data-registry-link]");
 const registryNote = document.querySelector("[data-registry-note]");
@@ -195,10 +142,29 @@ storySliders.forEach((slider) => {
   const viewport = slider.querySelector(".story-slider__viewport");
   const slides = Array.from(slider.querySelectorAll(".story-slider__image"));
   const dots = Array.from(slider.querySelectorAll(".story-slider__dot"));
+  let previousButton = slider.querySelector('[data-slider-direction="previous"]');
+  let nextButton = slider.querySelector('[data-slider-direction="next"]');
   const intervalMs = Number(slider.dataset.interval) || 2800;
 
   if (!viewport || slides.length <= 1) {
     return;
+  }
+
+  if (!previousButton || !nextButton) {
+    const controls = document.createElement("div");
+    controls.className = "story-slider__arrows";
+    controls.setAttribute("aria-label", "Photo slider navigation");
+    controls.innerHTML = `
+      <button class="story-slider__arrow story-slider__arrow--previous" type="button" data-slider-direction="previous" aria-label="Previous photo">
+        <span aria-hidden="true">‹</span>
+      </button>
+      <button class="story-slider__arrow story-slider__arrow--next" type="button" data-slider-direction="next" aria-label="Next photo">
+        <span aria-hidden="true">›</span>
+      </button>
+    `;
+    slider.append(controls);
+    previousButton = controls.querySelector('[data-slider-direction="previous"]');
+    nextButton = controls.querySelector('[data-slider-direction="next"]');
   }
 
   let activeIndex = slides.findIndex((slide) => slide.classList.contains("is-active"));
@@ -229,6 +195,16 @@ storySliders.forEach((slider) => {
     dot.addEventListener("click", () => {
       showSlide(index);
     });
+  });
+
+  previousButton?.addEventListener("click", () => {
+    paused = true;
+    showSlide(activeIndex - 1);
+  });
+
+  nextButton?.addEventListener("click", () => {
+    paused = true;
+    showSlide(activeIndex + 1);
   });
 
   slider.addEventListener("mouseenter", () => {

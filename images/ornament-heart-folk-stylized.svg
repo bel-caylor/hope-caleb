@@ -1,0 +1,27 @@
+<svg width="760" height="760" viewBox="0 0 760 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g fill="#B9B3A1" stroke="#B9B3A1">
+    <!-- Broad, imperfect ribbon heart. -->
+    <path d="M380 585C326 528 241 487 174 416C111 349 75 278 84 219C93 156 139 113 202 108C275 102 337 139 376 203C419 151 468 124 526 128C602 133 660 190 666 263C673 348 611 420 537 480C479 527 423 560 380 585ZM374 526C411 487 459 452 510 410C574 357 617 304 611 252C606 207 571 178 526 176C470 173 425 207 377 271C348 202 291 155 224 157C177 159 143 187 138 230C131 275 163 332 215 388C268 445 329 482 374 526Z" stroke="none" opacity="0.44" fill-rule="evenodd"/>
+
+    <!-- Inner heart, deliberately offset for a hand-cut folk-art feel. -->
+    <path d="M378 468C347 435 296 400 270 354C247 312 253 271 285 245C319 218 359 230 383 264C411 230 451 220 484 244C521 270 525 315 501 358C476 403 423 438 389 470C386 473 382 472 378 468Z" stroke="none" opacity="0.30"/>
+
+    <!-- Flourishing stems continue naturally from the heart's point. -->
+    <path d="M382 559C428 568 472 595 500 642C517 670 525 699 528 726" fill="none" stroke-width="12" stroke-linecap="round" opacity="0.36"/>
+    <path d="M392 570C353 582 322 611 308 653C299 681 298 704 300 727" fill="none" stroke-width="9" stroke-linecap="round" opacity="0.28"/>
+    <path d="M460 599C499 562 543 545 583 551" fill="none" stroke-width="8" stroke-linecap="round" opacity="0.30"/>
+
+    <!-- Simple almond leaves keep the ornament botanical rather than literal. -->
+    <path d="M480 611C493 571 520 548 552 548C556 578 531 606 480 611Z" stroke="none" opacity="0.34"/>
+    <path d="M503 650C535 628 568 630 590 649C570 676 535 676 503 650Z" stroke="none" opacity="0.30"/>
+    <path d="M340 602C314 574 283 568 258 581C270 612 305 621 340 602Z" stroke="none" opacity="0.28"/>
+    <path d="M314 654C282 636 250 642 231 664C255 687 288 681 314 654Z" stroke="none" opacity="0.24"/>
+
+    <!-- Folk-art bead details. -->
+    <circle cx="609" cy="532" r="12" stroke="none" opacity="0.30"/>
+    <circle cx="631" cy="503" r="9" stroke="none" opacity="0.25"/>
+    <circle cx="646" cy="472" r="7" stroke="none" opacity="0.20"/>
+    <circle cx="231" cy="558" r="9" stroke="none" opacity="0.24"/>
+    <circle cx="207" cy="538" r="6" stroke="none" opacity="0.20"/>
+  </g>
+</svg>

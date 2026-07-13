@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Pacifico&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="site.css">
+    <link rel="stylesheet" href="site.css?v=20260713-heart6">
   </head>
   <body class="page-home">
     <header class="site-header" id="home">
@@ -41,6 +41,7 @@
         <span></span>
       </button>
       <div class="section-nav__inner" id="section-nav-menu" data-section-menu-panel>
+        <a href="#home" aria-current="page">Home</a>
         <a href="story.html">Our Story</a>
         <a href="#rsvp">RSVP</a>
         <a href="#details">Details</a>
@@ -67,74 +68,6 @@
     </nav>
 
     <main>
-      <section class="section section--highlight" id="countdown">
-        <p class="eyebrow">Wedding Countdown</p>
-        <h2>Counting down to the next main moment.</h2>
-        <div class="grid grid--two">
-          <article class="countdown-card">
-            <p class="countdown-card__label">Time until the ceremony</p>
-            <div class="countdown" role="timer" aria-live="polite">
-              <div class="countdown__item">
-                <span data-countdown-days>0</span>
-                <small>Days</small>
-              </div>
-              <div class="countdown__item">
-                <span data-countdown-hours>0</span>
-                <small>Hours</small>
-              </div>
-              <div class="countdown__item">
-                <span data-countdown-minutes>0</span>
-                <small>Minutes</small>
-              </div>
-              <div class="countdown__item">
-                <span data-countdown-seconds>0</span>
-                <small>Seconds</small>
-              </div>
-            </div>
-            <p class="countdown-card__summary" data-countdown-summary>Counting down to Friday, January 8, 2027.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="section" id="engagement">
-        <p class="eyebrow">Engagement</p>
-        <h2>Photos from the season before the wedding.</h2>
-        <div class="engagement-gallery-grid">
-          <div class="story-slider story-slider--square" data-slider data-interval="2800" aria-label="Square engagement photo gallery">
-            <div class="story-slider__viewport story-slider__viewport--wide">
-              <img class="story-slider__image is-active" src="images/engagement/square/I09A0168-SQ.JPG" alt="Hope and Caleb together during their engagement session" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/engagement/square/I09A9638-SQ.JPG" alt="Hope and Caleb smiling in a square engagement portrait" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/engagement/square/I09A9681-SQ.JPG" alt="Hope and Caleb close together during engagement photos" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/engagement/square/I09A9889-SQ.JPG" alt="Hope and Caleb embracing in a square engagement photo" loading="lazy" decoding="async">
-            </div>
-            <div class="story-slider__dots" aria-label="Square engagement slider controls">
-              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show square engagement photo 1"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show square engagement photo 2"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show square engagement photo 3"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show square engagement photo 4"></button>
-            </div>
-          </div>
-          <div class="story-slider story-slider--portrait" data-slider data-interval="3000" aria-label="Engagement portrait photo gallery">
-            <div class="story-slider__viewport">
-              <img class="story-slider__image is-active" src="images/engagement/port/I09A0198-port.JPG" alt="Hope and Caleb during their engagement portrait session" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/engagement/port/I09A9423.jpg" alt="Hope and Caleb smiling together during engagement portraits" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/engagement/port/I09A9627.jpg" alt="Hope and Caleb embracing during their engagement session" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/engagement/port/I09A9520-port.JPG" alt="Hope and Caleb sharing a portrait moment outdoors" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/engagement/port/I09A9557.jpg" alt="Hope and Caleb posing together for engagement photos" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/engagement/port/I09A9587-port.JPG" alt="Hope and Caleb close together during their portrait session" loading="lazy" decoding="async">
-            </div>
-            <div class="story-slider__dots" aria-label="Engagement portrait slider controls">
-              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show engagement portrait 1"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show engagement portrait 2"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show engagement portrait 3"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show engagement portrait 4"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="4" aria-label="Show engagement portrait 5"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="5" aria-label="Show engagement portrait 6"></button>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section class="section" id="details">
         <p class="eyebrow">Wedding Details</p>
         <h2>Come and celebrate with us!!</h2>
@@ -194,10 +127,31 @@
         </div>
       </section>
 
+      <section class="section section--slider" id="engagement" aria-labelledby="engagement-square-heading">
+        <p class="eyebrow">Summer Photos</p>
+        <h2 id="engagement-square-heading">Young and in Love!</h2>
+        <div class="engagement-gallery-grid">
+          <div class="story-slider story-slider--square" data-slider data-interval="2800" aria-label="Square engagement photo gallery">
+            <div class="story-slider__viewport story-slider__viewport--wide">
+              <img class="story-slider__image is-active" src="images/engagement/square/I09A0168-SQ.JPG" alt="Hope and Caleb together during their engagement session" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/square/I09A9638-SQ.JPG" alt="Hope and Caleb smiling in a square engagement portrait" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/square/I09A9681-SQ.JPG" alt="Hope and Caleb close together during engagement photos" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/square/I09A9889-SQ.JPG" alt="Hope and Caleb embracing in a square engagement photo" loading="lazy" decoding="async">
+            </div>
+            <div class="story-slider__dots" aria-label="Square engagement slider controls">
+              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show square engagement photo 1"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show square engagement photo 2"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show square engagement photo 3"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show square engagement photo 4"></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="section" id="schedule">
         <p class="eyebrow">Schedule</p>
         <h2>Simple timeline for the day.</h2>
-        <p class="lead"><strong class="lead-script lead-script--inline">Come when you can!!</strong> We know this is a Friday wedding, and if you cannot make it for the ceremony, please know we would still love to have you for the reception and party.</p>
+        <p class="lead"><strong class="lead-script lead-script--serif">Come when you can!!</strong><br>We know this is a Friday wedding,<br>and if you cannot make it for the ceremony,<br>please know we would still love to have you for the reception and party.</p>
         <div class="timeline">
           <article class="timeline-card timeline-card--clock">
             <span class="schedule-clock" style="--clock-hour-angle: 105deg; --clock-minute-angle: 180deg;" aria-hidden="true"></span>
@@ -250,11 +204,36 @@
         </div>
       </section>
 
+      <section class="section section--slider" aria-labelledby="engagement-portrait-heading">
+        <p class="eyebrow">Summer Photos</p>
+        <h2 id="engagement-portrait-heading">Young and in Love!</h2>
+        <div class="engagement-gallery-grid">
+          <div class="story-slider story-slider--portrait" data-slider data-interval="3000" aria-label="Engagement portrait photo gallery">
+            <div class="story-slider__viewport">
+              <img class="story-slider__image is-active" src="images/engagement/port/I09A0198-port.JPG" alt="Hope and Caleb during their engagement portrait session" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/port/I09A9423.jpg" alt="Hope and Caleb smiling together during engagement portraits" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/port/I09A9627.jpg" alt="Hope and Caleb embracing during their engagement session" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/port/I09A9520-port.JPG" alt="Hope and Caleb sharing a portrait moment outdoors" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/port/I09A9557.jpg" alt="Hope and Caleb posing together for engagement photos" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/port/I09A9587-port.JPG" alt="Hope and Caleb close together during their portrait session" loading="lazy" decoding="async">
+            </div>
+            <div class="story-slider__dots" aria-label="Engagement portrait slider controls">
+              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show engagement portrait 1"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show engagement portrait 2"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show engagement portrait 3"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show engagement portrait 4"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="4" aria-label="Show engagement portrait 5"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="5" aria-label="Show engagement portrait 6"></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="section" id="travel">
         <p class="eyebrow">Travel</p>
-        <h2>Find the week schedule, lodging, the area map, and our favorite local spots.</h2>
+        <h2>Find the week schedule, lodging,<br>the area map, and our favorite local spots.</h2>
         <div class="grid grid--two">
-          <article class="content-block">
+          <a class="content-block travel-card-link" href="travel.html#travel-lodging">
             <div class="travel-card-head">
               <div class="travel-card-copy">
                 <p class="eyebrow">Stay Nearby</p>
@@ -267,11 +246,9 @@
               </span>
             </div>
             <p>Open the stay section for airport notes, nearby rentals, cabin options, and hotel ideas for the weekend.</p>
-            <div class="button-row">
-              <a class="button" href="travel.html#travel-lodging">View Travel &amp; Lodging</a>
-            </div>
-          </article>
-          <article class="content-block">
+            <span class="travel-card-cta">View Travel &amp; Lodging</span>
+          </a>
+          <a class="content-block travel-card-link" href="https://www.google.com/maps/d/u/0/viewer?mid=1ArVd3idrSCWELm_DqkL835Nko1QutW0&ll=29.966253269457013%2C-98.9321415&z=10" target="_blank" rel="noopener noreferrer">
             <div class="travel-card-head">
               <div class="travel-card-copy">
                 <p class="eyebrow">Plan the Route</p>
@@ -284,11 +261,9 @@
               </span>
             </div>
             <p>Jump to the wedding weekend map to see the venue, places to stay, and nearby stops worth knowing about.</p>
-            <div class="button-row">
-              <a class="button" href="https://www.google.com/maps/d/u/0/viewer?mid=1ArVd3idrSCWELm_DqkL835Nko1QutW0&ll=29.966253269457013%2C-98.9321415&z=10" target="_blank" rel="noopener noreferrer">Open Area Map</a>
-            </div>
-          </article>
-          <article class="content-block">
+            <span class="travel-card-cta">Open Area Map</span>
+          </a>
+          <a class="content-block travel-card-link" href="travel.html#area-highlights">
             <div class="travel-card-head">
               <div class="travel-card-copy">
                 <p class="eyebrow">Our Picks</p>
@@ -301,11 +276,9 @@
               </span>
             </div>
             <p>Browse a few of the places we would happily take you ourselves if we had extra time together that weekend.</p>
-            <div class="button-row">
-              <a class="button" href="travel.html#area-highlights">See Favorites</a>
-            </div>
-          </article>
-          <article class="content-block">
+            <span class="travel-card-cta">See Favorites</span>
+          </a>
+          <a class="content-block travel-card-link" href="travel.html#schedule">
             <div class="travel-card-head">
               <div class="travel-card-copy">
                 <p class="eyebrow">Spend More Time</p>
@@ -318,10 +291,8 @@
               </span>
             </div>
             <p>See the extra events around the wedding weekend so out-of-town guests can join us for more than just the ceremony.</p>
-            <div class="button-row">
-              <a class="button" href="travel.html#schedule">Open Week Schedule</a>
-            </div>
-          </article>
+            <span class="travel-card-cta">Open Week Schedule</span>
+          </a>
         </div>
       </section>
 

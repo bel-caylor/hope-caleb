@@ -21,6 +21,12 @@ html {
   overflow-x: hidden;
 }
 
+@media (min-width: 901px) {
+  html {
+    font-size: 17px;
+  }
+}
+
 body {
   margin: 0;
   background: var(--paper);
@@ -145,17 +151,18 @@ h1,
 h2 {
   margin: 0;
   line-height: 1.03;
-  font-family: Georgia, "Times New Roman", serif;
   font-weight: 500;
 }
 
 h1 {
+  font-family: Georgia, "Times New Roman", serif;
   max-width: none;
   font-size: clamp(1.85rem, 5.5vw, 5.1rem);
   white-space: nowrap;
 }
 
 h2 {
+  font-family: "Great Vibes", "Brush Script MT", "Lucida Handwriting", cursive;
   font-size: clamp(2.1rem, 5vw, 4rem);
 }
 
