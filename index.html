@@ -12,32 +12,55 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Pacifico&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="site.css">
   </head>
-  <body>
+  <body class="page-home">
     <header class="site-header" id="home">
       <div class="hero-media" aria-hidden="true">
-        <img src="images/hero-wedding/engagement.jpg" alt="" class="hero-photo hero-photo--active" loading="eager" fetchpriority="high" decoding="async">
-        <img src="images/hero-wedding/holding hands.jpg" alt="" class="hero-photo" loading="eager" fetchpriority="high" decoding="async">
-        <img src="images/hero-wedding/mountain.jpg" alt="" class="hero-photo" loading="eager" fetchpriority="high" decoding="async">
+        <img src="images/engagement/port/I09A0198-port.JPG" alt="" class="hero-photo hero-photo--high" loading="eager" fetchpriority="high" decoding="async">
       </div>
       <div class="hero-shade"></div>
       <section class="hero-copy">
         <p class="eyebrow">Wedding</p>
         <h1>Hope & Caleb</h1>
         <p class="hero-date" data-wedding-date>Friday, January 8, 2027</p>
-        <div class="hero-actions">
-          <a class="button" href="#rsvp">RSVP</a>
-        </div>
       </section>
     </header>
 
     <nav class="section-nav" aria-label="Primary section navigation">
-      <div class="section-nav__inner">
-        <a href="#story">Our Story</a>
+      <button
+        class="section-nav__menu-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="section-nav-menu"
+        aria-label="Toggle navigation menu"
+        data-section-menu-toggle>
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <div class="section-nav__inner" id="section-nav-menu" data-section-menu-panel>
+        <a href="story.html">Our Story</a>
+        <a href="#rsvp">RSVP</a>
         <a href="#details">Details</a>
-        <a href="#travel">Travel</a>
+        <div class="section-nav__item section-nav__item--has-submenu">
+          <a href="travel.html">Travel</a>
+          <button
+            class="section-nav__toggle"
+            type="button"
+            aria-expanded="false"
+            aria-label="Toggle Travel submenu"
+            data-section-submenu-toggle>
+            <span aria-hidden="true">+</span>
+          </button>
+          <div class="section-nav__submenu" aria-label="Travel submenu">
+            <a href="travel.html#schedule">Schedule</a>
+            <a href="travel.html#poi">Area Map</a>
+            <a href="travel.html#travel-lodging">Lodging</a>
+            <a href="travel.html#area-highlights">Hope &amp; Caleb's Favorites</a>
+          </div>
+        </div>
         <a href="#faq">FAQ</a>
         <a href="#registry">Registry</a>
       </div>
@@ -70,89 +93,103 @@
             </div>
             <p class="countdown-card__summary" data-countdown-summary>Counting down to Friday, January 8, 2027.</p>
           </article>
-          <article class="countdown-card countdown-card--event">
-            <p class="countdown-card__label">Next main event</p>
-            <h3 data-next-event-title>Ceremony begins</h3>
-            <p class="countdown-card__meta" data-next-event-datetime>Friday, January 8, 2027 at 4:00 PM</p>
-            <p data-next-event-location>South Texas venue details coming soon.</p>
-            <a class="button button--ghost" href="#schedule">View schedule</a>
-          </article>
         </div>
       </section>
 
-      <section class="section" id="story">
-        <p class="eyebrow">Our Story</p>
-        <h2>Met at UTSA.</h2>
-        <p class="lead">We met at UTSA in engineering school, started dating at the end of freshman year, and graduated together in Spring 2026. What began in the middle of classes, labs, and long study days grew into a relationship that carried us all the way to graduation and into this next season together. UTSA was where our story started, and those years shaped so much of who we are together. From engineering classes to everyday campus life, we built a friendship and relationship that kept growing through college, and we are so thankful for the people who supported us through school, celebrated these milestones with us, and continue cheering us on as we prepare for marriage.</p>
-        <div class="photo-feature">
-          <div class="story-slider" data-slider data-interval="2600" aria-label="Graduation photo gallery">
-            <div class="story-slider__viewport">
-              <img class="story-slider__image is-active" src="images/graduation/standing grad.jpg" alt="Hope and Caleb together in graduation attire" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/graduation/stairs grad.jpg" alt="Hope and Caleb on the graduation steps" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/graduation/grad standing2.jpg" alt="Hope and Caleb smiling during graduation portraits" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/graduation/grad standing.jpg" alt="Hope and Caleb posing at UTSA graduation" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/graduation/celebration grad.jpg" alt="Hope and Caleb celebrating graduation together" loading="lazy" decoding="async">
-            </div>
-            <div class="story-slider__dots" aria-label="Graduation slider controls">
-              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show graduation photo 1"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show graduation photo 2"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show graduation photo 3"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show graduation photo 4"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="4" aria-label="Show graduation photo 5"></button>
-            </div>
-          </div>
-        </div>
-        <div class="story-gallery-grid">
-          <article class="gallery-card gallery-card--slider">
-            <p class="eyebrow">Graduation</p>
-            <h3>Spring 2026</h3>
-            <p>Photos from the season where we finished school together.</p>
-          </article>
-          <div class="story-slider" data-slider data-interval="3000" aria-label="Colorado photo gallery">
+      <section class="section" id="engagement">
+        <p class="eyebrow">Engagement</p>
+        <h2>Photos from the season before the wedding.</h2>
+        <div class="engagement-gallery-grid">
+          <div class="story-slider story-slider--square" data-slider data-interval="2800" aria-label="Square engagement photo gallery">
             <div class="story-slider__viewport story-slider__viewport--wide">
-              <img class="story-slider__image is-active" src="images/colorado/mountain.jpg" alt="Hope and Caleb in the Colorado mountains" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/colorado/engagement.jpg" alt="Hope and Caleb during their Colorado engagement session" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/colorado/holding hands.jpg" alt="Hope and Caleb holding hands in Colorado" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/colorado/lift.jpg" alt="Hope and Caleb riding a lift in Colorado" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/colorado/mountain smiles.jpg" alt="Hope and Caleb smiling in the mountains" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="images/colorado/woods kiss.jpg" alt="Hope and Caleb kissing in the woods in Colorado" loading="lazy" decoding="async">
+              <img class="story-slider__image is-active" src="images/engagement/square/I09A0168-SQ.JPG" alt="Hope and Caleb together during their engagement session" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/square/I09A9638-SQ.JPG" alt="Hope and Caleb smiling in a square engagement portrait" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/square/I09A9681-SQ.JPG" alt="Hope and Caleb close together during engagement photos" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/square/I09A9889-SQ.JPG" alt="Hope and Caleb embracing in a square engagement photo" loading="lazy" decoding="async">
             </div>
-            <div class="story-slider__dots" aria-label="Colorado slider controls">
-              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show Colorado photo 1"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show Colorado photo 2"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show Colorado photo 3"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show Colorado photo 4"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="4" aria-label="Show Colorado photo 5"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="5" aria-label="Show Colorado photo 6"></button>
+            <div class="story-slider__dots" aria-label="Square engagement slider controls">
+              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show square engagement photo 1"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show square engagement photo 2"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show square engagement photo 3"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show square engagement photo 4"></button>
             </div>
           </div>
-          <article class="gallery-card gallery-card--slider">
-            <p class="eyebrow">Colorado</p>
-            <h3>Mountain memories</h3>
-            <p>A few favorite photos from Colorado that we wanted to keep as part of this story.</p>
-          </article>
+          <div class="story-slider story-slider--portrait" data-slider data-interval="3000" aria-label="Engagement portrait photo gallery">
+            <div class="story-slider__viewport">
+              <img class="story-slider__image is-active" src="images/engagement/port/I09A0198-port.JPG" alt="Hope and Caleb during their engagement portrait session" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/port/I09A9423.jpg" alt="Hope and Caleb smiling together during engagement portraits" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/port/I09A9627.jpg" alt="Hope and Caleb embracing during their engagement session" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/port/I09A9520-port.JPG" alt="Hope and Caleb sharing a portrait moment outdoors" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/port/I09A9557.jpg" alt="Hope and Caleb posing together for engagement photos" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="images/engagement/port/I09A9587-port.JPG" alt="Hope and Caleb close together during their portrait session" loading="lazy" decoding="async">
+            </div>
+            <div class="story-slider__dots" aria-label="Engagement portrait slider controls">
+              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show engagement portrait 1"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show engagement portrait 2"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show engagement portrait 3"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show engagement portrait 4"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="4" aria-label="Show engagement portrait 5"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="5" aria-label="Show engagement portrait 6"></button>
+            </div>
+          </div>
         </div>
       </section>
 
       <section class="section" id="details">
         <p class="eyebrow">Wedding Details</p>
-        <h2>The high-level guest information has a clean home.</h2>
+        <h2>Come and celebrate with us!!</h2>
         <div class="grid grid--two">
-          <article class="card">
-            <strong>Date</strong>
-            <p data-wedding-date>Friday, January 8, 2027</p>
+          <article class="card card--detail">
+            <span class="card-title__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path fill="currentColor" d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Zm12 8H5v9h14v-9ZM6 6H5v2h14V6h-1v1a1 1 0 1 1-2 0V6H8v1a1 1 0 1 1-2 0V6Z"/>
+              </svg>
+            </span>
+            <div class="card-copy">
+              <div class="card-title">
+                <strong>Date</strong>
+              </div>
+              <p data-wedding-date>Friday, January 8, 2027</p>
+            </div>
           </article>
-          <article class="card">
-            <strong>Location</strong>
-            <p>South Texas venue details can be dropped in here once the final address is ready.</p>
+          <article class="card card--detail">
+            <span class="card-title__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path fill="currentColor" d="M12 2a6 6 0 0 1 6 6c0 4.48-4.45 10.38-5.34 11.53a.83.83 0 0 1-1.32 0C10.45 18.38 6 12.48 6 8a6 6 0 0 1 6-6Zm0 8.5A2.5 2.5 0 1 0 12 5.5a2.5 2.5 0 0 0 0 5Z"/>
+              </svg>
+            </span>
+            <div class="card-copy">
+              <div class="card-title">
+                <strong>Location</strong>
+              </div>
+              <p>South Texas venue details can be dropped in here once the final address is ready.</p>
+            </div>
           </article>
-          <article class="card">
-            <strong>Ceremony</strong>
-            <p>Use this space for ceremony start time, arrival guidance, and whether the event is indoor or outdoor.</p>
+          <article class="card card--detail">
+            <span class="card-title__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path fill="currentColor" d="M12 2a1 1 0 0 1 1 1v2h2a1 1 0 1 1 0 2h-2v2a1 1 0 1 1-2 0V7H9a1 1 0 1 1 0-2h2V3a1 1 0 0 1 1-1Zm-5 8.5 5-3.2 5 3.2V12h1.5a1.5 1.5 0 0 1 1.5 1.5V20h1a1 1 0 1 1 0 2H3a1 1 0 1 1 0-2h1v-6.5A1.5 1.5 0 0 1 5.5 12H7v-1.5Zm2 1.5v8h2v-4h2v4h2v-8l-3-1.92L9 12Zm-3 1.5V20h1v-6.5a.5.5 0 0 0-.5-.5h-.5Zm11 0V20h1v-6.5h-.5a.5.5 0 0 0-.5.5Z"/>
+              </svg>
+            </span>
+            <div class="card-copy">
+              <div class="card-title">
+                <strong>Ceremony</strong>
+              </div>
+              <p>Use this space for ceremony start time, arrival guidance, and whether the event is indoor or outdoor.</p>
+            </div>
           </article>
-          <article class="card">
-            <strong>Reception</strong>
-            <p>Dinner, dancing, and any after-party notes can live here.</p>
+          <article class="card card--detail">
+            <span class="card-title__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path fill="currentColor" d="M7 2a1 1 0 0 1 1 1v8a3 3 0 0 1-2 2.82V21a1 1 0 1 1-2 0v-7.18A3 3 0 0 1 2 11V3a1 1 0 1 1 2 0v7a1 1 0 0 0 2 0V3a1 1 0 0 1 1-1Zm8 0a1 1 0 0 1 1 1v8h1V3a1 1 0 1 1 2 0v18a1 1 0 1 1-2 0v-8h-3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z"/>
+              </svg>
+            </span>
+            <div class="card-copy">
+              <div class="card-title">
+                <strong>Reception</strong>
+              </div>
+              <p>Dinner, dancing, and any after-party notes can live here.</p>
+            </div>
           </article>
         </div>
       </section>
@@ -160,48 +197,130 @@
       <section class="section" id="schedule">
         <p class="eyebrow">Schedule</p>
         <h2>Simple timeline for the day.</h2>
+        <p class="lead"><strong class="lead-script lead-script--inline">Come when you can!!</strong> We know this is a Friday wedding, and if you cannot make it for the ceremony, please know we would still love to have you for the reception and party.</p>
         <div class="timeline">
-          <article class="timeline-card">
-            <span class="timeline-time">3:30 PM</span>
-            <strong>Guest arrival</strong>
+          <article class="timeline-card timeline-card--clock">
+            <span class="schedule-clock" style="--clock-hour-angle: 105deg; --clock-minute-angle: 180deg;" aria-hidden="true"></span>
+            <div class="timeline-card__headline">
+              <span class="timeline-time">3:30 PM</span>
+              <strong>Guest arrival</strong>
+            </div>
             <p>Guests arrive, park, and find their seats.</p>
           </article>
-          <article class="timeline-card">
-            <span class="timeline-time">4:00 PM</span>
-            <strong>Ceremony begins</strong>
+          <article class="timeline-card timeline-card--clock">
+            <span class="schedule-clock" style="--clock-hour-angle: 120deg; --clock-minute-angle: 0deg;" aria-hidden="true"></span>
+            <div class="timeline-card__headline">
+              <span class="timeline-time">4:00 PM</span>
+              <strong>Ceremony begins</strong>
+            </div>
             <p>Main ceremony start time placeholder.</p>
           </article>
-          <article class="timeline-card">
-            <span class="timeline-time">4:30 PM</span>
-            <strong>Cocktail hour</strong>
+          <article class="timeline-card timeline-card--clock">
+            <span class="schedule-clock" style="--clock-hour-angle: 135deg; --clock-minute-angle: 180deg;" aria-hidden="true"></span>
+            <div class="timeline-card__headline">
+              <span class="timeline-time">4:30 PM</span>
+              <strong>Cocktail hour</strong>
+            </div>
             <p>Photos, drinks, and conversation while the couple finishes portraits.</p>
           </article>
-          <article class="timeline-card">
-            <span class="timeline-time">6:00 PM</span>
-            <strong>Reception</strong>
-            <p>Dinner, toasts, and the start of the celebration.</p>
+          <article class="timeline-card timeline-card--clock">
+            <span class="schedule-clock" style="--clock-hour-angle: 180deg; --clock-minute-angle: 0deg;" aria-hidden="true"></span>
+            <div class="timeline-card__headline">
+              <span class="timeline-time">6:00 PM</span>
+              <strong>Reception</strong>
+            </div>
+            <p>Dinner and the start of the celebration.</p>
+          </article>
+          <article class="timeline-card timeline-card--clock">
+            <span class="schedule-clock" style="--clock-hour-angle: 210deg; --clock-minute-angle: 0deg;" aria-hidden="true"></span>
+            <div class="timeline-card__headline">
+              <span class="timeline-time">7:00 PM</span>
+              <strong>Toasts</strong>
+            </div>
+            <p>Celebrate with speeches and special moments together.</p>
+          </article>
+          <article class="timeline-card timeline-card--clock">
+            <span class="schedule-clock" style="--clock-hour-angle: 240deg; --clock-minute-angle: 0deg;" aria-hidden="true"></span>
+            <div class="timeline-card__headline">
+              <span class="timeline-time">8:00 PM</span>
+              <strong>Dancing</strong>
+            </div>
+            <p>Join us on the dance floor as the party picks up.</p>
           </article>
         </div>
       </section>
 
       <section class="section" id="travel">
-        <p class="eyebrow">Travel & Stay</p>
-        <h2>Helpful planning for out-of-town guests.</h2>
-        <div class="grid grid--three">
+        <p class="eyebrow">Travel</p>
+        <h2>Find the week schedule, lodging, the area map, and our favorite local spots.</h2>
+        <div class="grid grid--two">
           <article class="content-block">
-            <p class="eyebrow">Airport</p>
-            <h3>Fly into San Antonio</h3>
-            <p>If most guests will use San Antonio International Airport, this is the natural place to say that and add average drive time to the venue.</p>
+            <div class="travel-card-head">
+              <div class="travel-card-copy">
+                <p class="eyebrow">Stay Nearby</p>
+                <h3>Travel &amp; Lodging</h3>
+              </div>
+              <span class="travel-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path fill="currentColor" d="M4 11a2 2 0 0 1 2-2h5V7a3 3 0 1 1 6 0v2h1a2 2 0 0 1 2 2v6h1v2h-2a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H3v-2h1v-6Zm9-4a1 1 0 1 1 2 0v2h-2V7Zm-7 4v3h12v-3H6Zm0 5v1h12v-1H6Z"/>
+                </svg>
+              </span>
+            </div>
+            <p>Open the stay section for airport notes, nearby rentals, cabin options, and hotel ideas for the weekend.</p>
+            <div class="button-row">
+              <a class="button" href="travel.html#travel-lodging">View Travel &amp; Lodging</a>
+            </div>
           </article>
           <article class="content-block">
-            <p class="eyebrow">Hotel Block</p>
-            <h3>Nearby stays</h3>
-            <p>Add the hotel block, booking deadline, and discount code here when ready.</p>
+            <div class="travel-card-head">
+              <div class="travel-card-copy">
+                <p class="eyebrow">Plan the Route</p>
+                <h3>Area Map</h3>
+              </div>
+              <span class="travel-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path fill="currentColor" d="M12 2c3.87 0 7 3.13 7 7 0 4.82-5.24 10.67-6.02 11.52a1.3 1.3 0 0 1-1.96 0C10.24 19.67 5 13.82 5 9c0-3.87 3.13-7 7-7Zm0 9.5A2.5 2.5 0 1 0 12 6.5a2.5 2.5 0 0 0 0 5Z"/>
+                </svg>
+              </span>
+            </div>
+            <p>Jump to the wedding weekend map to see the venue, places to stay, and nearby stops worth knowing about.</p>
+            <div class="button-row">
+              <a class="button" href="https://www.google.com/maps/d/u/0/viewer?mid=1ArVd3idrSCWELm_DqkL835Nko1QutW0&ll=29.966253269457013%2C-98.9321415&z=10" target="_blank" rel="noopener noreferrer">Open Area Map</a>
+            </div>
           </article>
           <article class="content-block">
-            <p class="eyebrow">Transportation</p>
-            <h3>Getting around</h3>
-            <p>Use this section for shuttle service, rideshare notes, or guest driving guidance.</p>
+            <div class="travel-card-head">
+              <div class="travel-card-copy">
+                <p class="eyebrow">Our Picks</p>
+                <h3>Hope &amp; Caleb's Favorites</h3>
+              </div>
+              <span class="travel-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path fill="currentColor" d="M12 21.35 10.55 20C5.4 15.24 2 12.09 2 8.25A5.25 5.25 0 0 1 7.25 3c1.74 0 3.41.81 4.5 2.09A6 6 0 0 1 16.25 3 5.25 5.25 0 0 1 21.5 8.25c0 3.84-3.4 6.99-8.55 11.76L12 21.35Z"/>
+                </svg>
+              </span>
+            </div>
+            <p>Browse a few of the places we would happily take you ourselves if we had extra time together that weekend.</p>
+            <div class="button-row">
+              <a class="button" href="travel.html#area-highlights">See Favorites</a>
+            </div>
+          </article>
+          <article class="content-block">
+            <div class="travel-card-head">
+              <div class="travel-card-copy">
+                <p class="eyebrow">Spend More Time</p>
+                <h3>Week Schedule</h3>
+              </div>
+              <span class="travel-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path fill="currentColor" d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm11 8H6v10h12V10ZM8 12h3v3H8v-3Z"/>
+                </svg>
+              </span>
+            </div>
+            <p>See the extra events around the wedding weekend so out-of-town guests can join us for more than just the ceremony.</p>
+            <div class="button-row">
+              <a class="button" href="travel.html#schedule">Open Week Schedule</a>
+            </div>
           </article>
         </div>
       </section>
@@ -253,16 +372,41 @@
       <section class="section" id="registry">
         <p class="eyebrow">Registry</p>
         <h2>Your presence is already a gift.</h2>
-        <div class="grid grid--two">
-          <article class="content-block">
-            <p>If you want to keep this minimal for now, this section works well with a short note and final links added later.</p>
+        <div class="registry-layout">
+          <article class="content-block registry-intro">
+            <p>We put together an Amazon registry with a few things that would help us start this next season. If you would like to bless us with a gift, you can open the registry on Amazon below.</p>
+            <div class="button-row">
+              <a class="button" href="#" data-registry-link target="_blank" rel="noreferrer noopener">Open Amazon Registry</a>
+            </div>
+            <p class="registry-note" data-registry-note>Your presence, prayers, and support mean more than anything.</p>
           </article>
-          <article class="content-block">
-            <ul class="list-clean">
-              <li>Main registry link</li>
-              <li>Home or kitchen favorites</li>
-              <li>Cash fund or honeymoon fund</li>
-            </ul>
+          <article class="registry-panel">
+            <div class="registry-panel__eyebrow">Registry Highlights</div>
+            <h3>A few things on our list</h3>
+            <p>We kept our registry practical and home-focused. Here are a few kinds of gifts guests will find when opening the full list on Amazon.</p>
+            <div class="registry-preview-grid" aria-label="Registry preview categories">
+              <article class="registry-preview-card">
+                <span class="registry-preview-card__kicker">Kitchen</span>
+                <h4>Cookware and everyday tools</h4>
+                <p>Pots, pans, utensils, and the basics that make daily meals easier.</p>
+              </article>
+              <article class="registry-preview-card">
+                <span class="registry-preview-card__kicker">Hosting</span>
+                <h4>Serveware and table pieces</h4>
+                <p>Simple pieces for dinners, gatherings, and having people over.</p>
+              </article>
+              <article class="registry-preview-card">
+                <span class="registry-preview-card__kicker">Home</span>
+                <h4>Bedroom and bath essentials</h4>
+                <p>Practical home staples that help us settle into married life well.</p>
+              </article>
+              <article class="registry-preview-card">
+                <span class="registry-preview-card__kicker">Appliances</span>
+                <h4>Small upgrades we will use often</h4>
+                <p>Helpful countertop and everyday-use items for the rhythm of home.</p>
+              </article>
+            </div>
+            <p class="registry-panel__foot">Open the Amazon registry to see the full list, current availability, and purchase options.</p>
           </article>
         </div>
       </section>

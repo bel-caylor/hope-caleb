@@ -1,6 +1,6 @@
 # Wedding Planner Proxy
 
-This Cloudflare Worker forwards standalone frontend RPC calls to the Apps Script planner backend.
+This Cloudflare Worker forwards standalone frontend RPC calls to the Apps Script planner backend and can also optionally proxy a public Amazon registry page for the root wedding site.
 
 ## Why use it
 
@@ -40,11 +40,27 @@ Use a value like:
 https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID
 ```
 
+Optional: store your Amazon registry URL if you want to experiment with an embedded registry view on the root website:
+
+```powershell
+npx wrangler secret put AMAZON_REGISTRY_URL
+```
+
 5. Deploy the worker:
 
 ```powershell
 npm run deploy
 ```
+
+## Amazon registry route
+
+When `AMAZON_REGISTRY_URL` is configured, the worker exposes:
+
+```text
+GET /amazon-registry
+```
+
+Use that URL as the `embedUrl` in the root [site.js](/C:/Users/belin/Local%20Sites/hope-caleb/site.js:1) config. The primary site experience only needs `publicUrl`.
 
 ## Standalone frontend
 

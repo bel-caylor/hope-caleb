@@ -80,6 +80,40 @@ const EVENT = {
 };
 ```
 
+## Add An Amazon Registry To The Landing Page
+
+The root wedding page supports a direct Amazon registry link by default. Open [site.js](/C:/Users/belin/Local%20Sites/hope-caleb/site.js:1) and set:
+
+```js
+const AMAZON_REGISTRY = {
+  publicUrl: "https://www.amazon.com/registries/...",
+  embedUrl: "https://your-worker.your-subdomain.workers.dev/amazon-registry"
+};
+```
+
+After `publicUrl` is filled in, the `#registry` section on the root page will show a live button that opens the Amazon registry directly.
+
+If you also want to experiment with an embedded proxy view, use the existing Cloudflare Worker:
+
+1. Set your public Amazon registry URL as a Worker secret:
+
+```powershell
+cd wedding-planner-proxy
+npx wrangler secret put AMAZON_REGISTRY_URL
+```
+
+2. Deploy the worker:
+
+```powershell
+npm run deploy
+```
+
+3. Set `embedUrl` in `site.js` to:
+
+```text
+https://your-worker.your-subdomain.workers.dev/amazon-registry
+```
+
 ## Connect Google Sheets
 
 1. Create a Google Spreadsheet.

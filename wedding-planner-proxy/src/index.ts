@@ -1,11 +1,14 @@
 type Env = {
   APPS_SCRIPT_BASE?: string;
+  AMAZON_REGISTRY_URL?: string;
 };
 
 const DEFAULT_APPS_SCRIPT_BASE = "";
+const DEFAULT_AMAZON_REGISTRY_URL = "";
 
 export default {
   async fetch(request: Request, env: Env) {
+    const url = new URL(request.url);
     const origin = request.headers.get("Origin") || "";
 
     if (request.method === "OPTIONS") {
@@ -13,6 +16,10 @@ export default {
     }
 
     if (request.method === "GET") {
+      if (url.pathname === "/amazon-registry") {
+        return proxyAmazonRegistry(env, origin);
+      }
+
       return new Response(JSON.stringify({
         ok: true,
         service: "wedding-planner-proxy"
@@ -88,11 +95,78 @@ export default {
   }
 };
 
+async function proxyAmazonRegistry(env: Env, origin: string) {
+  const registryUrl = normalizeAbsoluteUrl(env.AMAZON_REGISTRY_URL || DEFAULT_AMAZON_REGISTRY_URL);
+
+  if (!registryUrl) {
+    return jsonResponse({
+      ok: false,
+      error: "AMAZON_REGISTRY_URL is not configured in the worker."
+    }, origin, 500);
+  }
+
+  const upstream = await fetch(registryUrl, {
+    method: "GET",
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; HopeCalebWeddingSite/1.0)",
+      "Accept-Language": "en-US,en;q=0.9"
+    }
+  });
+
+  const html = await upstream.text();
+  if (!upstream.ok) {
+    return jsonResponse({
+      ok: false,
+      error: `Amazon registry upstream returned ${upstream.status}.`,
+      upstreamStatus: upstream.status,
+      upstreamSnippet: html.slice(0, 200)
+    }, origin, upstream.status);
+  }
+
+  const rewrittenHtml = html
+    .replace(/<base\b[^>]*>/gi, "")
+    .replace(/(<head[^>]*>)/i, `$1<base href="${registryUrl.endsWith("/") ? registryUrl : `${registryUrl}/`}">`)
+    .replace(/Content-Security-Policy/gi, "X-Original-Content-Security-Policy")
+    .replace(/X-Frame-Options/gi, "X-Original-X-Frame-Options");
+
+  return new Response(rewrittenHtml, {
+    status: 200,
+    headers: {
+      ...cors(origin),
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "public, max-age=300"
+    }
+  });
+}
+
 function normalizeAppsScriptBase(value: string) {
   return String(value || "")
     .trim()
     .replace(/\/exec\/?$/i, "")
     .replace(/\/+$/, "");
+}
+
+function normalizeAbsoluteUrl(value: string) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  try {
+    return new URL(trimmed).toString();
+  } catch {
+    return "";
+  }
+}
+
+function jsonResponse(payload: unknown, origin: string, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      ...cors(origin),
+      "Content-Type": "application/json"
+    }
+  });
 }
 
 function cors(origin: string) {

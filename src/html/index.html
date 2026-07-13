@@ -108,15 +108,10 @@
         display: block !important;
       }
 
-      .hero__slides,
       .hero__image,
       .hero__shade {
         position: absolute;
         inset: 0;
-      }
-
-      .hero__slides {
-        overflow: hidden;
       }
 
       .hero__image {
@@ -127,6 +122,14 @@
         object-position: 50% 38%;
         opacity: 1;
         filter: grayscale(1) contrast(1.05) brightness(0.9);
+      }
+
+      .hero__image--high {
+        object-position: 50% 24%;
+      }
+
+      .hero__image--low {
+        object-position: 50% 52%;
       }
 
       .hero__shade {
@@ -365,6 +368,52 @@
         align-items: stretch;
       }
 
+      .engagement-gallery-grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: 1fr;
+        margin-top: 1rem;
+        align-items: stretch;
+        justify-items: center;
+      }
+
+      .engagement-gallery-grid .story-slider {
+        width: 100%;
+        min-height: 0;
+        max-height: 90vh;
+        max-height: 90svh;
+      }
+
+      .engagement-gallery-grid .story-slider--square {
+        max-width: min(100%, 90vh);
+        max-width: min(100%, 90svh);
+      }
+
+      .engagement-gallery-grid .story-slider--portrait {
+        max-width: min(100%, calc(90vh * 0.75));
+        max-width: min(100%, calc(90svh * 0.75));
+      }
+
+      .engagement-gallery-grid .story-slider__viewport,
+      .engagement-gallery-grid .story-slider__viewport--wide {
+        min-height: 0;
+        height: auto;
+        max-height: 90vh;
+        max-height: 90svh;
+      }
+
+      .engagement-gallery-grid .story-slider__viewport--wide {
+        aspect-ratio: 1 / 1;
+      }
+
+      .engagement-gallery-grid .story-slider__viewport:not(.story-slider__viewport--wide) {
+        aspect-ratio: 3 / 4;
+      }
+
+      .engagement-gallery-grid .story-slider__image {
+        min-height: 0;
+      }
+
       .story-slider {
         position: relative;
         min-height: 28rem;
@@ -405,22 +454,50 @@
         bottom: 1rem;
         z-index: 1;
         display: flex;
-        gap: 0.5rem;
+        gap: 0.72rem;
         transform: translateX(-50%);
       }
 
       .story-slider__dot {
-        width: 0.72rem;
-        height: 0.72rem;
-        border: 1px solid rgba(255, 250, 247, 0.95);
-        border-radius: 999px;
+        position: relative;
+        width: 0.56rem;
+        height: 0.56rem;
+        border: 0;
         padding: 0;
-        background: rgba(255, 250, 247, 0.38);
+        background: var(--planner-danger);
         cursor: pointer;
+        overflow: visible;
+        opacity: 0.52;
+        transform: rotate(-45deg);
+        transition:
+          opacity 180ms ease,
+          transform 180ms ease;
+      }
+
+      .story-slider__dot::before,
+      .story-slider__dot::after {
+        content: "";
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--planner-danger);
+      }
+
+      .story-slider__dot::before {
+        top: -50%;
+        left: 0;
+      }
+
+      .story-slider__dot::after {
+        top: 0;
+        left: 50%;
       }
 
       .story-slider__dot.is-active {
-        background: rgba(255, 250, 247, 0.98);
+        background: var(--planner-danger);
+        opacity: 1;
+        transform: rotate(-45deg) scale(1.12);
       }
 
       .gallery-card--slider {
@@ -2998,6 +3075,7 @@
         .story,
         .future,
         .story-gallery-grid,
+        .engagement-gallery-grid,
         .planner-grid,
         .planner-shell__layout {
           grid-template-columns: 1fr;
@@ -3340,15 +3418,14 @@
   </head>
   <body>
     <header class="hero" id="home" data-view="home">
-      <div class="hero__slides" aria-hidden="true">
-        <img class="hero__image" src="/images/hero/engagement.jpg" alt="" loading="eager" fetchpriority="high" decoding="async">
-      </div>
+      <img class="hero__image hero__image--high" src="/images/engagement/port/I09A0198-port.JPG" alt="" aria-hidden="true" loading="eager" fetchpriority="high" decoding="async">
       <div class="hero__shade"></div>
       <nav class="nav" aria-label="App navigation">
         <a href="?view=home" data-route-link="home" class="nav__brand is-active">Hope & Caleb</a>
         <div class="nav__links">
           <a href="?view=home" data-route-link="home">Home</a>
           <a href="?view=planner" data-route-link="planner">Dashboard</a>
+          <a href="/story.html">Our Story</a>
           <a href="/celebration.html">Celebration</a>
           <a href="/slideshow.html">Slideshow</a>
         </div>
@@ -3413,62 +3490,42 @@
         </div>
       </section>
 
-      <section class="section story" data-view="home" aria-labelledby="home-story-heading">
-        <div class="story__text">
-          <p class="eyebrow">Our Story</p>
-          <h2 id="home-story-heading">Met at UTSA.</h2>
-          <p>
-            We met at UTSA in engineering school, started dating at the end of freshman year, and graduated together in Spring 2026. What began in the middle of classes, labs, and long study days grew into a relationship that carried us all the way to graduation and into this next season together. UTSA was where our story started, and those years shaped so much of who we are together. From engineering classes to everyday campus life, we built a friendship and relationship that kept growing through college, and we are so thankful for the people who supported us through school, celebrated these milestones with us, and continue cheering us on as we prepare for marriage.
-          </p>
-        </div>
-        <div class="story-slider" data-slider data-interval="2600" aria-label="Graduation photo gallery">
-          <div class="story-slider__viewport">
-            <img class="story-slider__image is-active" src="/images/graduation/standing grad.jpg" alt="Hope and Caleb together in graduation attire" loading="lazy" decoding="async">
-            <img class="story-slider__image" src="/images/graduation/stairs grad.jpg" alt="Hope and Caleb on the graduation steps" loading="lazy" decoding="async">
-            <img class="story-slider__image" src="/images/graduation/grad standing2.jpg" alt="Hope and Caleb smiling during graduation portraits" loading="lazy" decoding="async">
-            <img class="story-slider__image" src="/images/graduation/grad standing.jpg" alt="Hope and Caleb posing at UTSA graduation" loading="lazy" decoding="async">
-            <img class="story-slider__image" src="/images/graduation/celebration grad.jpg" alt="Hope and Caleb celebrating graduation together" loading="lazy" decoding="async">
-          </div>
-          <div class="story-slider__dots" aria-label="Graduation slider controls">
-            <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show graduation photo 1"></button>
-            <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show graduation photo 2"></button>
-            <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show graduation photo 3"></button>
-            <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show graduation photo 4"></button>
-            <button class="story-slider__dot" type="button" data-slider-dot="4" aria-label="Show graduation photo 5"></button>
-          </div>
-        </div>
-      </section>
-
-      <section class="section" data-view="home" aria-labelledby="home-colorado-heading">
-        <div class="story-gallery-grid">
-          <article class="gallery-card gallery-card--slider">
-            <p class="eyebrow">Graduation</p>
-            <h3>Spring 2026</h3>
-            <p>Photos from the season where we finished school together.</p>
-          </article>
-          <div class="story-slider" data-slider data-interval="3000" aria-label="Colorado photo gallery">
+      <section class="section" data-view="home" aria-labelledby="home-engagement-heading">
+        <p class="eyebrow">Engagement</p>
+        <h2 id="home-engagement-heading">Photos from the season before the wedding.</h2>
+        <div class="engagement-gallery-grid">
+          <div class="story-slider story-slider--square" data-slider data-interval="2800" aria-label="Square engagement photo gallery">
             <div class="story-slider__viewport story-slider__viewport--wide">
-              <img class="story-slider__image is-active" src="/images/colorado/mountain.jpg" alt="Hope and Caleb in the Colorado mountains" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="/images/colorado/engagement.jpg" alt="Hope and Caleb during their Colorado engagement session" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="/images/colorado/holding hands.jpg" alt="Hope and Caleb holding hands in Colorado" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="/images/colorado/lift.jpg" alt="Hope and Caleb riding a lift in Colorado" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="/images/colorado/mountain smiles.jpg" alt="Hope and Caleb smiling in the mountains" loading="lazy" decoding="async">
-              <img class="story-slider__image" src="/images/colorado/woods kiss.jpg" alt="Hope and Caleb kissing in the woods in Colorado" loading="lazy" decoding="async">
+              <img class="story-slider__image is-active" src="/images/engagement/square/I09A0168-SQ.JPG" alt="Hope and Caleb together during their engagement session" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="/images/engagement/square/I09A9638-SQ.JPG" alt="Hope and Caleb smiling in a square engagement portrait" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="/images/engagement/square/I09A9681-SQ.JPG" alt="Hope and Caleb close together during engagement photos" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="/images/engagement/square/I09A9889-SQ.JPG" alt="Hope and Caleb embracing in a square engagement photo" loading="lazy" decoding="async">
             </div>
-            <div class="story-slider__dots" aria-label="Colorado slider controls">
-              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show Colorado photo 1"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show Colorado photo 2"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show Colorado photo 3"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show Colorado photo 4"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="4" aria-label="Show Colorado photo 5"></button>
-              <button class="story-slider__dot" type="button" data-slider-dot="5" aria-label="Show Colorado photo 6"></button>
+            <div class="story-slider__dots" aria-label="Square engagement slider controls">
+              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show square engagement photo 1"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show square engagement photo 2"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show square engagement photo 3"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show square engagement photo 4"></button>
             </div>
           </div>
-          <article class="gallery-card gallery-card--slider">
-            <p class="eyebrow">Colorado</p>
-            <h3 id="home-colorado-heading">Mountain memories</h3>
-            <p>A few favorite photos from Colorado that we wanted to keep as part of this story.</p>
-          </article>
+          <div class="story-slider story-slider--portrait" data-slider data-interval="3000" aria-label="Engagement portrait photo gallery">
+            <div class="story-slider__viewport">
+              <img class="story-slider__image is-active" src="/images/engagement/port/I09A0198-port.JPG" alt="Hope and Caleb during their engagement portrait session" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="/images/engagement/port/I09A9423.jpg" alt="Hope and Caleb smiling together during engagement portraits" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="/images/engagement/port/I09A9627.jpg" alt="Hope and Caleb embracing during their engagement session" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="/images/engagement/port/I09A9520-port.JPG" alt="Hope and Caleb sharing a portrait moment outdoors" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="/images/engagement/port/I09A9557.jpg" alt="Hope and Caleb posing together for engagement photos" loading="lazy" decoding="async">
+              <img class="story-slider__image" src="/images/engagement/port/I09A9587-port.JPG" alt="Hope and Caleb close together during their portrait session" loading="lazy" decoding="async">
+            </div>
+            <div class="story-slider__dots" aria-label="Engagement portrait slider controls">
+              <button class="story-slider__dot is-active" type="button" data-slider-dot="0" aria-label="Show engagement portrait 1"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="1" aria-label="Show engagement portrait 2"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="2" aria-label="Show engagement portrait 3"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="3" aria-label="Show engagement portrait 4"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="4" aria-label="Show engagement portrait 5"></button>
+              <button class="story-slider__dot" type="button" data-slider-dot="5" aria-label="Show engagement portrait 6"></button>
+            </div>
+          </div>
         </div>
       </section>
 

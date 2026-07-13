@@ -11,6 +11,8 @@ const VERSION_FILE = path.join(ROOT, "src", "version.ts");
 const INCLUDE_FILES = ["util", "apps-planner"];
 const LEGACY_FILES = [
   "index.html",
+  "story.html",
+  "travel.html",
   "site.css",
   "site.js",
   "slideshow.html",
@@ -78,7 +80,15 @@ function copyFileToOut(relativePath) {
 
   const targetPath = path.join(OUT_DIR, relativePath);
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-  fs.copyFileSync(sourcePath, targetPath);
+  try {
+    fs.copyFileSync(sourcePath, targetPath);
+  } catch (error) {
+    if (error && (error.code === "EPERM" || error.code === "EACCES")) {
+      console.warn(`[standalone] skipped locked file: ${relativePath}`);
+      return;
+    }
+    throw error;
+  }
 }
 
 function copyDirectoryToOut(relativePath) {
@@ -88,7 +98,23 @@ function copyDirectoryToOut(relativePath) {
     return;
   }
 
-  fs.cpSync(sourcePath, path.join(OUT_DIR, relativePath), { recursive: true });
+  copyDirectoryRecursive(sourcePath, relativePath);
+}
+
+function copyDirectoryRecursive(sourcePath, relativePath) {
+  const entries = fs.readdirSync(sourcePath, { withFileTypes: true });
+
+  entries.forEach((entry) => {
+    const entrySourcePath = path.join(sourcePath, entry.name);
+    const entryRelativePath = path.join(relativePath, entry.name);
+
+    if (entry.isDirectory()) {
+      copyDirectoryRecursive(entrySourcePath, entryRelativePath);
+      return;
+    }
+
+    copyFileToOut(entryRelativePath);
+  });
 }
 
 function main() {
@@ -129,9 +155,9 @@ function main() {
     `content="${escapeHtml(plannerBuildVersion)}"`
   );
 
-  fs.rmSync(OUT_DIR, { recursive: true, force: true });
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(path.join(OUT_DIR, "dashboard.html"), html);
+  fs.writeFileSync(path.join(OUT_DIR, "Dashboard.html"), html);
   LEGACY_FILES.forEach(copyFileToOut);
   // Keep the root landing-page script available in dist-standalone for local/mobile testing.
   copyFileToOut("site.js");
@@ -139,6 +165,7 @@ function main() {
 
   console.log("Copied root static site files into dist-standalone/.");
   console.log("Built standalone dashboard shell at dist-standalone/dashboard.html from src/html/index.html.");
+  console.log("Wrote legacy uppercase entry at dist-standalone/Dashboard.html for case-sensitive hosts and old links.");
   if (!googleClientId) {
     console.warn("[standalone] GOOGLE_CLIENT_ID is empty. Google sign-in will not render until you set it in the environment or .env.standalone.local.");
   }
