@@ -7,12 +7,20 @@ const AMAZON_REGISTRY = {
   embedUrl: ""
 };
 
+const HONEYMOON_OPTIONS = {
+  zelleEmail: "Hccaylor+wedding@gmail.com",
+  venmoUrl: ""
+};
+
 document.querySelectorAll("[data-wedding-date]").forEach((element) => {
   element.textContent = HOME_EVENT.weddingDateLabel;
 });
 
 const registryLink = document.querySelector("[data-registry-link]");
 const registryNote = document.querySelector("[data-registry-note]");
+const zelleCopyButton = document.querySelector("[data-copy-zelle]");
+const zelleFeedback = document.querySelector("[data-zelle-feedback]");
+const venmoLink = document.querySelector("[data-venmo-link]");
 
 if (registryLink) {
   if (AMAZON_REGISTRY.publicUrl) {
@@ -25,6 +33,38 @@ if (registryLink) {
     if (registryNote) {
       registryNote.textContent = "The Amazon registry link will be added here once it is ready.";
     }
+  }
+}
+
+if (zelleCopyButton) {
+  zelleCopyButton.addEventListener("click", async () => {
+    const copyValue = zelleCopyButton.getAttribute("data-copy-value") || HONEYMOON_OPTIONS.zelleEmail;
+
+    try {
+      await navigator.clipboard.writeText(copyValue);
+      if (zelleFeedback) {
+        zelleFeedback.textContent = "Zelle email copied. Paste it into your bank's Zelle recipient field.";
+      }
+      zelleCopyButton.textContent = "Copied";
+      window.setTimeout(() => {
+        zelleCopyButton.textContent = "Copy Zelle Email";
+      }, 1800);
+    } catch (error) {
+      if (zelleFeedback) {
+        zelleFeedback.textContent = `Copy failed. Use this email manually: ${copyValue}`;
+      }
+    }
+  });
+}
+
+if (venmoLink) {
+  if (HONEYMOON_OPTIONS.venmoUrl) {
+    venmoLink.href = HONEYMOON_OPTIONS.venmoUrl;
+    venmoLink.removeAttribute("aria-disabled");
+  } else {
+    venmoLink.removeAttribute("href");
+    venmoLink.classList.add("button--ghost");
+    venmoLink.setAttribute("aria-disabled", "true");
   }
 }
 
