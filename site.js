@@ -13,7 +13,7 @@ const HONEYMOON_OPTIONS = {
 };
 
 const HOME_RSVP = {
-  scriptUrl: "https://script.google.com/macros/s/AKfycbwcTxUjQGfnTQ7Vs4OqNisyqqgL_Qkua9kVPwVIx2-cS8TvD12rmhnt8JTvhtYQmIco/exec",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbzIP5FoYEKyMLdHkTgicMddzksDtDitR7lJQbEVlfHAubdNzjbwnGccnAUNoU03a_n1/exec",
   deadlineLabel: "Please reply by December 1, 2026."
 };
 
@@ -620,6 +620,16 @@ function normalizeLookupGroup(item) {
     invitedOpenHouse: isTruthyInvitationValue(item?.invitedOpenHouse),
     childrenCount: normalizeWholeNumber(item?.childrenCount),
     maxPlusOnes: normalizeWholeNumber(item?.maxPlusOnes),
+    weddingRsvp: normalizeLookupAnswer(item?.weddingRsvp || item?.savedWeddingRsvp),
+    rehearsalRsvp: normalizeLookupAnswer(item?.rehearsalRsvp || item?.savedRehearsalRsvp),
+    openHouseRsvp: normalizeLookupAnswer(item?.openHouseRsvp || item?.savedOpenHouseRsvp),
+    savedEmail: String(item?.savedEmail || item?.email || "").trim(),
+    savedComment: String(item?.savedComment || "").trim(),
+    savedPlusOneCount: normalizeWholeNumber(item?.savedPlusOneCount),
+    savedPlusOneName: String(item?.savedPlusOneName || "").trim(),
+    savedChildrenCount: normalizeWholeNumber(item?.savedChildrenCount),
+    savedChildrenNote: String(item?.savedChildrenNote || "").trim(),
+    notes: String(item?.notes || "").trim(),
     lookupCode: String(item?.lookupCode || "").trim()
   };
 }
@@ -687,6 +697,16 @@ function getGroupRecord(groupName) {
     invitedOpenHouse: false,
     childrenCount: members.reduce((sum, member) => sum + member.childrenAllowed, 0),
     maxPlusOnes: members.reduce((sum, member) => sum + member.plusOnesAllowed, 0),
+    weddingRsvp: "",
+    rehearsalRsvp: "",
+    openHouseRsvp: "",
+    savedEmail: "",
+    savedComment: "",
+    savedPlusOneCount: 0,
+    savedPlusOneName: "",
+    savedChildrenCount: 0,
+    savedChildrenNote: "",
+    notes: "",
     lookupCode: ""
   };
 }
@@ -751,7 +771,11 @@ function renderRsvpEditor(group) {
     rsvpContactName.value = group.primaryContact || members[0]?.name || "";
   }
   if (rsvpEmail) {
-    rsvpEmail.value = group.email || "";
+    rsvpEmail.value = group.savedEmail || group.email || "";
+  }
+  const commentField = rsvpResponseForm.elements.namedItem("comment");
+  if (commentField instanceof HTMLTextAreaElement) {
+    commentField.value = group.savedComment || "";
   }
 
   rsvpMembers.innerHTML = members.map((member) => `
@@ -772,8 +796,23 @@ function renderRsvpEditor(group) {
     </article>
   `).join("");
 
+  members.forEach((member) => {
+    const selectedValue = normalizeLookupAnswer(member.rsvp);
+    if (!selectedValue) {
+      return;
+    }
+
+    const selectedInput = rsvpResponseForm.querySelector(
+      `[name="member-${escapeForId(member.name)}"][value="${selectedValue}"]`
+    );
+    if (selectedInput instanceof HTMLInputElement) {
+      selectedInput.checked = true;
+    }
+  });
+
   if (group.invitedRehearsal) {
     rsvpRehearsalSection.hidden = false;
+    rsvpResponseForm.elements.namedItem("rehearsalRsvp").value = group.rehearsalRsvp || "";
   } else {
     rsvpRehearsalSection.hidden = true;
     rsvpResponseForm.elements.namedItem("rehearsalRsvp").value = "";
@@ -781,6 +820,7 @@ function renderRsvpEditor(group) {
 
   if (group.invitedOpenHouse) {
     rsvpOpenHouseSection.hidden = false;
+    rsvpResponseForm.elements.namedItem("openHouseRsvp").value = group.openHouseRsvp || "";
   } else {
     rsvpOpenHouseSection.hidden = true;
     rsvpResponseForm.elements.namedItem("openHouseRsvp").value = "";
@@ -795,6 +835,8 @@ function renderRsvpEditor(group) {
     rsvpPlusOneCopy.textContent = `Your invitation includes up to ${maxPlusOnes} plus-one${maxPlusOnes === 1 ? "" : "s"}.`;
     fillCountSelect(rsvpPlusOneCount, maxPlusOnes);
     rsvpPlusOneName.placeholder = maxPlusOnes === 1 ? "Optional" : "Optional names";
+    rsvpPlusOneCount.value = String(Math.min(group.savedPlusOneCount || 0, maxPlusOnes));
+    rsvpPlusOneName.value = group.savedPlusOneName || "";
   } else {
     rsvpPlusOneSection.hidden = true;
     fillCountSelect(rsvpPlusOneCount, 0);
@@ -804,6 +846,7 @@ function renderRsvpEditor(group) {
   if (childAllowance > 0) {
     rsvpChildrenSection.hidden = false;
     fillCountSelect(rsvpChildrenCount, childAllowance);
+    rsvpChildrenCount.value = String(Math.min(group.savedChildrenCount || 0, childAllowance));
   } else {
     rsvpChildrenSection.hidden = true;
     fillCountSelect(rsvpChildrenCount, 0);
@@ -867,6 +910,27 @@ function setRsvpStatus(element, message, tone = "success") {
   } else {
     delete element.dataset.tone;
   }
+}
+
+function normalizeLookupAnswer(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) {
+    return "";
+  }
+
+  if (["yes", "y", "attending", "accept", "accepted"].includes(normalized)) {
+    return "attending";
+  }
+
+  if (["no", "n", "not attending", "declined", "decline"].includes(normalized)) {
+    return "not-attending";
+  }
+
+  if (normalized === "partial") {
+    return "";
+  }
+
+  return normalized;
 }
 
 function normalizeNamePart(value) {

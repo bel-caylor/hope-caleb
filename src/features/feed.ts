@@ -733,8 +733,10 @@ function readPublicGuestLookupRows() {
 
 function readPublicGroupLookupRows() {
   const rows = readSheetObjects(GROUPS_SHEET);
+  const latestGroupRsvps = readLatestGroupRsvpMap();
 
   return rows.map((row) => ({
+    ...latestGroupRsvps.get(firstNonEmptyValue(row, [/^group$/i, /group\s*(name|id)/i])) || {},
     rowNumber: String(row.__rowNumber || ""),
     group: firstNonEmptyValue(row, [/^group$/i, /group\s*(name|id)/i]),
     displayName: firstNonEmptyValue(row, [/^display\s*name$/i, /invitation/i]),
@@ -745,8 +747,39 @@ function readPublicGroupLookupRows() {
     invitedOpenHouse: firstNonEmptyValue(row, [/^invited\s*open\s*house$/i]),
     childrenCount: firstNonEmptyValue(row, [/^(invited\s*)?#\s*(of\s*)?(children|child|kids?)$/i, /^children$/i, /children\s*count/i, /invited.*children/i]),
     maxPlusOnes: firstNonEmptyValue(row, [/^max\s*plus\s*ones$/i, /plus\s*ones/i]),
+    weddingRsvp: firstNonEmptyValue(row, [/^wedding\s*rsvp$/i, /^rsvp$/i]),
+    rehearsalRsvp: firstNonEmptyValue(row, [/^rehearsal\s*rsvp$/i]),
+    openHouseRsvp: firstNonEmptyValue(row, [/^open\s*house\s*rsvp$/i]),
+    notes: firstNonEmptyValue(row, [/^notes$/i, /comment/i]),
     lookupCode: firstNonEmptyValue(row, [/^lookup\s*code$/i])
   }));
+}
+
+function readLatestGroupRsvpMap() {
+  const rows = readRows(RSVP_SHEET);
+  const latestByGroup = new Map<string, Record<string, string>>();
+
+  rows.forEach((row) => {
+    const formType = String(row["Form Type"] || "").trim().toLowerCase();
+    const groupName = String(row.Group || "").trim();
+    if (formType !== "group-rsvp" || !groupName) {
+      return;
+    }
+
+    latestByGroup.set(groupName, {
+      savedEmail: String(row.Email || "").trim(),
+      savedComment: String(row.Comment || "").trim(),
+      savedWeddingRsvp: String(row["Wedding RSVP Summary"] || "").trim(),
+      savedRehearsalRsvp: String(row["Rehearsal RSVP"] || "").trim(),
+      savedOpenHouseRsvp: String(row["Open House RSVP"] || "").trim(),
+      savedPlusOneCount: String(row["Plus One Count"] || "").trim(),
+      savedPlusOneName: String(row["Plus One Name"] || "").trim(),
+      savedChildrenCount: String(row["Children Count"] || "").trim(),
+      savedChildrenNote: String(row["Children Note"] || "").trim()
+    });
+  });
+
+  return latestByGroup;
 }
 
 function firstNonEmptyValue(record: Record<string, string>, patterns: RegExp[], exclusions: string[] = []) {
