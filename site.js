@@ -12,6 +12,11 @@ const HONEYMOON_OPTIONS = {
   venmoUrl: ""
 };
 
+const HOME_RSVP = {
+  scriptUrl: "https://script.google.com/macros/s/AKfycbwcTxUjQGfnTQ7Vs4OqNisyqqgL_Qkua9kVPwVIx2-cS8TvD12rmhnt8JTvhtYQmIco/exec",
+  deadlineLabel: "Please reply by December 1, 2026."
+};
+
 document.querySelectorAll("[data-wedding-date]").forEach((element) => {
   element.textContent = HOME_EVENT.weddingDateLabel;
 });
@@ -21,6 +26,39 @@ const registryNote = document.querySelector("[data-registry-note]");
 const zelleCopyButton = document.querySelector("[data-copy-zelle]");
 const zelleFeedback = document.querySelector("[data-zelle-feedback]");
 const venmoLink = document.querySelector("[data-venmo-link]");
+const rsvpLookupCard = document.querySelector("[data-rsvp-lookup-card]");
+const rsvpLookupForm = document.querySelector("[data-rsvp-lookup-form]");
+const rsvpLookupStatus = document.querySelector("[data-rsvp-lookup-status]");
+const rsvpGroupPicker = document.querySelector("[data-rsvp-group-picker]");
+const rsvpGroupList = document.querySelector("[data-rsvp-group-list]");
+const rsvpEditor = document.querySelector("[data-rsvp-editor]");
+const rsvpResponseForm = document.querySelector("[data-rsvp-response-form]");
+const rsvpMembers = document.querySelector("[data-rsvp-members]");
+const rsvpRehearsalSection = document.querySelector("[data-rsvp-rehearsal-section]");
+const rsvpOpenHouseSection = document.querySelector("[data-rsvp-open-house-section]");
+const rsvpOutOfTownSection = document.querySelector("[data-rsvp-out-of-town-section]");
+const rsvpGuestExtras = document.querySelector("[data-rsvp-guest-extras]");
+const rsvpPlusOneSection = document.querySelector("[data-rsvp-plus-one-section]");
+const rsvpChildrenSection = document.querySelector("[data-rsvp-children-section]");
+const rsvpPlusOneCopy = document.querySelector("[data-rsvp-plus-one-copy]");
+const rsvpPlusOneCount = document.querySelector("[data-rsvp-plus-one-count]");
+const rsvpPlusOneName = document.querySelector("[data-rsvp-plus-one-name]");
+const rsvpChildrenCount = document.querySelector("[data-rsvp-children-count]");
+const rsvpContactName = document.querySelector("[data-rsvp-contact-name]");
+const rsvpEmail = document.querySelector("[data-rsvp-email]");
+const rsvpSubmitStatus = document.querySelector("[data-rsvp-submit-status]");
+const rsvpChangePartyButton = document.querySelector("[data-rsvp-change-party]");
+
+const rsvpState = {
+  loaded: false,
+  loading: false,
+  guests: [],
+  groups: [],
+  lookupFirstName: "",
+  lookupLastName: "",
+  matches: [],
+  selectedGroup: null
+};
 
 if (registryLink) {
   if (AMAZON_REGISTRY.publicUrl) {
@@ -292,3 +330,583 @@ storySliders.forEach((slider) => {
     }
   }, intervalMs);
 });
+
+if (rsvpLookupForm && rsvpResponseForm) {
+  rsvpLookupForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(rsvpLookupForm);
+    const firstName = normalizeNamePart(formData.get("firstName"));
+    const lastName = normalizeNamePart(formData.get("lastName"));
+
+    await runRsvpLookup(firstName, lastName, { updateUrl: true });
+  });
+
+  rsvpResponseForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!HOME_RSVP.scriptUrl) {
+      setRsvpStatus(rsvpSubmitStatus, "Add your Apps Script URL in site.js before publishing the RSVP form.", "error");
+      return;
+    }
+
+    const selectedGroup = rsvpState.selectedGroup;
+    if (!selectedGroup) {
+      setRsvpStatus(rsvpSubmitStatus, "Choose your invitation first.", "error");
+      return;
+    }
+
+    const memberInputs = Array.from(rsvpResponseForm.querySelectorAll("[data-rsvp-member-select]"));
+    const weddingSelections = memberInputs.reduce((acc, input) => {
+      const guestName = input.getAttribute("data-guest-name") || "";
+      if (guestName && input.checked) {
+        acc[guestName] = input.value;
+      }
+      return acc;
+    }, {});
+
+    if (!Object.keys(weddingSelections).length) {
+      setRsvpStatus(rsvpSubmitStatus, "We couldn't find the wedding guest list for this party.", "error");
+      return;
+    }
+
+    const unansweredWeddingGuest = Object.entries(weddingSelections).find(([, value]) => !value);
+    if (unansweredWeddingGuest) {
+      setRsvpStatus(rsvpSubmitStatus, `Please choose a wedding response for ${unansweredWeddingGuest[0]}.`, "error");
+      return;
+    }
+
+    const rehearsalSelect = rsvpResponseForm.elements.namedItem("rehearsalRsvp");
+    if (!rsvpRehearsalSection.hidden && !rehearsalSelect.value) {
+      setRsvpStatus(rsvpSubmitStatus, "Please choose a rehearsal dinner response.", "error");
+      return;
+    }
+
+    const openHouseSelect = rsvpResponseForm.elements.namedItem("openHouseRsvp");
+    if (!rsvpOpenHouseSection.hidden && !openHouseSelect.value) {
+      setRsvpStatus(rsvpSubmitStatus, "Please choose an open house response.", "error");
+      return;
+    }
+
+    const submitButton = rsvpResponseForm.querySelector("button[type='submit']");
+    submitButton.disabled = true;
+    submitButton.textContent = "Sending...";
+    setRsvpStatus(rsvpSubmitStatus, "Sending your RSVP...", "pending");
+
+    try {
+      const payload = new FormData(rsvpResponseForm);
+      payload.set("submittedAt", new Date().toISOString());
+      payload.set("formType", "group-rsvp");
+      payload.set("lookupFirstName", rsvpState.lookupFirstName);
+      payload.set("lookupLastName", rsvpState.lookupLastName);
+      payload.set("weddingSelections", JSON.stringify(weddingSelections));
+
+      await fetch(HOME_RSVP.scriptUrl, {
+        method: "POST",
+        mode: "no-cors",
+        body: payload
+      });
+
+      setRsvpStatus(rsvpSubmitStatus, "Thank you. Your RSVP has been sent.", "success");
+      submitButton.textContent = "Sent";
+      window.setTimeout(() => {
+        submitButton.textContent = "Send RSVP";
+        submitButton.disabled = false;
+      }, 1800);
+    } catch (error) {
+      submitButton.textContent = "Send RSVP";
+      submitButton.disabled = false;
+      setRsvpStatus(rsvpSubmitStatus, "Something went wrong sending the RSVP. Please try again.", "error");
+    }
+  });
+
+  rsvpChangePartyButton?.addEventListener("click", () => {
+    showRsvpLookupCard();
+    hideRsvpEditor();
+    hideGroupPicker();
+    if (rsvpState.matches.length > 1) {
+      renderGroupPicker(rsvpState.matches);
+    }
+  });
+
+  hydrateRsvpLookupFromUrl();
+}
+
+async function runRsvpLookup(firstName, lastName, options = {}) {
+  const { updateUrl = false, allowSwapFallback = false } = options;
+
+  if (!firstName || !lastName) {
+    setRsvpStatus(rsvpLookupStatus, "Enter both a first name and a last name.", "error");
+    return;
+  }
+
+  setRsvpStatus(rsvpLookupStatus, "Looking up your invitation...", "pending");
+
+  try {
+    await ensureRsvpLookupData();
+    let resolvedFirstName = firstName;
+    let resolvedLastName = lastName;
+    let matches = findMatchingGroups(resolvedFirstName, resolvedLastName);
+
+    if (!matches.length && allowSwapFallback) {
+      const swappedMatches = findMatchingGroups(lastName, firstName);
+      if (swappedMatches.length) {
+        resolvedFirstName = lastName;
+        resolvedLastName = firstName;
+        matches = swappedMatches;
+        syncRsvpLookupInputs(resolvedFirstName, resolvedLastName);
+      }
+    }
+
+    rsvpState.lookupFirstName = resolvedFirstName;
+    rsvpState.lookupLastName = resolvedLastName;
+    rsvpState.matches = matches;
+    rsvpState.selectedGroup = null;
+
+    syncRsvpLookupUrl(resolvedFirstName, resolvedLastName, updateUrl);
+    hideRsvpEditor();
+
+    if (!matches.length) {
+      showRsvpLookupCard();
+      hideGroupPicker();
+      setRsvpStatus(rsvpLookupStatus, "We couldn't find a matching invitation. Double-check the spelling and try again.", "error");
+      return;
+    }
+
+    if (matches.length === 1) {
+      setRsvpStatus(rsvpLookupStatus, "Invitation found.", "success");
+      selectRsvpGroup(matches[0]);
+      return;
+    }
+
+    renderGroupPicker(matches);
+    setRsvpStatus(rsvpLookupStatus, "We found more than one possible invitation. Choose your party below.", "success");
+  } catch (error) {
+    setRsvpStatus(rsvpLookupStatus, error.message || "Unable to load the RSVP lookup right now.", "error");
+  }
+}
+
+function hydrateRsvpLookupFromUrl() {
+  if (!rsvpLookupForm) {
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const firstName = normalizeNamePart(params.get("firstName"));
+  const lastName = normalizeNamePart(params.get("lastName"));
+
+  if (!firstName || !lastName) {
+    return;
+  }
+
+  syncRsvpLookupInputs(firstName, lastName);
+  void runRsvpLookup(firstName, lastName, { allowSwapFallback: true });
+}
+
+function syncRsvpLookupUrl(firstName, lastName, shouldPushState) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("firstName", firstName);
+  url.searchParams.set("lastName", lastName);
+
+  if (shouldPushState) {
+    window.history.pushState({}, "", url);
+  } else {
+    window.history.replaceState({}, "", url);
+  }
+}
+
+function syncRsvpLookupInputs(firstName, lastName) {
+  if (!rsvpLookupForm) {
+    return;
+  }
+
+  const firstNameInput = rsvpLookupForm.elements.namedItem("firstName");
+  const lastNameInput = rsvpLookupForm.elements.namedItem("lastName");
+
+  if (firstNameInput instanceof HTMLInputElement) {
+    firstNameInput.value = firstName;
+  }
+
+  if (lastNameInput instanceof HTMLInputElement) {
+    lastNameInput.value = lastName;
+  }
+}
+
+async function ensureRsvpLookupData() {
+  if (rsvpState.loaded || rsvpState.loading) {
+    if (rsvpState.loading) {
+      await waitForRsvpLookupData();
+    }
+    return;
+  }
+
+  if (!HOME_RSVP.scriptUrl) {
+    throw new Error("Add your Apps Script URL in site.js before publishing the RSVP form.");
+  }
+
+  rsvpState.loading = true;
+
+  try {
+    const payload = await loadRsvpJsonp();
+    rsvpState.guests = Array.isArray(payload?.guests) ? payload.guests.map(normalizeLookupGuest) : [];
+    rsvpState.groups = Array.isArray(payload?.groups) ? payload.groups.map(normalizeLookupGroup) : [];
+    rsvpState.loaded = true;
+  } finally {
+    rsvpState.loading = false;
+  }
+}
+
+function waitForRsvpLookupData() {
+  return new Promise((resolve) => {
+    const timer = window.setInterval(() => {
+      if (!rsvpState.loading) {
+        window.clearInterval(timer);
+        resolve();
+      }
+    }, 60);
+  });
+}
+
+function loadRsvpJsonp() {
+  return new Promise((resolve, reject) => {
+    const callbackName = `homeRsvpLookup${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+    const script = document.createElement("script");
+    const separator = HOME_RSVP.scriptUrl.includes("?") ? "&" : "?";
+
+    window[callbackName] = (data) => {
+      cleanup();
+      resolve(data || {});
+    };
+
+    const cleanup = () => {
+      delete window[callbackName];
+      script.remove();
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Unable to load the RSVP lookup right now."));
+    };
+
+    script.src = `${HOME_RSVP.scriptUrl}${separator}callback=${callbackName}`;
+    document.body.appendChild(script);
+  });
+}
+
+function normalizeLookupGuest(item) {
+  const fullName = String(item?.name || "").trim();
+  return {
+    rowNumber: Number(item?.rowNumber || 0),
+    name: fullName,
+    firstName: normalizeNamePart(item?.firstName || extractFirstName(fullName)),
+    lastName: normalizeNamePart(item?.lastName || extractLastName(fullName)),
+    group: String(item?.group || "").trim(),
+    type: String(item?.type || "").trim(),
+    plusOnesAllowed: normalizeWholeNumber(item?.plusOnesAllowed),
+    childrenAllowed: normalizeWholeNumber(item?.childrenAllowed),
+    rsvp: String(item?.rsvp || "").trim(),
+    plusOneRsvp: String(item?.plusOneRsvp || "").trim()
+  };
+}
+
+function normalizeLookupGroup(item) {
+  return {
+    rowNumber: Number(item?.rowNumber || 0),
+    group: String(item?.group || "").trim(),
+    displayName: String(item?.displayName || item?.group || "").trim(),
+    primaryContact: String(item?.primaryContact || "").trim(),
+    email: String(item?.email || "").trim(),
+    phone: String(item?.phone || "").trim(),
+    invitedRehearsal: isTruthyInvitationValue(item?.invitedRehearsal),
+    invitedOpenHouse: isTruthyInvitationValue(item?.invitedOpenHouse),
+    childrenCount: normalizeWholeNumber(item?.childrenCount),
+    maxPlusOnes: normalizeWholeNumber(item?.maxPlusOnes),
+    lookupCode: String(item?.lookupCode || "").trim()
+  };
+}
+
+function findMatchingGroups(firstName, lastName) {
+  const matchingGuests = rsvpState.guests.filter((guest) => {
+    return guest.group
+      && guest.lastName === lastName
+      && guest.firstName === firstName;
+  });
+
+  const uniqueGroups = new Map();
+  matchingGuests.forEach((guest) => {
+    const groupRecord = getGroupRecord(guest.group);
+    if (!groupRecord) {
+      return;
+    }
+
+    if (!uniqueGroups.has(groupRecord.group)) {
+      uniqueGroups.set(groupRecord.group, {
+        ...groupRecord,
+        members: getGuestsForGroup(groupRecord.group)
+      });
+    }
+  });
+
+  if (uniqueGroups.size) {
+    return Array.from(uniqueGroups.values());
+  }
+
+  const fallbackGuests = rsvpState.guests.filter((guest) => guest.group && guest.lastName === lastName);
+  fallbackGuests.forEach((guest) => {
+    const groupRecord = getGroupRecord(guest.group);
+    if (!groupRecord || uniqueGroups.has(groupRecord.group)) {
+      return;
+    }
+
+    uniqueGroups.set(groupRecord.group, {
+      ...groupRecord,
+      members: getGuestsForGroup(groupRecord.group)
+    });
+  });
+
+  return Array.from(uniqueGroups.values());
+}
+
+function getGroupRecord(groupName) {
+  const fromSheet = rsvpState.groups.find((group) => group.group === groupName);
+  if (fromSheet) {
+    return fromSheet;
+  }
+
+  const members = getGuestsForGroup(groupName);
+  if (!members.length) {
+    return null;
+  }
+
+  return {
+    group: groupName,
+    displayName: groupName.replace(/[_-]+/g, " "),
+    primaryContact: members[0].name,
+    email: "",
+    phone: "",
+    invitedRehearsal: false,
+    invitedOpenHouse: false,
+    childrenCount: members.reduce((sum, member) => sum + member.childrenAllowed, 0),
+    maxPlusOnes: members.reduce((sum, member) => sum + member.plusOnesAllowed, 0),
+    lookupCode: ""
+  };
+}
+
+function getGuestsForGroup(groupName) {
+  return rsvpState.guests
+    .filter((guest) => guest.group === groupName)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function renderGroupPicker(matches) {
+  if (!rsvpGroupPicker || !rsvpGroupList) {
+    return;
+  }
+
+  rsvpGroupList.innerHTML = matches.map((group) => `
+    <button class="rsvp-group-button" type="button" data-rsvp-group="${escapeHtml(group.group)}">
+      <strong>${escapeHtml(group.displayName || group.group)}</strong>
+      <span>${escapeHtml(group.members.map((member) => member.name).join(", "))}</span>
+    </button>
+  `).join("");
+
+  rsvpGroupList.querySelectorAll("[data-rsvp-group]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextGroup = matches.find((group) => group.group === button.getAttribute("data-rsvp-group"));
+      if (nextGroup) {
+        selectRsvpGroup(nextGroup);
+      }
+    });
+  });
+
+  rsvpGroupPicker.hidden = false;
+}
+
+function hideGroupPicker() {
+  if (rsvpGroupPicker) {
+    rsvpGroupPicker.hidden = true;
+  }
+}
+
+function selectRsvpGroup(group) {
+  rsvpState.selectedGroup = group;
+  hideRsvpLookupCard();
+  hideGroupPicker();
+  renderRsvpEditor(group);
+}
+
+function renderRsvpEditor(group) {
+  if (!rsvpEditor || !rsvpResponseForm || !rsvpMembers) {
+    return;
+  }
+
+  const members = group.members || [];
+  const maxPlusOnes = Number(group.maxPlusOnes || 0);
+  const childAllowance = Number(group.childrenCount || 0);
+
+  rsvpResponseForm.reset();
+  rsvpResponseForm.elements.namedItem("group").value = group.group;
+  rsvpResponseForm.elements.namedItem("lookupFirstName").value = rsvpState.lookupFirstName;
+  rsvpResponseForm.elements.namedItem("lookupLastName").value = rsvpState.lookupLastName;
+  if (rsvpContactName) {
+    rsvpContactName.value = group.primaryContact || members[0]?.name || "";
+  }
+  if (rsvpEmail) {
+    rsvpEmail.value = group.email || "";
+  }
+
+  rsvpMembers.innerHTML = members.map((member) => `
+    <article class="rsvp-member-card">
+      <div class="rsvp-member-card__head">
+        <strong>${escapeHtml(member.name)}</strong>
+        <div class="rsvp-choice-pills">
+          <label>
+            <input type="radio" name="member-${escapeForId(member.name)}" value="attending" data-rsvp-member-select data-guest-name="${escapeHtml(member.name)}">
+            <span>Attending</span>
+          </label>
+          <label>
+            <input type="radio" name="member-${escapeForId(member.name)}" value="not-attending" data-rsvp-member-select data-guest-name="${escapeHtml(member.name)}">
+            <span>Not attending</span>
+          </label>
+        </div>
+      </div>
+    </article>
+  `).join("");
+
+  if (group.invitedRehearsal) {
+    rsvpRehearsalSection.hidden = false;
+  } else {
+    rsvpRehearsalSection.hidden = true;
+    rsvpResponseForm.elements.namedItem("rehearsalRsvp").value = "";
+  }
+
+  if (group.invitedOpenHouse) {
+    rsvpOpenHouseSection.hidden = false;
+  } else {
+    rsvpOpenHouseSection.hidden = true;
+    rsvpResponseForm.elements.namedItem("openHouseRsvp").value = "";
+  }
+
+  if (rsvpOutOfTownSection) {
+    rsvpOutOfTownSection.hidden = rsvpRehearsalSection.hidden && rsvpOpenHouseSection.hidden;
+  }
+
+  if (maxPlusOnes > 0) {
+    rsvpPlusOneSection.hidden = false;
+    rsvpPlusOneCopy.textContent = `Your invitation includes up to ${maxPlusOnes} plus-one${maxPlusOnes === 1 ? "" : "s"}.`;
+    fillCountSelect(rsvpPlusOneCount, maxPlusOnes);
+    rsvpPlusOneName.placeholder = maxPlusOnes === 1 ? "Optional" : "Optional names";
+  } else {
+    rsvpPlusOneSection.hidden = true;
+    fillCountSelect(rsvpPlusOneCount, 0);
+    rsvpPlusOneName.value = "";
+  }
+
+  if (childAllowance > 0) {
+    rsvpChildrenSection.hidden = false;
+    fillCountSelect(rsvpChildrenCount, childAllowance);
+  } else {
+    rsvpChildrenSection.hidden = true;
+    fillCountSelect(rsvpChildrenCount, 0);
+  }
+
+  syncRsvpGuestExtrasLayout();
+
+  setRsvpStatus(rsvpSubmitStatus, "", "");
+  rsvpEditor.hidden = false;
+  rsvpEditor.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function hideRsvpEditor() {
+  if (rsvpEditor) {
+    rsvpEditor.hidden = true;
+  }
+}
+
+function hideRsvpLookupCard() {
+  if (rsvpLookupCard) {
+    rsvpLookupCard.hidden = true;
+  }
+}
+
+function showRsvpLookupCard() {
+  if (rsvpLookupCard) {
+    rsvpLookupCard.hidden = false;
+  }
+}
+
+function syncRsvpGuestExtrasLayout() {
+  if (!rsvpGuestExtras || !rsvpPlusOneSection || !rsvpChildrenSection) {
+    return;
+  }
+
+  const showChildrenFullWidth = rsvpPlusOneSection.hidden && !rsvpChildrenSection.hidden;
+  const showPlusOneFullWidth = !rsvpPlusOneSection.hidden && rsvpChildrenSection.hidden;
+  rsvpGuestExtras.classList.toggle("rsvp-form-grid--children-full", showChildrenFullWidth);
+  rsvpGuestExtras.classList.toggle("rsvp-form-grid--plus-one-full", showPlusOneFullWidth);
+}
+
+function fillCountSelect(select, maxCount) {
+  if (!select) {
+    return;
+  }
+
+  const safeMax = Math.max(0, Number(maxCount || 0));
+  select.innerHTML = Array.from({ length: safeMax + 1 }, (_, index) => (
+    `<option value="${index}">${index}</option>`
+  )).join("");
+}
+
+function setRsvpStatus(element, message, tone = "success") {
+  if (!element) {
+    return;
+  }
+
+  element.textContent = message;
+  if (tone) {
+    element.dataset.tone = tone;
+  } else {
+    delete element.dataset.tone;
+  }
+}
+
+function normalizeNamePart(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9'-]+/g, " ");
+}
+
+function extractFirstName(fullName) {
+  return String(fullName || "").trim().split(/\s+/).filter(Boolean)[0] || "";
+}
+
+function extractLastName(fullName) {
+  const parts = String(fullName || "").trim().split(/\s+/).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : "";
+}
+
+function normalizeWholeNumber(value) {
+  const nextValue = Number(String(value || "").replace(/[^\d.-]/g, ""));
+  if (!Number.isFinite(nextValue) || nextValue <= 0) {
+    return 0;
+  }
+
+  return Math.floor(nextValue);
+}
+
+function isTruthyInvitationValue(value) {
+  return ["yes", "true", "1", "attending"].includes(String(value || "").trim().toLowerCase());
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function escapeForId(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}

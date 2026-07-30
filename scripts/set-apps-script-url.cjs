@@ -4,6 +4,7 @@ const path = require("path");
 const ROOT = process.cwd();
 const ENV_FILE = path.join(ROOT, ".env.standalone.local");
 const SCRIPT_FILE = path.join(ROOT, "script.js");
+const SITE_FILE = path.join(ROOT, "site.js");
 
 const inputUrl = String(process.argv[2] || "").trim();
 
@@ -19,10 +20,12 @@ if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/i.test(inputUrl)) 
 
 updateEnv(inputUrl);
 updateScriptJs(inputUrl);
+updateSiteJs(inputUrl);
 
 console.log("Updated Apps Script URL in:");
 console.log(`- ${path.relative(ROOT, ENV_FILE)}`);
 console.log(`- ${path.relative(ROOT, SCRIPT_FILE)}`);
+console.log(`- ${path.relative(ROOT, SITE_FILE)}`);
 console.log("");
 console.log("Next steps:");
 console.log("- If localhost uses the proxy, update the Worker secret APPS_SCRIPT_BASE to the same URL without /exec.");
@@ -52,6 +55,21 @@ function updateScriptJs(url) {
   }
 
   fs.writeFileSync(SCRIPT_FILE, next);
+}
+
+function updateSiteJs(url) {
+  const content = fs.readFileSync(SITE_FILE, "utf8");
+  const next = content.replace(
+    /(scriptUrl:\s*")([^"]+)(")/,
+    `$1${url}$3`
+  );
+
+  if (next === content) {
+    console.error("Could not find `scriptUrl` in site.js.");
+    process.exit(1);
+  }
+
+  fs.writeFileSync(SITE_FILE, next);
 }
 
 function replaceOrAppend(content, key, value) {

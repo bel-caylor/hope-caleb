@@ -1,4 +1,4 @@
-import { syncGuestSummarySheets } from "./features/feed";
+import { syncGroupsSheet, syncGuestSummarySheets } from "./features/feed";
 import { getViewerProfile } from "./auth";
 import { deleteEventList, deleteShot, deleteTodo, listBeds, listEventLists, listEvents, listPeople, listShots, listTables, listTodos, saveBed, saveEvent, saveEventList, saveGuestDetails, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveShot, saveTable, saveTableReservedOpenSeats, saveTodo } from "./features/planner";
 import { generateEventPlan } from "./util/ai";
@@ -58,6 +58,8 @@ export function rpc(input: { method: string; payload: unknown }) {
       return saveGuestDetails(payload as Parameters<typeof saveGuestDetails>[0]);
     case "syncGuestSummarySheets":
       return syncGuestSummarySheets();
+    case "syncGroupsSheet":
+      return syncGroupsSheet();
     case "generateEventPlan":
       return generateEventPlan(payload as Parameters<typeof generateEventPlan>[0]);
     default:

@@ -191,3 +191,22 @@ export function requireAdmin() {
 export function requirePlannerAccess() {
   return requireAdmin();
 }
+
+export function requireScriptEditorAccess() {
+  const email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase();
+  if (!email) {
+    throw new Error("Apps Script could not determine your Google account email in the editor.");
+  }
+
+  const allowedEmails = readPlannerAccessEmails();
+  if (!allowedEmails.has(email)) {
+    throw new Error("Your Google account does not have access to this Google Sheet. Share the planner spreadsheet with this email first.");
+  }
+
+  return {
+    signedIn: true,
+    email,
+    name: getViewerName(email),
+    isAdmin: true
+  };
+}

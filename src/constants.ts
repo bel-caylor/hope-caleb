@@ -13,6 +13,7 @@ export const RSVP_SHEET = "RSVPs";
 export const RSVP_TAB_SHEET = "RSVP";
 export const COMMENT_SHEET = "Comments";
 export const GUESTS_SHEET = "Guests";
+export const GROUPS_SHEET = "Groups";
 export const TABLE_NUMBER_SHEET = "Table Number";
 export const MEDIA_FOLDER_NAME = "H&C Grad";
 export const RSVP_NOTIFICATION_EMAILS_PROPERTY_KEY = "RSVP_NOTIFICATION_EMAILS";
@@ -111,7 +112,41 @@ export const EVENT_LIST_HEADERS = [
   "CreatedAt",
   "UpdatedAt"
 ];
-export const RSVP_HEADERS = ["Submitted At", "Name", "Email", "Attending", "Guests", "Comment"];
+export const RSVP_HEADERS = [
+  "Submitted At",
+  "Form Type",
+  "Name",
+  "Email",
+  "Attending",
+  "Guests",
+  "Comment",
+  "Group",
+  "Group Members",
+  "Wedding RSVP Summary",
+  "Rehearsal RSVP",
+  "Open House RSVP",
+  "Plus One Count",
+  "Plus One Name",
+  "Children Count",
+  "Children Note"
+];
 export const COMMENT_HEADERS = ["Submitted At", "Name", "Comment", "Media Url", "Media Type", "Media Name", "Media Error"];
+export const GROUP_HEADERS = [
+  "Group",
+  "Display Name",
+  "Primary Contact",
+  "Email",
+  "Phone",
+  "Invited Rehearsal",
+  "Invited Open House",
+  "# Children",
+  "Max Plus Ones",
+  "Lookup Code",
+  "Wedding RSVP",
+  "Rehearsal RSVP",
+  "Open House RSVP",
+  "Notes",
+  "Last Updated"
+];
 
 export type PlannerRow = Record<string, unknown>;

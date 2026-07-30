@@ -1,6 +1,5 @@
 import { getGoogleClientId } from "./auth";
-import { listPublicFeed, savePublicSubmission } from "./features/feed";
-import { syncGuestSummarySheets } from "./features/feed";
+import { listPublicFeed, savePublicSubmission, syncGroupsSheet, syncGroupsSheetForEditor, syncGuestSummarySheets } from "./features/feed";
 import { initializeBedsSheet } from "./features/planner";
 import { rpc } from "./rpc";
 import { PLANNER_BUILD_VERSION } from "./version";
@@ -198,6 +197,8 @@ function getOrigin(e?: GoogleAppsScript.Events.DoPost) {
   doPost?: typeof doPost;
   doOptions?: typeof doOptions;
   initializeBedsSheet?: typeof initializeBedsSheet;
+  syncGroupsSheet?: typeof syncGroupsSheet;
+  syncGroupsSheetForEditor?: typeof syncGroupsSheetForEditor;
   syncGuestSummarySheets?: typeof syncGuestSummarySheets;
 }).doOptions = doOptions;
 
@@ -206,6 +207,8 @@ function getOrigin(e?: GoogleAppsScript.Events.DoPost) {
   doPost?: typeof doPost;
   doOptions?: typeof doOptions;
   initializeBedsSheet?: typeof initializeBedsSheet;
+  syncGroupsSheet?: typeof syncGroupsSheet;
+  syncGroupsSheetForEditor?: typeof syncGroupsSheetForEditor;
   syncGuestSummarySheets?: typeof syncGuestSummarySheets;
 }).initializeBedsSheet = initializeBedsSheet;
 
@@ -214,5 +217,27 @@ function getOrigin(e?: GoogleAppsScript.Events.DoPost) {
   doPost?: typeof doPost;
   doOptions?: typeof doOptions;
   initializeBedsSheet?: typeof initializeBedsSheet;
+  syncGroupsSheet?: typeof syncGroupsSheet;
+  syncGroupsSheetForEditor?: typeof syncGroupsSheetForEditor;
+  syncGuestSummarySheets?: typeof syncGuestSummarySheets;
+}).syncGroupsSheet = syncGroupsSheet;
+
+(globalThis as typeof globalThis & {
+  doGet?: typeof doGet;
+  doPost?: typeof doPost;
+  doOptions?: typeof doOptions;
+  initializeBedsSheet?: typeof initializeBedsSheet;
+  syncGroupsSheet?: typeof syncGroupsSheet;
+  syncGroupsSheetForEditor?: typeof syncGroupsSheetForEditor;
+  syncGuestSummarySheets?: typeof syncGuestSummarySheets;
+}).syncGroupsSheetForEditor = syncGroupsSheetForEditor;
+
+(globalThis as typeof globalThis & {
+  doGet?: typeof doGet;
+  doPost?: typeof doPost;
+  doOptions?: typeof doOptions;
+  initializeBedsSheet?: typeof initializeBedsSheet;
+  syncGroupsSheet?: typeof syncGroupsSheet;
+  syncGroupsSheetForEditor?: typeof syncGroupsSheetForEditor;
   syncGuestSummarySheets?: typeof syncGuestSummarySheets;
 }).syncGuestSummarySheets = syncGuestSummarySheets;
