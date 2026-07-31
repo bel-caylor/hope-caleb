@@ -760,6 +760,13 @@ main > .section:nth-of-type(odd) > .lead {
   margin-left: auto;
 }
 
+#schedule > .eyebrow,
+#schedule > h2,
+#schedule > .lead {
+  box-sizing: border-box;
+  padding-right: clamp(0.75rem, 2.2vw, 1.75rem);
+}
+
 main > .section:nth-of-type(even) {
   background: transparent;
 }
@@ -1472,6 +1479,11 @@ main > .section:nth-of-type(even)::after {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(3, auto);
   grid-auto-flow: column;
+}
+
+#schedule .timeline {
+  box-sizing: border-box;
+  padding-right: clamp(0.75rem, 2.2vw, 1.75rem);
 }
 
 .countdown-card {
@@ -2660,6 +2672,8 @@ form[data-rsvp-response-form] {
 
   .timeline {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-auto-flow: row;
   }
 
   .highlights-grid {
