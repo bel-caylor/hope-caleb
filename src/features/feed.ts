@@ -58,6 +58,25 @@ export function listPublicFeed() {
   };
 }
 
+export function lookupPublicRsvpGroups(firstNameRaw: string | undefined, lastNameRaw: string | undefined) {
+  const firstName = normalizeLookupNamePart(firstNameRaw || "");
+  const lastName = normalizeLookupNamePart(lastNameRaw || "");
+
+  if (!firstName || !lastName) {
+    return { matches: [] };
+  }
+
+  const guests = readPublicGuestLookupRows().map((guest) => ({
+    ...guest,
+    firstName: normalizeLookupNamePart(guest.firstName || extractFirstName(guest.name || "")),
+    lastName: normalizeLookupNamePart(guest.lastName || extractLastName(guest.name || ""))
+  }));
+  const groups = readPublicGroupLookupRows();
+  const matches = buildLookupMatchesForName(firstName, lastName, guests, groups);
+
+  return { matches };
+}
+
 export function savePublicSubmission(rawParams: Record<string, unknown> | undefined) {
   const data = toStringRecord(rawParams);
 
@@ -755,6 +774,88 @@ function readPublicGroupLookupRows() {
   }));
 }
 
+function buildLookupMatchesForName(
+  firstName: string,
+  lastName: string,
+  guests: Array<Record<string, string>>,
+  groups: Array<Record<string, string>>
+) {
+  const exactGuests = guests.filter((guest) => (
+    String(guest.group || "").trim()
+    && String(guest.lastName || "").trim() === lastName
+    && String(guest.firstName || "").trim() === firstName
+  ));
+
+  const fallbackGuests = exactGuests.length
+    ? []
+    : guests.filter((guest) => String(guest.group || "").trim() && String(guest.lastName || "").trim() === lastName);
+
+  const sourceGuests = exactGuests.length ? exactGuests : fallbackGuests;
+  const uniqueGroups = new Map<string, Record<string, unknown>>();
+
+  sourceGuests.forEach((guest) => {
+    const groupName = String(guest.group || "").trim();
+    if (!groupName || uniqueGroups.has(groupName)) {
+      return;
+    }
+
+    const groupRecord = getPublicLookupGroupRecord(groupName, guests, groups);
+    if (!groupRecord) {
+      return;
+    }
+
+    uniqueGroups.set(groupName, groupRecord);
+  });
+
+  return Array.from(uniqueGroups.values());
+}
+
+function getPublicLookupGroupRecord(
+  groupName: string,
+  guests: Array<Record<string, string>>,
+  groups: Array<Record<string, string>>
+) {
+  const members = guests
+    .filter((guest) => String(guest.group || "").trim() === groupName)
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+
+  if (!members.length) {
+    return null;
+  }
+
+  const fromSheet = groups.find((group) => String(group.group || "").trim() === groupName);
+  if (fromSheet) {
+    return {
+      ...fromSheet,
+      members
+    };
+  }
+
+  return {
+    group: groupName,
+    displayName: String(groupName || "").replace(/[_-]+/g, " "),
+    primaryContact: String(members[0]?.name || "").trim(),
+    email: "",
+    phone: "",
+    invitedRehearsal: "No",
+    invitedOpenHouse: "No",
+    childrenCount: String(members.reduce((sum, member) => sum + normalizeWholeNumber(String(member.childrenAllowed || "")), 0)),
+    maxPlusOnes: String(members.reduce((sum, member) => sum + normalizeWholeNumber(String(member.plusOnesAllowed || "")), 0)),
+    weddingRsvp: "",
+    rehearsalRsvp: "",
+    openHouseRsvp: "",
+    savedEmail: "",
+    savedComment: "",
+    savedPlusOneCount: "0",
+    savedPlusOneName: "",
+    savedChildrenCount: "0",
+    savedChildrenNote: "",
+    notes: "",
+    lookupCode: "",
+    members
+  };
+}
+
 function readLatestGroupRsvpMap() {
   const rows = readRows(RSVP_SHEET);
   const latestByGroup = new Map<string, Record<string, string>>();
@@ -845,6 +946,18 @@ function buildLookupCode(groupName: string) {
 
 function extractFirstName(fullName: string) {
   return String(fullName || "").trim().split(/\s+/).filter(Boolean)[0] || "";
+}
+
+function extractLastName(fullName: string) {
+  const parts = String(fullName || "").trim().split(/\s+/).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : "";
+}
+
+function normalizeLookupNamePart(value: string) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9'-]+/g, " ");
 }
 
 function normalizeRsvpAnswer(value: string) {

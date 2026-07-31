@@ -1,5 +1,5 @@
 import { getGoogleClientId } from "./auth";
-import { listPublicFeed, savePublicSubmission, syncGroupsSheet, syncGroupsSheetForEditor, syncGuestSummarySheets } from "./features/feed";
+import { listPublicFeed, lookupPublicRsvpGroups, savePublicSubmission, syncGroupsSheet, syncGroupsSheetForEditor, syncGuestSummarySheets } from "./features/feed";
 import { initializeBedsSheet } from "./features/planner";
 import { rpc } from "./rpc";
 import { PLANNER_BUILD_VERSION } from "./version";
@@ -19,6 +19,13 @@ function include(filename: string) {
 export function doGet(e?: GoogleAppsScript.Events.DoGet) {
   if (isRpcGetRequest(e)) {
     return handleRpcGet(e);
+  }
+
+  if (isPublicLookupRequest(e)) {
+    return publicFeedResponse(
+      lookupPublicRsvpGroups(e?.parameter?.firstName, e?.parameter?.lastName),
+      e
+    );
   }
 
   if (shouldServePublicFeed(e)) {
@@ -137,6 +144,11 @@ function shouldServePublicFeed(e?: GoogleAppsScript.Events.DoGet) {
   const feed = String(e?.parameter?.feed || "").trim().toLowerCase();
 
   return Boolean(callback) || format === "json" || feed === "public";
+}
+
+function isPublicLookupRequest(e?: GoogleAppsScript.Events.DoGet) {
+  const lookup = String(e?.parameter?.lookup || "").trim().toLowerCase();
+  return lookup === "rsvp";
 }
 
 function isRpcGetRequest(e?: GoogleAppsScript.Events.DoGet) {

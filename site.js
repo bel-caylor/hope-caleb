@@ -9,11 +9,11 @@ const AMAZON_REGISTRY = {
 
 const HONEYMOON_OPTIONS = {
   zelleEmail: "Hccaylor+wedding@gmail.com",
-  venmoUrl: ""
+  venmoUrl: "https://venmo.com/u/Hope-Caylor"
 };
 
 const HOME_RSVP = {
-  scriptUrl: "https://script.google.com/macros/s/AKfycbzIP5FoYEKyMLdHkTgicMddzksDtDitR7lJQbEVlfHAubdNzjbwnGccnAUNoU03a_n1/exec",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbwew8ehIq_t_Tz22kkaRs9CflQOOBgS6N7vsEpph2wg8MFt_nrd4o9vwDBpgF1BWYfS/exec",
   deadlineLabel: "Please reply by December 1, 2026."
 };
 
@@ -50,10 +50,6 @@ const rsvpSubmitStatus = document.querySelector("[data-rsvp-submit-status]");
 const rsvpChangePartyButton = document.querySelector("[data-rsvp-change-party]");
 
 const rsvpState = {
-  loaded: false,
-  loading: false,
-  guests: [],
-  groups: [],
   lookupFirstName: "",
   lookupLastName: "",
   matches: [],
@@ -89,7 +85,7 @@ if (zelleCopyButton) {
       }, 1800);
     } catch (error) {
       if (zelleFeedback) {
-        zelleFeedback.textContent = `Copy failed. Use this email manually: ${copyValue}`;
+        zelleFeedback.textContent = "Copy failed. Please try again, or use the Venmo button instead.";
       }
     }
   });
@@ -442,13 +438,12 @@ async function runRsvpLookup(firstName, lastName, options = {}) {
   setRsvpStatus(rsvpLookupStatus, "Looking up your invitation...", "pending");
 
   try {
-    await ensureRsvpLookupData();
     let resolvedFirstName = firstName;
     let resolvedLastName = lastName;
-    let matches = findMatchingGroups(resolvedFirstName, resolvedLastName);
+    let matches = await loadRsvpLookupMatches(resolvedFirstName, resolvedLastName);
 
     if (!matches.length && allowSwapFallback) {
-      const swappedMatches = findMatchingGroups(lastName, firstName);
+      const swappedMatches = await loadRsvpLookupMatches(lastName, firstName);
       if (swappedMatches.length) {
         resolvedFirstName = lastName;
         resolvedLastName = firstName;
@@ -531,46 +526,24 @@ function syncRsvpLookupInputs(firstName, lastName) {
   }
 }
 
-async function ensureRsvpLookupData() {
-  if (rsvpState.loaded || rsvpState.loading) {
-    if (rsvpState.loading) {
-      await waitForRsvpLookupData();
-    }
-    return;
-  }
-
+async function loadRsvpLookupMatches(firstName, lastName) {
   if (!HOME_RSVP.scriptUrl) {
     throw new Error("Add your Apps Script URL in site.js before publishing the RSVP form.");
   }
 
-  rsvpState.loading = true;
-
-  try {
-    const payload = await loadRsvpJsonp();
-    rsvpState.guests = Array.isArray(payload?.guests) ? payload.guests.map(normalizeLookupGuest) : [];
-    rsvpState.groups = Array.isArray(payload?.groups) ? payload.groups.map(normalizeLookupGroup) : [];
-    rsvpState.loaded = true;
-  } finally {
-    rsvpState.loading = false;
-  }
+  const payload = await loadRsvpLookupJsonp(firstName, lastName);
+  return Array.isArray(payload?.matches) ? payload.matches.map(normalizeLookupMatch) : [];
 }
 
-function waitForRsvpLookupData() {
-  return new Promise((resolve) => {
-    const timer = window.setInterval(() => {
-      if (!rsvpState.loading) {
-        window.clearInterval(timer);
-        resolve();
-      }
-    }, 60);
-  });
-}
-
-function loadRsvpJsonp() {
+function loadRsvpLookupJsonp(firstName, lastName) {
   return new Promise((resolve, reject) => {
     const callbackName = `homeRsvpLookup${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
     const script = document.createElement("script");
-    const separator = HOME_RSVP.scriptUrl.includes("?") ? "&" : "?";
+    const url = new URL(HOME_RSVP.scriptUrl);
+    url.searchParams.set("lookup", "rsvp");
+    url.searchParams.set("firstName", firstName);
+    url.searchParams.set("lastName", lastName);
+    url.searchParams.set("callback", callbackName);
 
     window[callbackName] = (data) => {
       cleanup();
@@ -587,7 +560,7 @@ function loadRsvpJsonp() {
       reject(new Error("Unable to load the RSVP lookup right now."));
     };
 
-    script.src = `${HOME_RSVP.scriptUrl}${separator}callback=${callbackName}`;
+    script.src = url.toString();
     document.body.appendChild(script);
   });
 }
@@ -634,87 +607,11 @@ function normalizeLookupGroup(item) {
   };
 }
 
-function findMatchingGroups(firstName, lastName) {
-  const matchingGuests = rsvpState.guests.filter((guest) => {
-    return guest.group
-      && guest.lastName === lastName
-      && guest.firstName === firstName;
-  });
-
-  const uniqueGroups = new Map();
-  matchingGuests.forEach((guest) => {
-    const groupRecord = getGroupRecord(guest.group);
-    if (!groupRecord) {
-      return;
-    }
-
-    if (!uniqueGroups.has(groupRecord.group)) {
-      uniqueGroups.set(groupRecord.group, {
-        ...groupRecord,
-        members: getGuestsForGroup(groupRecord.group)
-      });
-    }
-  });
-
-  if (uniqueGroups.size) {
-    return Array.from(uniqueGroups.values());
-  }
-
-  const fallbackGuests = rsvpState.guests.filter((guest) => guest.group && guest.lastName === lastName);
-  fallbackGuests.forEach((guest) => {
-    const groupRecord = getGroupRecord(guest.group);
-    if (!groupRecord || uniqueGroups.has(groupRecord.group)) {
-      return;
-    }
-
-    uniqueGroups.set(groupRecord.group, {
-      ...groupRecord,
-      members: getGuestsForGroup(groupRecord.group)
-    });
-  });
-
-  return Array.from(uniqueGroups.values());
-}
-
-function getGroupRecord(groupName) {
-  const fromSheet = rsvpState.groups.find((group) => group.group === groupName);
-  if (fromSheet) {
-    return fromSheet;
-  }
-
-  const members = getGuestsForGroup(groupName);
-  if (!members.length) {
-    return null;
-  }
-
+function normalizeLookupMatch(item) {
   return {
-    group: groupName,
-    displayName: groupName.replace(/[_-]+/g, " "),
-    primaryContact: members[0].name,
-    email: "",
-    phone: "",
-    invitedRehearsal: false,
-    invitedOpenHouse: false,
-    childrenCount: members.reduce((sum, member) => sum + member.childrenAllowed, 0),
-    maxPlusOnes: members.reduce((sum, member) => sum + member.plusOnesAllowed, 0),
-    weddingRsvp: "",
-    rehearsalRsvp: "",
-    openHouseRsvp: "",
-    savedEmail: "",
-    savedComment: "",
-    savedPlusOneCount: 0,
-    savedPlusOneName: "",
-    savedChildrenCount: 0,
-    savedChildrenNote: "",
-    notes: "",
-    lookupCode: ""
+    ...normalizeLookupGroup(item),
+    members: Array.isArray(item?.members) ? item.members.map(normalizeLookupGuest) : []
   };
-}
-
-function getGuestsForGroup(groupName) {
-  return rsvpState.guests
-    .filter((guest) => guest.group === groupName)
-    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function renderGroupPicker(matches) {
