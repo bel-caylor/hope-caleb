@@ -108,6 +108,42 @@ const sectionMenuToggle = document.querySelector("[data-section-menu-toggle]");
 const sectionMenuPanel = document.querySelector("[data-section-menu-panel]");
 const submenuItems = Array.from(document.querySelectorAll(".section-nav__item--has-submenu"));
 const mobileNavMedia = window.matchMedia("(max-width: 760px)");
+const compactDesktopNavMedia = window.matchMedia("(min-width: 761px)");
+
+function syncMobileMenuToggleVisibility() {
+  if (!sectionNav) {
+    return;
+  }
+
+  if (!mobileNavMedia.matches) {
+    sectionNav.classList.remove("section-nav--show-toggle");
+    return;
+  }
+
+  const shouldShowToggle = window.scrollY > 48 || sectionNav.classList.contains("is-menu-open");
+  sectionNav.classList.toggle("section-nav--show-toggle", shouldShowToggle);
+}
+
+function syncDesktopCompactNav() {
+  if (!sectionNav) {
+    return;
+  }
+
+  if (mobileNavMedia.matches) {
+    sectionNav.classList.remove("section-nav--compact");
+    return;
+  }
+
+  if (!compactDesktopNavMedia.matches || sectionNav.classList.contains("is-menu-open")) {
+    sectionNav.classList.remove("section-nav--compact");
+    return;
+  }
+
+  const navTop = sectionNav.offsetTop;
+  const navHeight = sectionNav.offsetHeight;
+  const shouldCompact = window.scrollY > navTop + navHeight;
+  sectionNav.classList.toggle("section-nav--compact", shouldCompact);
+}
 
 function setSectionMenuOpen(isOpen) {
   if (!sectionNav || !sectionMenuToggle) {
@@ -117,6 +153,8 @@ function setSectionMenuOpen(isOpen) {
   sectionNav.classList.toggle("is-menu-open", isOpen);
   document.body.classList.toggle("is-nav-open", isOpen);
   sectionMenuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  syncMobileMenuToggleVisibility();
+  syncDesktopCompactNav();
 }
 
 function closeAllSubmenus() {
@@ -153,6 +191,12 @@ if (sectionMenuToggle && sectionMenuPanel) {
       setSectionMenuOpen(false);
       closeAllSubmenus();
     }
+
+    syncMobileMenuToggleVisibility();
+  });
+
+  compactDesktopNavMedia.addEventListener("change", () => {
+    syncDesktopCompactNav();
   });
 }
 
@@ -211,6 +255,13 @@ document.addEventListener("keydown", (event) => {
   setSectionMenuOpen(false);
   closeAllSubmenus();
 });
+
+window.addEventListener("scroll", syncDesktopCompactNav, { passive: true });
+window.addEventListener("scroll", syncMobileMenuToggleVisibility, { passive: true });
+window.addEventListener("resize", syncDesktopCompactNav);
+window.addEventListener("resize", syncMobileMenuToggleVisibility);
+syncMobileMenuToggleVisibility();
+syncDesktopCompactNav();
 
 storySliders.forEach((slider) => {
   const viewport = slider.querySelector(".story-slider__viewport");
