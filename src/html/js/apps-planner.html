@@ -6528,7 +6528,7 @@
         // Apps Script may need a cold start, token verification, Drive access,
         // and sheet access on a person's first sign-in. Give that one
         // read-only handshake more time without making ordinary saves wait.
-        const longRunningRequest = ["getWorkspaceProfile", "getViewerProfile", "getPlannerBootstrap", "uploadTodoImage", "saveWorkspaceAsset"].includes(method);
+        const longRunningRequest = ["getWorkspaceProfile", "getViewerProfile", "getPlannerBootstrap", "saveWorkspaceTask", "uploadTodoImage", "saveWorkspaceAsset"].includes(method);
         const requestTimeoutMs = longRunningRequest ? 90000 : 20000;
         const requestTimeout = window.setTimeout(() => controller.abort(), requestTimeoutMs);
         const response = await fetch(rpcUrl, {
