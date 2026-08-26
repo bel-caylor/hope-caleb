@@ -14,8 +14,9 @@
     "planner:check": "node scripts/check-planner-config.cjs",
     "planner:set-url": "node scripts/set-apps-script-url.cjs",
     "planner:sync-deployment": "node scripts/sync-planner-deployment.cjs",
-    "serve:standalone": "http-server dist-standalone -p 5173 -c-1",
-    "dev:standalone": "concurrently -k \"npm:watch:standalone\" \"npm:serve:standalone\"",
+    "serve:standalone": "http-server dist-standalone -a 0.0.0.0 -p 5173 -c-1",
+    "serve:live": "node scripts/serve-live.cjs",
+    "dev:standalone": "concurrently -k \"npm:watch:standalone\" \"npm:serve:live\"",
     "push": "clasp push",
     "deploy": "npm run build:core && clasp push -f"
   },
@@ -27,6 +28,7 @@
     "copyfiles": "^2.4.1",
     "esbuild": "^0.25.5",
     "http-server": "^14.1.1",
+    "live-server": "^1.2.2",
     "rimraf": "^6.0.1",
     "typescript": "^5.8.3"
   }

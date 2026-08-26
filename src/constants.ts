@@ -6,6 +6,12 @@ export const BEDS_SHEET = "Beds";
 export const TABLES_SHEET = "Tables";
 export const TODO_SHEET = "Todo";
 export const EVENT_LISTS_SHEET = "Event Lists";
+export const PLANNER_USERS_SHEET = "Planner Users";
+export const PLANNER_V2_EVENTS_SHEET = "Planner V2 Events";
+export const PLANNER_V2_TASKS_SHEET = "Planner V2 Tasks";
+export const PLANNER_V2_LISTS_SHEET = "Planner V2 Lists";
+export const PLANNER_V2_ASSETS_SHEET = "Planner V2 Assets";
+export const PLANNER_ARCHIVE_SHEET = "Planner Archive";
 export const GOOGLE_CLIENT_ID_PROPERTY_KEY = "GOOGLE_CLIENT_ID";
 export const SPREADSHEET_ID_PROPERTY_KEY = "SPREADSHEET_ID";
 export const OPENAI_API_KEY_PROPERTY_KEY = "OPENAI_API_KEY";
@@ -112,6 +118,67 @@ export const EVENT_LIST_HEADERS = [
   "CreatedAt",
   "UpdatedAt"
 ];
+export const PLANNER_USER_HEADERS = [
+  "Id",
+  "Name",
+  "Email",
+  "WeddingRole",
+  "AccessLevel",
+  "Active",
+  "CreatedAt",
+  "UpdatedAt"
+];
+export const PLANNER_V2_EVENT_HEADERS = [
+  "Id",
+  "Title",
+  "StartsAt",
+  "EndsAt",
+  "Location",
+  "Audience",
+  "AssignedUserIds",
+  "Invitees",
+  "Notes",
+  "CreatedAt",
+  "UpdatedAt"
+];
+export const PLANNER_V2_TASK_HEADERS = [
+  "Id",
+  "Title",
+  "EventId",
+  "ListId",
+  "AssignedUserId",
+  "DueAt",
+  "Status",
+  "Priority",
+  "Notes",
+  "SortOrder",
+  "CreatedAt",
+  "UpdatedAt",
+  "CompletedAt"
+];
+export const PLANNER_V2_LIST_HEADERS = [
+  "Id",
+  "EventId",
+  "Title",
+  "Items",
+  "CompletedItems",
+  "Notes",
+  "CreatedAt",
+  "UpdatedAt"
+];
+export const PLANNER_V2_ASSET_HEADERS = [
+  "Id",
+  "Title",
+  "AssetUrl",
+  "AssetType",
+  "EventId",
+  "TaskId",
+  "Visibility",
+  "Notes",
+  "CreatedAt",
+  "UpdatedAt"
+];
+export const PLANNER_ARCHIVE_HEADERS = ["Id", "ArchivedAt", "Source", "Payload"];
 export const RSVP_HEADERS = [
   "Submitted At",
   "Form Type",

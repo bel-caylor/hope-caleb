@@ -32,7 +32,6 @@ export function listPublicFeed() {
     .map((row) => ({
       submittedAt: String(row["Submitted At"] || ""),
       name: String(row.Name || ""),
-      email: String(row.Email || ""),
       attending: String(row.Attending || ""),
       guests: String(row.Guests || ""),
       comment: String(row.Comment || "")
@@ -52,9 +51,27 @@ export function listPublicFeed() {
 
   return {
     responses,
-    notes,
-    guests: readPublicGuestLookupRows(),
-    groups: readPublicGroupLookupRows()
+    notes
+  };
+}
+
+/** Full planner views use authenticated RPC, never the public JSONP feed. */
+export function listPlannerDashboardFeed() {
+  requirePlannerAccess();
+  ensureSheet(RSVP_SHEET, RSVP_HEADERS);
+
+  return {
+    responses: readRows(RSVP_SHEET)
+      .filter((row) => String(row.Name || row.Attending || row.Comment || "").trim())
+      .map((row) => ({
+        submittedAt: String(row["Submitted At"] || ""),
+        name: String(row.Name || ""),
+        attending: String(row.Attending || ""),
+        guests: String(row.Guests || ""),
+        comment: String(row.Comment || "")
+      }))
+      .reverse(),
+    guests: readPlannerGuestRows()
   };
 }
 
@@ -736,18 +753,53 @@ function getNotificationRecipients() {
 function readPublicGuestLookupRows() {
   const rows = readSheetObjects(GUESTS_SHEET);
 
-  return rows.map((row) => ({
-    rowNumber: String(row.__rowNumber || ""),
-    name: firstNonEmptyValue(row, [/^wedding\s*guest$/i, /^name$/i, /guest\s*name/i, /full\s*name/i]),
-    firstName: extractFirstName(firstNonEmptyValue(row, [/^wedding\s*guest$/i, /^name$/i, /guest\s*name/i, /full\s*name/i])),
-    lastName: firstNonEmptyValue(row, [/^last\s*name$/i]),
-    group: firstNonEmptyValue(row, [/^group$/i, /group\s*(name|id)/i]),
-    type: firstNonEmptyValue(row, [/^type$/i, /guest\s*type/i]),
-    plusOnesAllowed: firstNonEmptyValue(row, [/^#\s*of\s*plu/i, /plus\s*one/i], ["rsvp"]),
-    childrenAllowed: firstNonEmptyValue(row, [/^#\s*o$/i, /^#\s*of\s*(chi|kid)/i, /children/i], ["policy"]),
-    rsvp: firstNonEmptyValue(row, [/^rsvp$/i, /^attending$/i, /attendance/i, /response/i], ["plus 1"]),
-    plusOneRsvp: firstNonEmptyValue(row, [/plus\s*1.*rsvp/i, /rsvp.*plus\s*1/i, /plus\s*one.*rsvp/i, /^plus\s*1$/i])
-  }));
+  return rows.map((row) => {
+    const name = firstNonEmptyValue(row, [
+      /^wedding\s*guest$/i,
+      /^guest$/i,
+      /^name$/i,
+      /guest\s*name/i,
+      /full\s*name/i
+    ]);
+
+    return {
+      rowNumber: String(row.__rowNumber || ""),
+      name,
+      firstName: extractFirstName(name),
+      lastName: firstNonEmptyValue(row, [/^last\s*name$/i]),
+      group: firstNonEmptyValue(row, [/^group$/i, /group\s*(name|id)/i]),
+      type: firstNonEmptyValue(row, [/^type$/i, /guest\s*type/i]),
+      rsvp: firstNonEmptyValue(row, [/^rsvp$/i, /^attending$/i, /attendance/i, /response/i], ["plus 1"]),
+      plusOneRsvp: firstNonEmptyValue(row, [/plus\s*1.*rsvp/i, /rsvp.*plus\s*1/i, /plus\s*one.*rsvp/i, /^plus\s*1$/i]),
+      plusOnesAllowed: firstNonEmptyValue(row, [/^#\s*of\s*plu/i, /plus\s*one/i], ["rsvp"]),
+      childrenAllowed: firstNonEmptyValue(row, [/^#\s*o$/i, /^#\s*of\s*(chi|kid)/i, /children/i], ["policy"])
+    };
+  });
+}
+
+/** Seating data is available only through the authenticated planner RPC. */
+function readPlannerGuestRows() {
+  return readSheetObjects(GUESTS_SHEET).map((row) => {
+    const name = firstNonEmptyValue(row, [
+      /^wedding\s*guest$/i,
+      /^guest$/i,
+      /^name$/i,
+      /guest\s*name/i,
+      /full\s*name/i
+    ]);
+
+    return {
+      // The dashboard uses this internal key to identify a source-sheet row
+      // for display and guest/table updates.
+      __rowNumber: String(row.__rowNumber || ""),
+      name,
+      type: firstNonEmptyValue(row, [/^type$/i, /guest\s*type/i]),
+      rsvp: firstNonEmptyValue(row, [/^rsvp$/i, /^attending$/i, /attendance/i, /response/i], ["plus 1"]),
+      plusOneRsvp: firstNonEmptyValue(row, [/plus\s*1.*rsvp/i, /rsvp.*plus\s*1/i, /plus\s*one.*rsvp/i, /^plus\s*1$/i]),
+      "Table Number": firstNonEmptyValue(row, [/^table\s*(number|#)?$/i, /table\s*(assignment|assigned)/i]),
+      "Table Order": firstNonEmptyValue(row, [/^table\s*order$/i])
+    };
+  });
 }
 
 function readPublicGroupLookupRows() {
@@ -826,8 +878,29 @@ function getPublicLookupGroupRecord(
   const fromSheet = groups.find((group) => String(group.group || "").trim() === groupName);
   if (fromSheet) {
     return {
-      ...fromSheet,
-      members
+      rowNumber: fromSheet.rowNumber,
+      group: fromSheet.group,
+      displayName: fromSheet.displayName,
+      primaryContact: fromSheet.primaryContact,
+      invitedRehearsal: fromSheet.invitedRehearsal,
+      invitedOpenHouse: fromSheet.invitedOpenHouse,
+      childrenCount: fromSheet.childrenCount,
+      maxPlusOnes: fromSheet.maxPlusOnes,
+      weddingRsvp: fromSheet.weddingRsvp,
+      rehearsalRsvp: fromSheet.rehearsalRsvp,
+      openHouseRsvp: fromSheet.openHouseRsvp,
+      members: members.map((member) => ({
+        rowNumber: member.rowNumber,
+        name: member.name,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        group: member.group,
+        type: member.type,
+        plusOnesAllowed: member.plusOnesAllowed,
+        childrenAllowed: member.childrenAllowed,
+        rsvp: member.rsvp,
+        plusOneRsvp: member.plusOneRsvp
+      }))
     };
   }
 
@@ -835,8 +908,6 @@ function getPublicLookupGroupRecord(
     group: groupName,
     displayName: String(groupName || "").replace(/[_-]+/g, " "),
     primaryContact: String(members[0]?.name || "").trim(),
-    email: "",
-    phone: "",
     invitedRehearsal: "No",
     invitedOpenHouse: "No",
     childrenCount: String(members.reduce((sum, member) => sum + normalizeWholeNumber(String(member.childrenAllowed || "")), 0)),
@@ -844,14 +915,6 @@ function getPublicLookupGroupRecord(
     weddingRsvp: "",
     rehearsalRsvp: "",
     openHouseRsvp: "",
-    savedEmail: "",
-    savedComment: "",
-    savedPlusOneCount: "0",
-    savedPlusOneName: "",
-    savedChildrenCount: "0",
-    savedChildrenNote: "",
-    notes: "",
-    lookupCode: "",
     members
   };
 }

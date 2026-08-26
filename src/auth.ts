@@ -2,6 +2,7 @@ import {
   ADMIN_HEADERS,
   ADMIN_SHEET,
   GOOGLE_CLIENT_ID_PROPERTY_KEY,
+  PLANNER_USERS_SHEET,
   SPREADSHEET_ID_PROPERTY_KEY
 } from "./constants";
 import { ensureSheet, readRows } from "./util/sheets";
@@ -105,7 +106,7 @@ function verifyGoogleIdToken(token: string): VerifiedUser | null {
 function readPlannerAccessEmails() {
   const spreadsheetId = getSpreadsheetId();
   const cache = CacheService.getScriptCache();
-  const cacheKey = `planner-sheet-access:${spreadsheetId}`;
+  const cacheKey = `planner-admin-access:${spreadsheetId}`;
   const cached = cache.get(cacheKey);
   if (cached) {
     try {
@@ -120,18 +121,19 @@ function readPlannerAccessEmails() {
     emails.add(ownerEmail);
   }
 
-  file.getEditors().forEach((user) => {
-    const email = String(user?.getEmail?.() || "").trim().toLowerCase();
-    if (email) {
-      emails.add(email);
-    }
+  ensureSheet(ADMIN_SHEET, ADMIN_HEADERS);
+  readRows(ADMIN_SHEET).forEach((row) => {
+    const email = String(row.Email || "").trim().toLowerCase();
+    if (email) emails.add(email);
   });
 
-  file.getViewers().forEach((user) => {
-    const email = String(user?.getEmail?.() || "").trim().toLowerCase();
-    if (email) {
-      emails.add(email);
-    }
+  // New full-planner invitations are explicit records, not a side effect of
+  // sharing the underlying spreadsheet with someone.
+  readRows(PLANNER_USERS_SHEET).forEach((row) => {
+    const email = String(row.Email || "").trim().toLowerCase();
+    const accessLevel = String(row.AccessLevel || "").trim().toLowerCase();
+    const active = String(row.Active || "TRUE").trim().toLowerCase() !== "false";
+    if (email && active && accessLevel === "full_planner") emails.add(email);
   });
 
   cache.put(cacheKey, JSON.stringify([...emails]), 300);
@@ -142,7 +144,10 @@ function getViewerName(email: string) {
   ensureSheet(ADMIN_SHEET, ADMIN_HEADERS);
   const adminRows = readRows(ADMIN_SHEET);
   const admin = adminRows.find((row) => String(row.Email || "").trim().toLowerCase() === email);
-  return String(admin?.Name || "").trim();
+  if (admin?.Name) return String(admin.Name).trim();
+  const workspaceUser = readRows(PLANNER_USERS_SHEET)
+    .find((row) => String(row.Email || "").trim().toLowerCase() === email);
+  return String(workspaceUser?.Name || "").trim();
 }
 
 export function getViewerProfile() {
@@ -183,7 +188,7 @@ export function requireAdmin() {
     throw new Error("Please sign in with Google first.");
   }
   if (!viewer.isAdmin) {
-    throw new Error("Your Google account does not have access to this Google Sheet. Share the planner spreadsheet with this email first.");
+    throw new Error("Your Google account has not been granted full planner access.");
   }
   return viewer;
 }
@@ -200,7 +205,7 @@ export function requireScriptEditorAccess() {
 
   const allowedEmails = readPlannerAccessEmails();
   if (!allowedEmails.has(email)) {
-    throw new Error("Your Google account does not have access to this Google Sheet. Share the planner spreadsheet with this email first.");
+    throw new Error("Your Google account has not been granted full planner access.");
   }
 
   return {

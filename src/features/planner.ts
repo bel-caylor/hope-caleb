@@ -72,6 +72,13 @@ type SaveTodoInput = {
   tags?: string;
 };
 
+type UploadTodoImageInput = {
+  data?: string;
+  contentType?: string;
+  fileName?: string;
+  taskTitle?: string;
+};
+
 type SaveEventListInput = {
   id?: string;
   eventId?: string;
@@ -945,6 +952,55 @@ export function deleteTodo(input: { id?: string }) {
 
   deleteRowById(TODO_SHEET, TODO_HEADERS, id);
   return { ok: true, id };
+}
+
+/**
+ * Stores task snapshots in Drive and returns a browser-friendly thumbnail URL.
+ * The client resizes photos before sending them so ordinary phone snapshots
+ * remain well within Apps Script request limits.
+ */
+export function uploadTodoImage(input: UploadTodoImageInput) {
+  requirePlannerAccess();
+
+  const encoded = String(input.data || "").trim().replace(/^data:[^;]+;base64,/, "");
+  const contentType = String(input.contentType || "").trim().toLowerCase();
+  if (!encoded || !contentType.startsWith("image/")) {
+    throw new Error("Choose a valid image to attach to this task.");
+  }
+
+  let bytes: number[];
+  try {
+    bytes = Utilities.base64Decode(encoded);
+  } catch (_) {
+    throw new Error("The selected photo could not be read.");
+  }
+
+  // Keep a server-side ceiling as a safeguard if a client skips compression.
+  if (bytes.length > 5 * 1024 * 1024) {
+    throw new Error("That photo is too large. Please choose a smaller image.");
+  }
+
+  const extension = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
+  const requestedName = String(input.fileName || "").trim().replace(/[^a-z0-9._-]+/gi, "-");
+  const titlePrefix = String(input.taskTitle || "task").trim().replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "task";
+  const fileName = requestedName || `${titlePrefix}-${Date.now()}.${extension}`;
+  const blob = Utilities.newBlob(bytes, contentType, fileName);
+  const folder = getTodoPhotoFolder();
+  const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  return {
+    fileId: file.getId(),
+    imageUrl: `https://drive.google.com/thumbnail?id=${encodeURIComponent(file.getId())}&sz=w1600`,
+    fileUrl: file.getUrl(),
+    fileName: file.getName()
+  };
+}
+
+function getTodoPhotoFolder() {
+  const name = "Hope & Caleb Task Photos";
+  const folders = DriveApp.getFoldersByName(name);
+  return folders.hasNext() ? folders.next() : DriveApp.createFolder(name);
 }
 
 export function listEventLists() {

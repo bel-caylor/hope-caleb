@@ -4,8 +4,35 @@
   const plannerGoogleSignInEl = document.querySelector("#plannerGoogleSignIn");
   const plannerLoginStatusEl = document.querySelector("#plannerLoginStatus");
   const plannerSignOutButton = document.querySelector("#plannerSignOut");
+  const plannerPageTitleEl = document.querySelector("#plannerPageTitle");
   const plannerMenuToggleButton = document.querySelector("#plannerMenuToggle");
   const plannerSummaryEl = document.querySelector("#plannerSummary");
+  const workspaceCalendarEl = document.querySelector("#workspaceCalendar");
+  const workspaceCalendarTitleEl = document.querySelector("#workspaceCalendarTitle");
+  const workspaceHubTabsEl = document.querySelector(".workspace-hub-tabs");
+  const workspaceEventDirectoryEl = document.querySelector("#workspaceEventDirectory");
+  const workspaceEventDirectoryListEl = document.querySelector("#workspaceEventDirectoryList");
+  const workspacePeopleEl = document.querySelector("#workspacePeople");
+  const workspaceTasksEl = document.querySelector("#workspaceTasks");
+  const workspaceStandaloneTasksEl = document.querySelector("#workspaceStandaloneTasks");
+  const workspaceStatusEl = document.querySelector("#workspaceStatus");
+  const workspaceEventQuickForm = document.querySelector("#workspaceEventQuickForm");
+  const workspaceUserQuickForm = document.querySelector("#workspaceUserQuickForm");
+  const workspaceTaskQuickForm = document.querySelector("#workspaceTaskQuickForm");
+  const workspaceTaskAssigneeEl = document.querySelector("#workspaceTaskAssignee");
+  const workspaceCaptureForm = document.querySelector("#workspaceCaptureForm");
+  const workspaceCapturePromptEl = document.querySelector("#workspaceCapturePrompt");
+  const workspaceCaptureMicButton = document.querySelector("#workspaceCaptureMic");
+  const workspaceStandaloneTaskForm = document.querySelector("#workspaceStandaloneTaskForm");
+  const workspaceStandaloneTaskPromptEl = document.querySelector("#workspaceStandaloneTaskPrompt");
+  const workspaceStandaloneTaskMicButton = document.querySelector("#workspaceStandaloneTaskMic");
+  const workspaceStartGridEl = document.querySelector(".workspace-start-grid");
+  const workspaceDraftEl = document.querySelector("#workspaceDraft");
+  const workspaceDraftContentEl = document.querySelector("#workspaceDraftContent");
+  const workspaceEventPageEl = document.querySelector("#workspaceEventPage");
+  const workspaceEventPageContentEl = document.querySelector("#workspaceEventPageContent");
+  const workspaceCaptureCardEl = document.querySelector("#workspaceCaptureCard");
+  const workspaceManualToolsEl = document.querySelector("#workspaceManualTools");
   const plannerSyncStatusEl = document.querySelector("#plannerSyncStatus");
   const plannerVersionInfoEl = document.querySelector("#plannerVersionInfo");
   const rsvpListEl = document.querySelector("#rsvpList");
@@ -37,6 +64,8 @@
   const shotForm = document.querySelector("#shotForm");
   const bedForm = document.querySelector("#bedForm");
   const todoForm = document.querySelector("#todoForm");
+  const todoPhotoInput = document.querySelector("#todoPhoto");
+  const todoPhotoPreviewEl = document.querySelector("#todoPhotoPreview");
   const eventListForm = document.querySelector("#eventListForm");
   const addGuestForm = document.querySelector("#addGuestForm");
   const peopleListEl = document.querySelector("#peopleList");
@@ -81,11 +110,17 @@
   const plannerUnlockedEl = document.querySelector("#plannerUnlocked");
   const plannerSectionButtons = Array.from(document.querySelectorAll("[data-planner-section]"));
   const plannerPanels = Array.from(document.querySelectorAll("[data-planner-panel]"));
+  const legacyPlannerDetailsEl = document.querySelector("#legacyPlannerDetails");
   const plannerSidebarMediaQuery = window.matchMedia("(max-width: 860px)");
   const EventWorkspaceSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  let pendingTodoPhoto = null;
 
   const STORAGE_KEYS = {
-    authToken: "hope-caleb-dashboard-auth-token"
+    authToken: "hope-caleb-dashboard-auth-token",
+    workspaceEventId: "hope-caleb-workspace-event-id",
+    workspaceEventTab: "hope-caleb-workspace-event-tab",
+    workspaceHubView: "hope-caleb-workspace-hub-view",
+    plannerDataCache: "hope-caleb-planner-data-cache-v1"
   };
 
   let cachedPeople = [];
@@ -97,6 +132,21 @@
   let cachedEventLists = [];
   let cachedRsvps = [];
   let cachedGuests = [];
+  let cachedWorkspaceUsers = [];
+  let cachedWorkspaceEvents = [];
+  let cachedWorkspaceTasks = [];
+  let cachedWorkspaceLists = [];
+  let cachedWorkspaceAssets = [];
+  let cachedWorkspaceInvitees = { groups: [], guests: [] };
+  let workspaceDraftState = null;
+  let selectedWorkspaceEventId = "";
+  let activeWorkspaceEventTab = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceEventTab) || "details").trim() || "details";
+  let activeWorkspaceHubView = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceHubView) || "create").trim() || "create";
+  let plannerCacheHydrated = false;
+  let workspaceCaptureRecognition = null;
+  let workspaceStandaloneTaskRecognition = null;
+  let workspaceDraftRefineRecognition = null;
+  const workspaceInlineVoiceRecognitions = new Map();
   const BED_SAVE_DEBOUNCE_MS = 500;
   const bedSaveTimers = new Map();
   const bedSaveChains = new Map();
@@ -118,7 +168,7 @@
   let rsvpFeedConnected = false;
   let plannerCountdownTimer = null;
   let currentView = getRequestedView();
-  let activePlannerPanel = "home";
+  let activePlannerPanel = "workspace";
   let plannerSidebarOpen = false;
   let activeTableDrag = null;
   let backendBuildVersion = "";
@@ -126,8 +176,14 @@
   let viewerProfile = {
     signedIn: false,
     email: "",
-    isAdmin: false
+    isAdmin: false,
+    hasWorkspaceAccess: false,
+    accessLevel: ""
   };
+
+  function canUsePlanner() {
+    return Boolean(viewerProfile.isAdmin || viewerProfile.hasWorkspaceAccess);
+  }
   let activeTableForGuestModal = null;
   let activeGuestTypeRowNumber = 0;
 
@@ -156,6 +212,13 @@
 
   async function refreshPlannerVersionInfo() {
     renderPlannerVersionInfo();
+
+    // Version information is useful after access is established, but asking
+    // Apps Script for it on the sign-in screen can compete with the first
+    // access check and make local sign-in look stalled.
+    if (!getStoredAuthToken()) {
+      return;
+    }
 
     try {
       const buildInfo = await backendRequest("getPlannerBuildInfo", {});
@@ -346,10 +409,21 @@
     });
 
     const showPlanner = currentView === "planner";
-    plannerMenuToggleButton.hidden = !showPlanner || !viewerProfile.isAdmin;
-    plannerLockedEl.hidden = !showPlanner || viewerProfile.isAdmin;
-    plannerUnlockedEl.hidden = !showPlanner || !viewerProfile.isAdmin;
-    plannerContentEl.hidden = !showPlanner || !viewerProfile.isAdmin;
+    const hasAccess = canUsePlanner();
+    plannerMenuToggleButton.hidden = !showPlanner || !hasAccess;
+    plannerPageTitleEl.hidden = !showPlanner || !hasAccess;
+    plannerLockedEl.hidden = !showPlanner || hasAccess;
+    plannerUnlockedEl.hidden = !showPlanner || !hasAccess;
+    plannerContentEl.hidden = !showPlanner || !hasAccess;
+    if (hasAccess && !viewerProfile.isAdmin && !["workspace", "calendar"].includes(activePlannerPanel)) {
+      activePlannerPanel = "workspace";
+    }
+    plannerSectionButtons.forEach((button) => {
+      button.hidden = !viewerProfile.isAdmin && !["workspace", "calendar"].includes(button.dataset.plannerSection);
+    });
+    if (legacyPlannerDetailsEl) {
+      legacyPlannerDetailsEl.hidden = !viewerProfile.isAdmin;
+    }
     setActivePlannerPanel(activePlannerPanel);
     syncPlannerSidebar();
     updateViewerState();
@@ -361,6 +435,8 @@
 
   function clearStoredAuthToken() {
     window.sessionStorage.removeItem(STORAGE_KEYS.authToken);
+    window.sessionStorage.removeItem(STORAGE_KEYS.plannerDataCache);
+    plannerCacheHydrated = false;
   }
 
   function setActivePlannerPanel(panelName) {
@@ -371,7 +447,27 @@
     }
 
     activePlannerPanel = nextPanel;
+    if (plannerPageTitleEl) {
+      const pageTitles = {
+        workspace: "New Planner",
+        calendar: "Event Calendar",
+        home: "Home",
+        rsvps: "RSVP",
+        guests: "Guests",
+        tables: "Tables",
+        people: "People & Vendors",
+        beds: "Beds",
+        events: "Timeline",
+        "event-detail": "Event Details",
+        shots: "Shot List",
+        todos: "Todo"
+      };
+      plannerPageTitleEl.textContent = pageTitles[nextPanel] || "Wedding Planner";
+    }
     const navPanel = nextPanel === "event-detail" ? "events" : nextPanel;
+    if (legacyPlannerDetailsEl) {
+      legacyPlannerDetailsEl.open = ["events", "shots", "todos"].includes(navPanel);
+    }
 
     plannerSectionButtons.forEach((button) => {
       const isActive = button.dataset.plannerSection === navPanel;
@@ -382,13 +478,14 @@
     plannerPanels.forEach((panel) => {
       panel.hidden = panel.dataset.plannerPanel !== nextPanel;
     });
+    if (nextPanel === "calendar") renderWorkspace();
   }
 
   function syncPlannerSidebar() {
     const showPlanner = currentView === "planner";
     const isMobileSidebar = plannerSidebarMediaQuery.matches;
-    const shouldOpen = showPlanner && (!isMobileSidebar || !viewerProfile.isAdmin || plannerSidebarOpen);
-    const shouldShowOverlay = showPlanner && isMobileSidebar && viewerProfile.isAdmin && plannerSidebarOpen;
+    const shouldOpen = showPlanner && (!isMobileSidebar || !canUsePlanner() || plannerSidebarOpen);
+    const shouldShowOverlay = showPlanner && isMobileSidebar && canUsePlanner() && plannerSidebarOpen;
     plannerLayoutEl.classList.toggle("is-sidebar-open", shouldOpen);
     plannerLayoutEl.classList.toggle("is-sidebar-overlay", shouldShowOverlay);
     plannerMenuToggleButton.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
@@ -414,18 +511,20 @@
 
     if (!viewerProfile.signedIn) {
       viewerStateEl.textContent = "Sign in with Google to access the dashboard.";
-      plannerGateMessageEl.textContent = "Use a Google account that has been shared on the planner spreadsheet.";
+      plannerGateMessageEl.textContent = "Use the Google account connected to your planner invitation.";
       return;
     }
 
-    if (!viewerProfile.isAdmin) {
+    if (!canUsePlanner()) {
       viewerStateEl.textContent = `Signed in as ${viewerProfile.email || "your Google account"}.`;
-      plannerGateMessageEl.textContent = "This Google account is signed in, but it has not been shared on the planner spreadsheet yet.";
+      plannerGateMessageEl.textContent = "This Google account is signed in, but it has not been invited to the planner yet.";
       return;
     }
 
     viewerStateEl.textContent = `Signed in as ${viewerProfile.email || "your Google account"}.`;
-    plannerGateMessageEl.textContent = "Planner unlocked. Use the nav to move between Home, RSVPs, Guests, Tables, P & V, Timeline, Shot List, Todo, and Beds.";
+    plannerGateMessageEl.textContent = viewerProfile.isAdmin
+      ? "Planner unlocked. The new Planner Workspace is ready alongside the existing planner."
+      : "Wedding-week schedule and your personal responsibilities are ready.";
   }
 
   function toLocalInputValue(isoString) {
@@ -792,20 +891,34 @@
     if (numericMatch) {
       const month = Number(numericMatch[1]);
       const day = Number(numericMatch[2]);
+      const hasYear = Boolean(numericMatch[3]);
       let year = Number(numericMatch[3] || new Date().getFullYear());
       if (year < 100) {
         year += 2000;
       }
-      return toIsoDateString(createLocalDate(year, month - 1, day));
+      let candidate = createLocalDate(year, month - 1, day);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (!hasYear && candidate && candidate < today) {
+        candidate = createLocalDate(year + 1, month - 1, day);
+      }
+      return toIsoDateString(candidate);
     }
 
     const monthMatch = text.match(/\b(january|jan\.?|february|feb\.?|march|mar\.?|april|apr\.?|may|june|jun\.?|july|jul\.?|august|aug\.?|september|sept?\.?|october|oct\.?|november|nov\.?|december|dec\.?)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,\s*(\d{4}))?\b/i);
     if (monthMatch) {
       const monthIndex = getMonthIndexFromLabel(monthMatch[1]);
       const day = Number(monthMatch[2]);
+      const hasYear = Boolean(monthMatch[3]);
       const year = Number(monthMatch[3] || new Date().getFullYear());
       if (monthIndex >= 0) {
-        return toIsoDateString(createLocalDate(year, monthIndex, day));
+        let candidate = createLocalDate(year, monthIndex, day);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (!hasYear && candidate && candidate < today) {
+          candidate = createLocalDate(year + 1, monthIndex, day);
+        }
+        return toIsoDateString(candidate);
       }
     }
 
@@ -1309,20 +1422,82 @@
   }
 
   function clearTodoForm() {
+    if (pendingTodoPhoto?.previewUrl) {
+      URL.revokeObjectURL(pendingTodoPhoto.previewUrl);
+    }
     todoForm.reset();
     todoForm.elements.namedItem("id").value = "";
     todoForm.elements.namedItem("eventId").value = "";
     todoForm.elements.namedItem("priority").value = "Medium";
     todoForm.elements.namedItem("status").value = "Not Started";
     todoForm.elements.namedItem("isComplete").value = "false";
+    pendingTodoPhoto = null;
+    renderTodoPhotoPreview();
     renderTodoEventOptions();
     setStatus(todoStatusEl, "", "");
+  }
+
+  function isSafeImageUrl(value) {
+    try {
+      const url = new URL(String(value || "").trim(), window.location.href);
+      return url.protocol === "https:" || url.protocol === "http:";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function renderTodoPhotoPreview(imageUrl = "") {
+    if (!todoPhotoPreviewEl) return;
+    const previewUrl = pendingTodoPhoto?.previewUrl || String(imageUrl || "").trim();
+    if (!previewUrl || !isSafeImageUrl(previewUrl) && !previewUrl.startsWith("blob:")) {
+      todoPhotoPreviewEl.hidden = true;
+      todoPhotoPreviewEl.replaceChildren();
+      return;
+    }
+    todoPhotoPreviewEl.hidden = false;
+    todoPhotoPreviewEl.innerHTML = `<img src="${escapeHtml(previewUrl)}" alt="Task photo preview">`;
+  }
+
+  async function prepareTodoPhoto(file) {
+    if (!file) return null;
+    if (!String(file.type || "").startsWith("image/")) {
+      throw new Error("Choose an image file for the task snapshot.");
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    const source = await new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error("This photo format cannot be prepared in the browser. Please choose a JPG or PNG."));
+      image.src = previewUrl;
+    });
+    const longestSide = Math.max(source.naturalWidth || source.width, source.naturalHeight || source.height);
+    const scale = longestSide > 1600 ? 1600 / longestSide : 1;
+    const width = Math.max(1, Math.round((source.naturalWidth || source.width) * scale));
+    const height = Math.max(1, Math.round((source.naturalHeight || source.height) * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d").drawImage(source, 0, 0, width, height);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+    const encoded = dataUrl.split(",")[1] || "";
+    if (!encoded || encoded.length > 6.5 * 1024 * 1024) {
+      URL.revokeObjectURL(previewUrl);
+      throw new Error("This photo is still too large. Please choose a smaller image.");
+    }
+    return {
+      previewUrl,
+      data: encoded,
+      contentType: "image/jpeg",
+      fileName: `${String(file.name || "task-photo").replace(/\.[^.]+$/, "") || "task-photo"}.jpg`
+    };
   }
 
   function openTodoModal(title, values = {}) {
     clearTodoForm();
     renderTodoEventOptions(values.eventId);
     fillForm(todoForm, values);
+    renderTodoPhotoPreview(values.imageUrl);
     todoModal.querySelector("#todoModalTitle").textContent = title;
     todoModal.hidden = false;
     todoModal.setAttribute("aria-hidden", "false");
@@ -3797,6 +3972,7 @@
                     </div>
                   ` : ""}
                 </div>
+                ${isSafeImageUrl(todo.imageUrl) ? `<img class="todo-snapshot" src="${escapeHtml(todo.imageUrl)}" alt="Snapshot attached to ${escapeHtml(todo.title || "task")}" loading="lazy">` : ""}
               </div>
             </details>
           `;
@@ -5111,6 +5287,1069 @@
     renderSummary();
   }
 
+  function formatWorkspaceMonth(value) {
+    return value.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  }
+
+  function parseWorkspaceDate(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return null;
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  function formatWorkspaceEventSchedule(event) {
+    const startsAt = parseWorkspaceDate(event?.startsAt);
+    if (!startsAt) return "Date and time not set";
+    return startsAt.toLocaleString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
+
+  function setWorkspaceHubView(view) {
+    activeWorkspaceHubView = "create";
+    window.sessionStorage.setItem(STORAGE_KEYS.workspaceHubView, activeWorkspaceHubView);
+    workspaceHubTabsEl?.querySelectorAll("[data-workspace-hub-view]").forEach((button) => {
+      const active = button.dataset.workspaceHubView === activeWorkspaceHubView;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    if (workspaceStartGridEl) workspaceStartGridEl.hidden = false;
+  }
+
+  function renderWorkspaceEventDirectory() {
+    if (!workspaceEventDirectoryListEl) return;
+    const events = [...cachedWorkspaceEvents].sort((left, right) => {
+      const leftTime = parseWorkspaceDate(left.startsAt)?.getTime() || Number.MAX_SAFE_INTEGER;
+      const rightTime = parseWorkspaceDate(right.startsAt)?.getTime() || Number.MAX_SAFE_INTEGER;
+      return leftTime - rightTime || String(left.title || "").localeCompare(String(right.title || ""));
+    });
+    workspaceEventDirectoryListEl.innerHTML = events.length ? events.map((event) => `
+      <article class="workspace-event-directory__item">
+        <div><strong>${escapeHtml(event.title || "Untitled event")}</strong><br><span class="meta">${escapeHtml(formatWorkspaceEventSchedule(event))}${event.location ? ` · ${escapeHtml(event.location)}` : ""}</span></div>
+        <button class="button button--light" type="button" data-open-workspace-event="${escapeHtml(event.id)}">Open event</button>
+      </article>
+    `).join("") : '<p class="meta">No events yet. Create your first one from New Planner.</p>';
+  }
+
+  function renderWorkspace() {
+    if (!workspaceCalendarEl) return;
+    document.querySelectorAll("[data-workspace-manager-only]").forEach((element) => {
+      element.hidden = !viewerProfile.isAdmin;
+    });
+
+    const datedEvents = cachedWorkspaceEvents
+      .map((event) => ({ event, date: parseWorkspaceDate(event.startsAt) }))
+      .filter((item) => item.date);
+    const anchor = datedEvents[0]?.date || new Date();
+    const monthStart = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    const gridStart = new Date(monthStart);
+    gridStart.setDate(monthStart.getDate() - monthStart.getDay());
+    if (workspaceCalendarTitleEl) workspaceCalendarTitleEl.textContent = formatWorkspaceMonth(monthStart);
+
+    const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const cells = weekdays.map((day) => `<span class="workspace-calendar__weekday">${day}</span>`);
+    for (let index = 0; index < 42; index += 1) {
+      const day = new Date(gridStart);
+      day.setDate(gridStart.getDate() + index);
+      const events = datedEvents.filter(({ date }) => date.getFullYear() === day.getFullYear() && date.getMonth() === day.getMonth() && date.getDate() === day.getDate());
+      const outside = day.getMonth() !== monthStart.getMonth();
+      cells.push(`
+        <div class="workspace-calendar__day ${outside ? "workspace-calendar__day--outside" : ""}">
+          <span class="workspace-calendar__date">${day.getDate()}</span>
+          ${events.map(({ event }) => `<button class="workspace-calendar__event" type="button" data-open-workspace-event="${escapeHtml(event.id)}" title="Open ${escapeHtml(event.title || "Untitled event")}">${escapeHtml(event.title || "Untitled event")}</button>`).join("")}
+        </div>
+      `);
+    }
+    workspaceCalendarEl.innerHTML = cells.join("");
+
+    renderWorkspaceEventDirectory();
+    if (!selectedWorkspaceEventId) setWorkspaceHubView(activeWorkspaceHubView);
+    renderWorkspaceEventPage();
+  }
+
+  function toWorkspaceDateTime(date, time) {
+    const normalizedDate = String(date || "").trim();
+    const normalizedTime = String(time || "").trim() || "09:00";
+    return normalizedDate ? `${normalizedDate}T${normalizedTime}` : "";
+  }
+
+  function splitWorkspaceDateTime(value) {
+    const raw = String(value || "").trim();
+    const matched = raw.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2})/);
+    if (matched) return { date: matched[1], time: matched[2] };
+    const parsed = parseWorkspaceDate(raw);
+    if (!parsed) return { date: "", time: "" };
+    return {
+      date: `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`,
+      time: `${String(parsed.getHours()).padStart(2, "0")}:${String(parsed.getMinutes()).padStart(2, "0")}`
+    };
+  }
+
+  function renderWorkspaceEventInvitees(event) {
+    const selection = parseWorkspaceInvitationSelection(event.invitees);
+    const groups = Array.isArray(cachedWorkspaceInvitees.groups) ? cachedWorkspaceInvitees.groups : [];
+    const guests = getWorkspaceInviteeGuestChoices();
+    const selectedGroups = new Set(selection.groups.map((group) => group.toLowerCase()));
+    const selectedIndividuals = new Set(selection.individuals.map((name) => name.toLowerCase()));
+    const invitedGuests = guests.filter((guest) => selectedIndividuals.has(String(guest.name || "").toLowerCase()) || (guest.types || []).some((type) => selectedGroups.has(String(type || "").toLowerCase())));
+
+    return `
+      <div class="workspace-invitees">
+        <input type="hidden" name="invitees" value="${escapeHtml(JSON.stringify(selection))}">
+        <div class="workspace-invitees__header">
+          <h4>Who's invited?</h4>
+          <strong class="workspace-invitees__count">${invitedGuests.length} invited</strong>
+        </div>
+        <div>
+          <strong>Include guest groups</strong>
+          <div class="workspace-invitees__choices workspace-invitees__choices--groups">
+            ${groups.length ? groups.map((group) => `<label class="workspace-invitees__choice"><input type="checkbox" data-workspace-event-invitee-group value="${escapeHtml(group)}" ${selectedGroups.has(String(group).toLowerCase()) ? "checked" : ""}>${escapeHtml(group)}</label>`).join("") : '<span class="meta">No guest groups are available yet.</span>'}
+          </div>
+        </div>
+        <div class="workspace-invitees__add">
+          <label>Add an individual guest
+            <select data-workspace-event-invitee-guest><option value="">Choose a guest…</option>${guests.map((guest) => `<option value="${escapeHtml(guest.name)}">${escapeHtml(guest.name)}${guest.types?.length ? ` (${escapeHtml(guest.types.join(", "))})` : ""}</option>`).join("")}</select>
+          </label>
+          <button class="button button--light" type="button" data-add-workspace-event-invitee>Add guest</button>
+        </div>
+        ${invitedGuests.length ? `<details open><summary>View invited guests</summary><div class="workspace-invitees__choices">${invitedGuests.map((guest) => {
+            const name = String(guest.name || "").trim();
+            const includedByGroup = (guest.types || []).some((type) => selectedGroups.has(String(type || "").toLowerCase()));
+            const individuallyAdded = selectedIndividuals.has(name.toLowerCase());
+            return `<span class="workspace-invitees__guest ${individuallyAdded && !includedByGroup ? "workspace-invitees__guest--removable" : ""}">${escapeHtml(name)}${individuallyAdded && !includedByGroup ? `<button type="button" class="workspace-invitees__remove" data-remove-workspace-event-invitee="${escapeHtml(name)}" aria-label="Remove ${escapeHtml(name)}">×</button>` : ""}</span>`;
+          }).join("")}</div></details>` : '<p class="meta">Select a group or add an individual guest.</p>'}
+      </div>
+    `;
+  }
+
+  function workspaceFallbackTasks(title) {
+    const normalizedTitle = String(title || "this event").trim();
+    if (!/breakfast|brunch/i.test(normalizedTitle)) {
+      return [
+        `Confirm the guest count for ${normalizedTitle}`,
+        "Confirm the event details, supplies, and budget",
+        "Confirm the location, setup, and cleanup plan",
+        "Assign day-of responsibilities",
+        "Send the final reminder before the event"
+      ];
+    }
+    return [
+      `Confirm the guest count for ${normalizedTitle}`,
+      "Collect dietary needs or breakfast preferences",
+      "Choose the food plan and set a budget",
+      "Confirm the serving location, setup, and cleanup plan",
+      "Assign food, setup, and cleanup responsibilities",
+      "Send the final reminder the evening before"
+    ];
+  }
+
+  function getWorkspaceInviteeGuestChoices() {
+    const backendChoices = Array.isArray(cachedWorkspaceInvitees.guests) ? cachedWorkspaceInvitees.guests : [];
+    if (backendChoices.length) return backendChoices;
+
+    const guestsByName = new Map();
+    cachedGuests.forEach((guest) => {
+      const name = getGuestDisplayName(guest);
+      if (!name) return;
+      const key = name.toLowerCase();
+      const types = getGuestTypeValue(guest).split(",").map((type) => type.trim()).filter(Boolean);
+      const existing = guestsByName.get(key);
+      guestsByName.set(key, {
+        name: existing?.name || name,
+        types: [...new Set([...(existing?.types || []), ...types])]
+      });
+    });
+    return [...guestsByName.values()].sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  function renderWorkspaceDraft() {
+    if (!workspaceDraftEl || !workspaceDraftContentEl || !workspaceDraftState) return;
+    if (workspaceCaptureRecognition) {
+      workspaceCaptureRecognition.__stoppedManually = true;
+      workspaceCaptureRecognition.stop();
+    }
+    const draft = workspaceDraftState;
+    workspaceDraftEl.hidden = false;
+    workspaceCaptureCardEl.hidden = true;
+    if (workspaceStartGridEl) workspaceStartGridEl.hidden = true;
+    if (workspaceManualToolsEl) workspaceManualToolsEl.hidden = true;
+    const groupChoices = Array.isArray(cachedWorkspaceInvitees.groups) ? cachedWorkspaceInvitees.groups : [];
+    const guestChoices = getWorkspaceInviteeGuestChoices();
+    const invitationSelection = parseWorkspaceInvitationSelection(draft.invitees);
+    draft.invitees = JSON.stringify(invitationSelection);
+    const selectedGroups = new Set(invitationSelection.groups.map((item) => item.toLowerCase()));
+    const selectedIndividuals = new Set(invitationSelection.individuals.map((item) => item.toLowerCase()));
+    const invitedGuests = guestChoices.filter((guest) => selectedIndividuals.has(String(guest.name || "").toLowerCase()) || (guest.types || []).some((type) => selectedGroups.has(String(type || "").toLowerCase())));
+    workspaceDraftContentEl.innerHTML = `
+      <p class="eyebrow">Review the plan</p>
+      <h4>${escapeHtml(draft.title || "New event")}</h4>
+      <p class="meta">Nothing is saved until you confirm it.</p>
+      <form id="workspaceDraftForm">
+        <label>Event title <input name="title" required value="${escapeHtml(draft.title || "")}"></label>
+        <div class="split">
+          <label>Starts <input name="startsAt" type="datetime-local" required value="${escapeHtml(draft.startsAt || "")}"></label>
+          <label>Location <input name="location" value="${escapeHtml(draft.location || "")}" placeholder="Venue"></label>
+        </div>
+        <div class="workspace-invitees">
+          <input type="hidden" name="invitees" value="${escapeHtml(draft.invitees)}">
+          <div class="workspace-invitees__header"><h4>Who's invited?</h4><strong class="workspace-invitees__count">${invitedGuests.length} invited</strong></div>
+          <div><strong>Include guest groups</strong><div class="workspace-invitees__choices workspace-invitees__choices--groups">${groupChoices.length ? groupChoices.map((group) => `<label class="workspace-invitees__choice"><input type="checkbox" data-workspace-invitee-group value="${escapeHtml(group)}" ${selectedGroups.has(String(group).toLowerCase()) ? "checked" : ""}>${escapeHtml(group)}</label>`).join("") : '<span class="meta">Group choices will load from the guest Type column.</span>'}</div></div>
+          <div class="workspace-invitees__add"><label>Add an individual guest <select data-workspace-invitee-guest><option value="">Choose a guest…</option>${guestChoices.map((guest) => `<option value="${escapeHtml(guest.name)}">${escapeHtml(guest.name)}${guest.types?.length ? ` (${escapeHtml(guest.types.join(", "))})` : ""}</option>`).join("")}</select></label><button class="button button--light" type="button" data-add-workspace-invitee>Add guest</button></div>
+          ${invitedGuests.length ? `<details open><summary>View invited guests</summary><div class="workspace-invitees__choices">${invitedGuests.map((guest) => {
+            const guestName = String(guest.name || "").trim();
+            const guestKey = guestName.toLowerCase();
+            const includedByGroup = (guest.types || []).some((type) => selectedGroups.has(String(type || "").toLowerCase()));
+            const individuallyAdded = selectedIndividuals.has(guestKey);
+            return `<span class="workspace-invitees__guest ${individuallyAdded && !includedByGroup ? "workspace-invitees__guest--removable" : ""}">${escapeHtml(guestName)}${individuallyAdded && !includedByGroup ? `<button type="button" class="workspace-invitees__remove" data-remove-workspace-invitee="${escapeHtml(guestName)}" aria-label="Remove ${escapeHtml(guestName)} from this event" title="Remove ${escapeHtml(guestName)}">×</button>` : ""}</span>`;
+          }).join("")}</div></details>` : '<p class="meta">Select a group or add an individual guest.</p>'}
+        </div>
+        <p class="meta">Inviting someone does not give them planner access.</p>
+        <label>Notes <textarea name="notes" placeholder="Add any context for this event.">${escapeHtml(draft.notes || "")}</textarea></label>
+        <div class="toolbar">
+          <button class="button" type="submit">Create event page</button>
+          <button class="button button--light" type="button" data-discard-workspace-draft>Start over</button>
+        </div>
+      </form>
+    `;
+    workspaceDraftContentEl.querySelector("[data-discard-workspace-draft]")?.addEventListener("click", clearWorkspaceDraft);
+    workspaceDraftContentEl.querySelector("#workspaceDraftForm")?.addEventListener("submit", saveWorkspaceDraft);
+    workspaceDraftContentEl.querySelectorAll("[data-workspace-invitee-group]").forEach((input) => input.addEventListener("change", refreshWorkspaceDraftInvitationSelection));
+    workspaceDraftContentEl.querySelector("[data-add-workspace-invitee]")?.addEventListener("click", () => {
+      syncWorkspaceDraftTasksFromReview();
+      const guestName = String(workspaceDraftContentEl.querySelector("[data-workspace-invitee-guest]")?.value || "").trim();
+      if (!guestName) return;
+      const selection = parseWorkspaceInvitationSelection(workspaceDraftState.invitees);
+      if (!selection.individuals.some((item) => item.toLowerCase() === guestName.toLowerCase())) selection.individuals.push(guestName);
+      workspaceDraftState.invitees = JSON.stringify(selection);
+      renderWorkspaceDraft();
+    });
+    workspaceDraftContentEl.querySelectorAll("[data-remove-workspace-invitee]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const guestName = String(button.dataset.removeWorkspaceInvitee || "").trim();
+        if (!guestName || !workspaceDraftState) return;
+        syncWorkspaceDraftTasksFromReview();
+        const selection = parseWorkspaceInvitationSelection(workspaceDraftState.invitees);
+        selection.individuals = selection.individuals.filter((item) => item.toLowerCase() !== guestName.toLowerCase());
+        workspaceDraftState.invitees = JSON.stringify(selection);
+        renderWorkspaceDraft();
+      });
+    });
+  }
+
+  function parseWorkspaceInvitationSelection(value) {
+    try {
+      const parsed = JSON.parse(String(value || ""));
+      if (parsed && typeof parsed === "object") {
+        return {
+          groups: Array.isArray(parsed.groups) ? parsed.groups.map((item) => String(item || "").trim()).filter(Boolean) : [],
+          individuals: Array.isArray(parsed.individuals) ? parsed.individuals.map((item) => String(item || "").trim()).filter(Boolean) : []
+        };
+      }
+    } catch (_) {}
+    return { groups: [], individuals: String(value || "").split(/[,\n;]+/).map((item) => item.trim()).filter(Boolean) };
+  }
+
+  function refreshWorkspaceDraftInvitationSelection() {
+    syncWorkspaceDraftTasksFromReview();
+    renderWorkspaceDraft();
+  }
+
+  function setWorkspaceMicButton(button, isListening) {
+    if (!button) return;
+    button.textContent = isListening ? "Listening — Stop" : "Use microphone";
+    button.setAttribute("aria-pressed", isListening ? "true" : "false");
+    button.classList.toggle("workspace-mic-button--active", isListening);
+  }
+
+  function workspaceInlineVoiceButton(key, label) {
+    return `<button class="workspace-voice-field__button" type="button" data-workspace-inline-mic="${escapeHtml(key)}" data-workspace-inline-voice-label="${escapeHtml(label)}" aria-label="Start voice input for ${escapeHtml(label)}" title="Use microphone" ${EventWorkspaceSpeechRecognition ? "" : "disabled"}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z"></path><path d="M19 11a7 7 0 0 1-14 0"></path><path d="M12 18v3"></path><path d="M8 21h8"></path></svg></button>`;
+  }
+
+  function toggleWorkspaceInlineVoiceInput(input, button, key, fallbackLabel) {
+    if (!input || !button) return;
+    if (!EventWorkspaceSpeechRecognition) {
+      setStatus(workspaceStatusEl, "Voice input works in supported browsers such as Chrome. You can type this instead.", "pending");
+      return;
+    }
+    const activeRecognition = workspaceInlineVoiceRecognitions.get(key);
+    if (activeRecognition) {
+      activeRecognition.__stoppedManually = true;
+      activeRecognition.stop();
+      return;
+    }
+    const recognition = new EventWorkspaceSpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognition.__stoppedManually = false;
+    recognition.__baseValue = String(input.value || "").trim();
+    recognition.__transcript = "";
+    workspaceInlineVoiceRecognitions.set(key, recognition);
+    recognition.onstart = () => {
+      button.classList.add("is-listening");
+      button.setAttribute("aria-label", `Stop voice input for ${fallbackLabel}`);
+      button.title = "Stop recording";
+    };
+    recognition.onresult = (resultEvent) => {
+      let interimTranscript = "";
+      for (let index = resultEvent.resultIndex || 0; index < resultEvent.results.length; index += 1) {
+        const result = resultEvent.results[index];
+        if (result.isFinal) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
+        else interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+      }
+      input.value = [recognition.__baseValue, recognition.__transcript.trim(), interimTranscript.trim()].filter(Boolean).join(" ");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    recognition.onerror = (errorEvent) => {
+      if (["not-allowed", "service-not-allowed", "audio-capture"].includes(String(errorEvent.error || ""))) {
+        recognition.__stoppedManually = true;
+        setStatus(workspaceStatusEl, `Microphone access was not available. You can type the ${fallbackLabel} instead.`, "error");
+      }
+    };
+    recognition.onend = () => {
+      if (!recognition.__stoppedManually) {
+        try {
+          recognition.start();
+          return;
+        } catch (_) {
+          recognition.__stoppedManually = true;
+        }
+      }
+      if (workspaceInlineVoiceRecognitions.get(key) === recognition) workspaceInlineVoiceRecognitions.delete(key);
+      button.classList.remove("is-listening");
+      button.setAttribute("aria-label", `Start voice input for ${fallbackLabel}`);
+      button.title = "Use microphone";
+    };
+    recognition.start();
+  }
+
+  function toggleWorkspaceTextVoiceInput(input, button, getRecognition, setRecognition, fallbackLabel) {
+    if (!input || !button) return;
+    if (!EventWorkspaceSpeechRecognition) {
+      setStatus(workspaceStatusEl, "Voice input works in supported browsers such as Chrome. You can type this instead.", "pending");
+      return;
+    }
+    const activeRecognition = getRecognition();
+    if (activeRecognition) {
+      activeRecognition.__stoppedManually = true;
+      activeRecognition.stop();
+      return;
+    }
+
+    const recognition = new EventWorkspaceSpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognition.__stoppedManually = false;
+    recognition.__baseValue = String(input.value || "").trim();
+    recognition.__transcript = "";
+    setRecognition(recognition);
+    recognition.onstart = () => {
+      setWorkspaceMicButton(button, true);
+      setStatus(workspaceStatusEl, "", "");
+    };
+    recognition.onresult = (resultEvent) => {
+      let interimTranscript = "";
+      for (let index = resultEvent.resultIndex || 0; index < resultEvent.results.length; index += 1) {
+        const result = resultEvent.results[index];
+        if (result.isFinal) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
+        else interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+      }
+      input.value = [recognition.__baseValue, recognition.__transcript.trim(), interimTranscript.trim()].filter(Boolean).join(" ");
+    };
+    recognition.onerror = (errorEvent) => {
+      if (["not-allowed", "service-not-allowed", "audio-capture"].includes(String(errorEvent.error || ""))) {
+        recognition.__stoppedManually = true;
+        setStatus(workspaceStatusEl, `Microphone access was not available. You can type the ${fallbackLabel} instead.`, "error");
+      }
+    };
+    recognition.onend = () => {
+      if (!recognition.__stoppedManually) {
+        try {
+          recognition.start();
+          return;
+        } catch (_) {
+          recognition.__stoppedManually = true;
+        }
+      }
+      if (getRecognition() === recognition) setRecognition(null);
+      setWorkspaceMicButton(button, false);
+    };
+    recognition.start();
+  }
+
+  function setWorkspacePlanButton(button, isWorking) {
+    if (!button) return;
+    button.disabled = isWorking;
+    button.textContent = isWorking ? "Creating your event plan…" : "Make a plan";
+    button.classList.toggle("workspace-action-button--pending", isWorking);
+  }
+
+  function toggleWorkspaceDraftRefineVoiceInput() {
+    const input = workspaceDraftContentEl?.querySelector("#workspaceDraftRefineForm [name=instruction]");
+    const button = workspaceDraftContentEl?.querySelector("[data-workspace-draft-refine-mic]");
+    if (!input || !button) return;
+    if (!EventWorkspaceSpeechRecognition) {
+      setStatus(workspaceStatusEl, "Voice input works in supported browsers such as Chrome. You can type the request instead.", "pending");
+      return;
+    }
+    if (workspaceDraftRefineRecognition) {
+      workspaceDraftRefineRecognition.__stoppedManually = true;
+      workspaceDraftRefineRecognition.stop();
+      return;
+    }
+    const recognition = new EventWorkspaceSpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.__stoppedManually = false;
+    recognition.__baseValue = String(input.value || "").trim();
+    recognition.__transcript = "";
+    workspaceDraftRefineRecognition = recognition;
+    recognition.onstart = () => {
+      setWorkspaceMicButton(button, true);
+      setStatus(workspaceStatusEl, "", "");
+    };
+    recognition.onresult = (resultEvent) => {
+      let interimTranscript = "";
+      for (let index = resultEvent.resultIndex || 0; index < resultEvent.results.length; index += 1) {
+        const result = resultEvent.results[index];
+        if (result.isFinal) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
+        else interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+      }
+      input.value = [recognition.__baseValue, recognition.__transcript.trim(), interimTranscript.trim()].filter(Boolean).join(" ");
+    };
+    recognition.onerror = (errorEvent) => {
+      if (["not-allowed", "service-not-allowed", "audio-capture"].includes(String(errorEvent.error || ""))) {
+        recognition.__stoppedManually = true;
+        setStatus(workspaceStatusEl, "Microphone access was not available. You can type the request instead.", "error");
+      }
+    };
+    recognition.onend = () => {
+      if (!recognition.__stoppedManually) {
+        try {
+          recognition.start();
+          return;
+        } catch (_) {
+          recognition.__stoppedManually = true;
+        }
+      }
+      if (workspaceDraftRefineRecognition === recognition) workspaceDraftRefineRecognition = null;
+      setWorkspaceMicButton(button, false);
+    };
+    recognition.start();
+  }
+
+  function syncWorkspaceDraftTasksFromReview() {
+    if (!workspaceDraftState || !workspaceDraftContentEl) return;
+    const form = workspaceDraftContentEl.querySelector("#workspaceDraftForm");
+    if (!form) return;
+    const selection = parseWorkspaceInvitationSelection(new FormData(form).get("invitees"));
+    selection.groups = Array.from(form.querySelectorAll("[data-workspace-invitee-group]:checked")).map((input) => String(input.value || "").trim()).filter(Boolean);
+    workspaceDraftState.invitees = JSON.stringify(selection);
+  }
+
+  async function refineWorkspaceDraftTasks(instruction) {
+    if (!workspaceDraftState || !instruction) return;
+    syncWorkspaceDraftTasksFromReview();
+    const draft = workspaceDraftState;
+    const currentTasks = (draft.todos || []).map((task) => `- ${task.title}`).join("\n") || "None";
+    draft.taskRefinementPrompt = instruction;
+    setStatus(workspaceStatusEl, "AI is revising the suggested tasks…", "pending");
+    try {
+      const plan = await backendRequest("generateEventPlan", {
+        title: draft.title,
+        date: String(draft.startsAt || "").slice(0, 10),
+        startsAt: String(draft.startsAt || "").slice(11, 16),
+        location: draft.location,
+        notes: draft.notes,
+        planningNotes: `Current suggested tasks:\n${currentTasks}\n\nRequested changes:\n${instruction}`,
+        goals: ["todo items"],
+        systemPrompt: "You revise a wedding-event task list. Follow the requested changes exactly when practical. Return only concise, actionable tasks; do not add shopping lists or shot ideas.",
+        userPrompt: `Revise the task list for \"${draft.title}\".\n\nCurrent tasks:\n${currentTasks}\n\nRequested changes:\n${instruction}`
+      });
+      if (plan?.error || !Array.isArray(plan?.todos) || !plan.todos.length) {
+        throw new Error("AI could not revise the tasks right now. You can still edit the task names directly.");
+      }
+      workspaceDraftState.todos = plan.todos.map((task) => ({ ...task, selected: true }));
+      renderWorkspaceDraft();
+      setStatus(workspaceStatusEl, "Task suggestions updated. Review them before creating the event page.", "success");
+    } catch (error) {
+      setStatus(workspaceStatusEl, error.message || "AI could not revise the tasks right now.", "error");
+    }
+  }
+
+  function clearWorkspaceDraft() {
+    workspaceDraftState = null;
+    if (workspaceDraftEl) workspaceDraftEl.hidden = true;
+    if (workspaceCaptureCardEl) workspaceCaptureCardEl.hidden = false;
+    if (workspaceStartGridEl) workspaceStartGridEl.hidden = false;
+    if (workspaceManualToolsEl) workspaceManualToolsEl.hidden = false;
+    workspaceCapturePromptEl?.focus();
+  }
+
+  function makeWorkspaceDraft(prompt) {
+    if (workspaceCaptureRecognition) {
+      workspaceCaptureRecognition.__stoppedManually = true;
+      workspaceCaptureRecognition.stop();
+    }
+    const guessed = guessEventFormValuesFromPrompt(prompt);
+    const title = guessed.title || "New event";
+    const startsAt = toWorkspaceDateTime(guessed.date, guessed.startsAt);
+    if (!startsAt) {
+      throw new Error("Include a date and time so I can schedule the event.");
+    }
+    setStatus(workspaceStatusEl, "", "");
+    workspaceDraftState = {
+      title,
+      startsAt,
+      location: guessed.location || (/venue/i.test(prompt) ? "Venue" : ""),
+      audience: "wedding_party",
+      invitees: "",
+      notes: "",
+      todos: []
+    };
+    renderWorkspaceDraft();
+  }
+
+  async function saveWorkspaceDraft(event) {
+    event.preventDefault();
+    if (!workspaceDraftState) return;
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form).entries());
+    try {
+      setStatus(workspaceStatusEl, "Creating event workspace…", "pending");
+      const savedEvent = await backendRequest("saveWorkspaceEvent", {
+        title: String(data.title || "").trim(),
+        startsAt: String(data.startsAt || "").trim(),
+        location: String(data.location || "").trim(),
+        audience: "wedding_party",
+        invitees: String(new FormData(form).get("invitees") || "").trim(),
+        notes: String(data.notes || "").trim()
+      });
+      workspaceDraftState = null;
+      selectedWorkspaceEventId = String(savedEvent.id || "").trim();
+      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
+      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+      if (workspaceDraftEl) workspaceDraftEl.hidden = true;
+      await refreshWorkspaceCollections();
+      setStatus(workspaceStatusEl, "Event page created. Add tasks when you are ready.", "success");
+    } catch (error) {
+      setStatus(workspaceStatusEl, error.message || "Unable to create this event.", "error");
+    }
+  }
+
+  function renderWorkspaceEventPage() {
+    if (!workspaceEventPageEl || !workspaceEventPageContentEl) return;
+    const event = cachedWorkspaceEvents.find((item) => String(item.id || "") === selectedWorkspaceEventId);
+    if (!event) {
+      window.sessionStorage.removeItem(STORAGE_KEYS.workspaceEventId);
+      selectedWorkspaceEventId = "";
+      if (activePlannerPanel === "workspace" && plannerPageTitleEl) {
+        plannerPageTitleEl.textContent = "New Planner";
+      }
+      setWorkspaceHubView(activeWorkspaceHubView);
+      workspaceEventPageEl.hidden = true;
+      return;
+    }
+    const tasks = cachedWorkspaceTasks
+      .filter((task) => String(task.eventId || "") === event.id)
+      .sort((left, right) => Number(left.sortOrder || 0) - Number(right.sortOrder || 0));
+    const lists = cachedWorkspaceLists.filter((list) => String(list.eventId || "") === event.id);
+    const taskAssets = (taskId) => cachedWorkspaceAssets.filter((asset) => String(asset.taskId || "") === String(taskId || ""));
+    const renderTaskList = (listId) => {
+      const list = lists.find((item) => String(item.id || "") === String(listId || ""));
+      if (!list) return '<span class="meta">No list associated.</span>';
+      const items = String(list.items || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+      const completedItems = new Set(Array.isArray(list.completedItems) ? list.completedItems.map(Number) : []);
+      return `<strong>${escapeHtml(list.title || "Untitled list")}</strong>${items.length ? `<div class="workspace-checklist__items">${items.map((item, index) => `<label class="workspace-checklist__item ${completedItems.has(index) ? "is-complete" : ""}"><input type="checkbox" data-workspace-list-item data-workspace-list-id="${escapeHtml(list.id)}" data-workspace-list-item-index="${index}" ${completedItems.has(index) ? "checked" : ""}><span>${escapeHtml(item)}</span></label>`).join("")}</div>` : '<span class="meta">No items yet.</span>'}`;
+    };
+    const canManageEvent = Boolean(viewerProfile.isAdmin);
+    const eventDateTime = splitWorkspaceDateTime(event.startsAt);
+    const guestTypes = Array.isArray(cachedWorkspaceInvitees.groups)
+      ? cachedWorkspaceInvitees.groups.map((group) => String(group || "").trim()).filter(Boolean)
+      : [];
+    const assigneeOptions = (selectedId) => `
+      <option value="">Unassigned</option>
+      ${cachedWorkspaceUsers.filter((person) => person.active).length ? `<optgroup label="Planner members">${cachedWorkspaceUsers.filter((person) => person.active).map((person) => `<option value="${escapeHtml(person.id)}" ${String(person.id) === String(selectedId || "") ? "selected" : ""}>${escapeHtml(person.name || person.email)}</option>`).join("")}</optgroup>` : ""}
+      ${guestTypes.length ? `<optgroup label="Guest types">${guestTypes.map((type) => {
+        const value = `guest-type:${type}`;
+        return `<option value="${escapeHtml(value)}" ${value === String(selectedId || "") ? "selected" : ""}>${escapeHtml(type)}</option>`;
+      }).join("")}</optgroup>` : ""}
+    `;
+    const formatTaskAssignee = (assignedUserId) => {
+      const value = String(assignedUserId || "").trim();
+      if (!value) return "Unassigned";
+      if (value.startsWith("guest-type:")) return value.slice("guest-type:".length) || "Guest type";
+      const person = cachedWorkspaceUsers.find((user) => String(user.id || "") === value);
+      return person?.name || person?.email || value;
+    };
+    const formatTaskDueDate = (dueAt) => {
+      const date = String(dueAt || "").slice(0, 10);
+      if (!date) return "No due date";
+      const parsed = new Date(`${date}T12:00:00`);
+      return Number.isNaN(parsed.getTime()) ? date : parsed.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+    };
+    workspaceEventPageEl.hidden = false;
+    if (activePlannerPanel === "workspace" && plannerPageTitleEl) {
+      plannerPageTitleEl.textContent = "Event Workspace";
+    }
+    if (workspaceEventDirectoryEl) workspaceEventDirectoryEl.hidden = activePlannerPanel !== "calendar";
+    if (workspaceCaptureCardEl) workspaceCaptureCardEl.hidden = true;
+    if (workspaceStartGridEl) workspaceStartGridEl.hidden = true;
+    if (workspaceManualToolsEl) workspaceManualToolsEl.hidden = true;
+    workspaceInlineVoiceRecognitions.forEach((recognition) => {
+      recognition.__stoppedManually = true;
+      try { recognition.stop(); } catch (_) {}
+    });
+    workspaceInlineVoiceRecognitions.clear();
+    workspaceEventPageContentEl.innerHTML = `
+      <h3>${escapeHtml(event.title || "Untitled event")}</h3>
+      <div class="workspace-event-tabs" role="tablist" aria-label="Event workspace sections">
+        <button class="workspace-event-tab ${activeWorkspaceEventTab === "details" ? "is-active" : ""}" type="button" role="tab" aria-selected="${activeWorkspaceEventTab === "details"}" data-workspace-event-tab="details">Event details</button>
+        <button class="workspace-event-tab ${activeWorkspaceEventTab === "tasks" ? "is-active" : ""}" type="button" role="tab" aria-selected="${activeWorkspaceEventTab === "tasks"}" data-workspace-event-tab="tasks">Tasks</button>
+        <button class="workspace-event-tab ${activeWorkspaceEventTab === "lists" ? "is-active" : ""}" type="button" role="tab" aria-selected="${activeWorkspaceEventTab === "lists"}" data-workspace-event-tab="lists">Event lists</button>
+      </div>
+      <section class="workspace-event-tab-panel" data-workspace-event-tab-panel="details" ${activeWorkspaceEventTab === "details" ? "" : "hidden"}>
+        <form id="workspaceEventEditForm">
+          <div class="split"><label>Date <input name="eventDate" type="date" value="${escapeHtml(eventDateTime.date)}"></label><label>Time <input name="eventTime" type="time" value="${escapeHtml(eventDateTime.time)}"></label></div>
+          <label>Location <input name="location" value="${escapeHtml(event.location || "")}" placeholder="Where will this happen?"></label>
+          <section class="workspace-invitees-card">
+            ${renderWorkspaceEventInvitees(event)}
+            <p class="meta">Inviting someone does not give them planner access.</p>
+          </section>
+          <label>Notes <textarea name="notes" placeholder="Plans, decisions, or helpful context.">${escapeHtml(event.notes || "")}</textarea></label>
+          <button class="button button--light" type="submit">Save event details</button>
+        </form>
+      </section>
+      <section class="workspace-event-tab-panel" data-workspace-event-tab-panel="tasks" ${activeWorkspaceEventTab === "tasks" ? "" : "hidden"}>
+      ${canManageEvent && !tasks.length ? `<section class="workspace-ai-task-generator">
+        <h4>Create tasks with AI</h4>
+        <p class="meta">Tell AI anything that will help it make a useful, practical task list for this event. You can edit or remove every task afterward.</p>
+        <form id="workspaceEventTaskGenerateForm" class="workspace-quick-form">
+          <label>Tell me more about this event
+            <span class="workspace-voice-field"><input name="planningNotes" placeholder="For example: catered breakfast for 25 people; coffee, allergies, and cleanup matter.">${workspaceInlineVoiceButton(`event-context-${event.id}`, "event details")}</span>
+          </label>
+          <button class="button button--light" type="submit">Generate tasks with AI</button>
+        </form>
+      </section>` : ""}
+      <div class="workspace-task-table-wrap">${tasks.length ? `<table class="workspace-task-table">
+        <thead><tr>${canManageEvent ? '<th class="workspace-task-table__order" scope="col"><span class="sr-only">Order</span></th>' : ""}<th class="workspace-task-table__task" scope="col">Task</th><th scope="col">Assigned to</th><th scope="col">Due</th>${canManageEvent ? '<th scope="col"><span class="sr-only">Actions</span></th>' : ""}</tr></thead>
+        <tbody>${tasks.map((task) => canManageEvent ? `
+          <tr class="workspace-event-task-edit workspace-task-accordion ${String(task.status || "").trim().toLowerCase() === "done" ? "is-complete" : ""}" data-workspace-task-id="${escapeHtml(task.id)}">
+            <td class="workspace-task-table__order" data-label="Order"><button class="button button--icon button--light workspace-task-drag-handle" type="button" draggable="true" data-workspace-task-drag-handle aria-label="Drag to reorder ${escapeHtml(task.title || "task")}" title="Drag to reorder"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6h.01"></path><path d="M9 12h.01"></path><path d="M9 18h.01"></path><path d="M15 6h.01"></path><path d="M15 12h.01"></path><path d="M15 18h.01"></path></svg></button></td>
+            <td data-label="Task"><button class="workspace-task-accordion-toggle" type="button" data-workspace-task-accordion aria-expanded="false">${escapeHtml(task.title || "Untitled task")}</button></td>
+            <td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserId))}</td>
+            <td data-label="Due">${escapeHtml(formatTaskDueDate(task.dueAt))}</td>
+            <td class="workspace-task-associated-list" data-label="Associated list">${renderTaskList(task.listId)}</td>
+            <td class="workspace-task-table__actions" data-label="Actions"><button class="button button--icon button--light workspace-task-icon-button" type="button" data-edit-workspace-task="${escapeHtml(task.id)}" aria-label="Edit ${escapeHtml(task.title || "task")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button><button class="button button--icon button--light workspace-task-icon-button" type="button" data-delete-workspace-task="${escapeHtml(task.id)}" aria-label="Remove ${escapeHtml(task.title || "task")}" title="Remove"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg></button></td>
+          </tr>` : `<tr class="workspace-task-accordion ${String(task.status || "").trim().toLowerCase() === "done" ? "is-complete" : ""}"><td data-label="Task"><button class="workspace-task-accordion-toggle" type="button" data-workspace-task-accordion aria-expanded="false">${escapeHtml(task.title || "Untitled task")}</button></td><td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserId))}</td><td data-label="Due">${escapeHtml(formatTaskDueDate(task.dueAt))}</td><td class="workspace-task-associated-list" data-label="Associated list">${renderTaskList(task.listId)}</td></tr>`).join("")}</tbody>
+      </table>` : '<p class="meta">No tasks yet.</p>'}</div>
+      ${canManageEvent ? `<section class="modal" id="workspaceTaskModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskModalTitle"><button class="modal__close" type="button" data-close-workspace-task-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskModalTitle">Edit task</h3><p class="meta">Update task details without losing the table view.</p></div></div><form id="workspaceTaskEditForm"><input type="hidden" name="id"><label>Task <input name="title" required></label><div class="split"><label>Assigned to <select name="assignedUserId">${assigneeOptions("")}</select></label><label>Due date <input name="dueAt" type="date"></label></div><label>Associated list <select name="listId"><option value="">No associated list</option>${lists.map((list) => `<option value="${escapeHtml(list.id)}">${escapeHtml(list.title || "Untitled list")}</option>`).join("")}</select></label><label>Status <select name="status"><option value="Not Started">Not started</option><option value="In Progress">In progress</option><option value="Done">Done</option></select></label><label>Notes <textarea name="notes" placeholder="Helpful details, links, or next steps."></textarea></label><div class="task-photo-field"><span>Task snapshot</span><div class="toolbar task-photo-actions"><button class="button" type="button" data-capture-workspace-task-photo>Take photo</button><button class="button button--light" type="button" data-upload-workspace-task-photo>Upload photo</button></div><input name="workspaceTaskCamera" type="file" accept="image/*" capture="environment" hidden><input name="workspaceTaskPhoto" type="file" accept="image/*" hidden><p class="meta">Take a new photo now, or upload one from your library. It is attached when you save.</p><div class="task-photo-preview" data-workspace-task-photo-preview hidden></div><div class="workspace-task-photos" data-workspace-task-photos></div></div><div class="toolbar"><button class="button" type="submit">Save task</button><button class="button button--light" type="button" data-close-workspace-task-modal>Cancel</button></div><p class="status" id="workspaceTaskEditStatus"></p></form></div></section>` : ""}
+      ${canManageEvent ? `<form id="workspaceEventTaskForm" class="workspace-quick-form"><label>Add a task <span class="workspace-voice-field"><input name="title" required placeholder="What needs to happen?">${workspaceInlineVoiceButton(`new-task-${event.id}`, "new task")}</span></label><button class="button button--light" type="submit">Add task</button></form>` : ""}
+      </section>
+      <section class="workspace-event-tab-panel" data-workspace-event-tab-panel="lists" ${activeWorkspaceEventTab === "lists" ? "" : "hidden"}>
+      <h4>Lists</h4>
+      <div class="workspace-draft__tasks">${lists.length ? lists.map((list) => {
+        const items = String(list.items || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+        const completedItems = new Set(Array.isArray(list.completedItems) ? list.completedItems.map(Number) : []);
+        return `<section class="workspace-draft__task workspace-checklist"><strong>${escapeHtml(list.title || "Untitled list")}</strong>${items.length ? `<div class="workspace-checklist__items">${items.map((item, index) => `<label class="workspace-checklist__item ${completedItems.has(index) ? "is-complete" : ""}"><input type="checkbox" data-workspace-list-item data-workspace-list-id="${escapeHtml(list.id)}" data-workspace-list-item-index="${index}" ${completedItems.has(index) ? "checked" : ""}><span>${escapeHtml(item)}</span></label>`).join("")}</div>` : '<p class="meta">No items yet.</p>'}</section>`;
+      }).join("") : '<p class="meta">No lists yet.</p>'}</div>
+      <form id="workspaceEventListForm" class="workspace-quick-form"><label>New list <input name="title" required placeholder="Breakfast shopping list"></label><label>Items <textarea name="items" required placeholder="Coffee&#10;Fruit&#10;Pastries"></textarea></label><button class="button button--light" type="submit">Add list</button></form>
+      </section>
+    `;
+    workspaceEventPageContentEl.querySelector("#workspaceEventEditForm")?.addEventListener("submit", async (formEvent) => {
+      formEvent.preventDefault();
+      const form = formEvent.currentTarget;
+      const data = Object.fromEntries(new FormData(form).entries());
+      await backendRequest("saveWorkspaceEvent", {
+        ...event,
+        startsAt: toWorkspaceDateTime(data.eventDate, data.eventTime),
+        location: String(data.location || "").trim(),
+        invitees: String(new FormData(form).get("invitees") || "").trim(),
+        notes: String(data.notes || "").trim()
+      });
+      await refreshWorkspaceCollections();
+      setStatus(workspaceStatusEl, "Event details saved.", "success");
+    });
+    workspaceEventPageContentEl.querySelectorAll("[data-workspace-event-tab]").forEach((button) => {
+      button.addEventListener("click", () => {
+        activeWorkspaceEventTab = String(button.dataset.workspaceEventTab || "details");
+        window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+        workspaceEventPageContentEl.querySelectorAll("[data-workspace-event-tab]").forEach((tab) => {
+          const active = tab.dataset.workspaceEventTab === activeWorkspaceEventTab;
+          tab.classList.toggle("is-active", active);
+          tab.setAttribute("aria-selected", active ? "true" : "false");
+        });
+        workspaceEventPageContentEl.querySelectorAll("[data-workspace-event-tab-panel]").forEach((panel) => {
+          panel.hidden = panel.dataset.workspaceEventTabPanel !== activeWorkspaceEventTab;
+        });
+      });
+    });
+    const saveEventDetailsDraft = () => {
+      const form = workspaceEventPageContentEl.querySelector("#workspaceEventEditForm");
+      if (!form) return;
+      const data = new FormData(form);
+      event.startsAt = toWorkspaceDateTime(data.get("eventDate"), data.get("eventTime"));
+      event.location = String(data.get("location") || "");
+      event.invitees = String(data.get("invitees") || "");
+      event.notes = String(data.get("notes") || "");
+    };
+    workspaceEventPageContentEl.querySelectorAll("[data-workspace-event-invitee-group]").forEach((input) => input.addEventListener("change", () => {
+      const form = workspaceEventPageContentEl.querySelector("#workspaceEventEditForm");
+      const hidden = form?.querySelector("[name=invitees]");
+      const selection = parseWorkspaceInvitationSelection(hidden?.value);
+      selection.groups = Array.from(form?.querySelectorAll("[data-workspace-event-invitee-group]:checked") || []).map((item) => String(item.value || "").trim()).filter(Boolean);
+      if (hidden) hidden.value = JSON.stringify(selection);
+    }));
+    workspaceEventPageContentEl.querySelector("[data-add-workspace-event-invitee]")?.addEventListener("click", () => {
+      saveEventDetailsDraft();
+      const guestName = String(workspaceEventPageContentEl.querySelector("[data-workspace-event-invitee-guest]")?.value || "").trim();
+      if (!guestName) return;
+      const selection = parseWorkspaceInvitationSelection(event.invitees);
+      if (!selection.individuals.some((item) => item.toLowerCase() === guestName.toLowerCase())) selection.individuals.push(guestName);
+      event.invitees = JSON.stringify(selection);
+      renderWorkspaceEventPage();
+    });
+    workspaceEventPageContentEl.querySelectorAll("[data-remove-workspace-event-invitee]").forEach((button) => button.addEventListener("click", () => {
+      saveEventDetailsDraft();
+      const guestName = String(button.dataset.removeWorkspaceEventInvitee || "").trim();
+      const selection = parseWorkspaceInvitationSelection(event.invitees);
+      selection.individuals = selection.individuals.filter((item) => item.toLowerCase() !== guestName.toLowerCase());
+      event.invitees = JSON.stringify(selection);
+      renderWorkspaceEventPage();
+    }));
+    workspaceEventPageContentEl.querySelectorAll("[data-workspace-inline-mic]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const input = button.closest(".workspace-voice-field")?.querySelector("input, textarea");
+        toggleWorkspaceInlineVoiceInput(input, button, String(button.dataset.workspaceInlineMic || ""), String(button.dataset.workspaceInlineVoiceLabel || "voice input"));
+      });
+    });
+    workspaceEventPageContentEl.querySelector("#workspaceEventTaskGenerateForm")?.addEventListener("submit", async (formEvent) => {
+      formEvent.preventDefault();
+      const form = formEvent.currentTarget;
+      const button = form.querySelector("button[type=submit]");
+      const planningNotes = String(new FormData(form).get("planningNotes") || "").trim();
+      const existingTitles = new Set(tasks.map((task) => String(task.title || "").trim().toLowerCase()).filter(Boolean));
+      try {
+        if (button) {
+          button.disabled = true;
+          button.textContent = "Generating tasks…";
+          button.classList.add("workspace-action-button--pending");
+          button.setAttribute("aria-busy", "true");
+        }
+        // Keep the in-progress feedback next to the action that started it.
+        // A page-level status banner would otherwise appear detached from this form.
+        setStatus(workspaceStatusEl, "", "");
+        const plan = await backendRequest("generateEventPlan", {
+          title: event.title,
+          date: String(event.startsAt || "").slice(0, 10),
+          startsAt: String(event.startsAt || "").slice(11, 16),
+          location: event.location,
+          notes: event.notes,
+          planningNotes,
+          goals: ["todo items"],
+          systemPrompt: "You make concise, practical task lists for a wedding event. Return only actionable tasks; do not create a shopping list, guest list, or shot list unless asked.",
+          userPrompt: `Create a useful task list for the wedding event "${event.title}". ${planningNotes ? `Extra details: ${planningNotes}` : ""}`
+        });
+        const generatedTasks = Array.isArray(plan?.todos) ? plan.todos : [];
+        if (plan?.error || !generatedTasks.length) throw new Error("AI could not create tasks right now. You can add tasks yourself below.");
+        const newTasks = generatedTasks.map((task) => ({
+          title: String(task?.title || task || "").trim(),
+          notes: String(task?.notes || "").trim()
+        })).filter((task) => task.title && !existingTitles.has(task.title.toLowerCase()));
+        if (!newTasks.length) throw new Error("AI did not find any new tasks to add. You can add one yourself below.");
+        for (const task of newTasks) {
+          await backendRequest("saveWorkspaceTask", { ...task, eventId: event.id, status: "Not Started" });
+        }
+        await refreshWorkspaceCollections();
+        setStatus(workspaceStatusEl, `${newTasks.length} task${newTasks.length === 1 ? "" : "s"} added. You can edit, assign, or remove them below.`, "success");
+      } catch (error) {
+        setStatus(workspaceStatusEl, error.message || "AI could not create tasks right now.", "error");
+        if (button) {
+          button.disabled = false;
+          button.textContent = "Generate tasks with AI";
+          button.classList.remove("workspace-action-button--pending");
+          button.removeAttribute("aria-busy");
+        }
+      }
+    });
+    workspaceEventPageContentEl.querySelector("#workspaceEventTaskForm")?.addEventListener("submit", async (formEvent) => {
+      formEvent.preventDefault();
+      const data = Object.fromEntries(new FormData(formEvent.currentTarget).entries());
+      const savedTask = await backendRequest("saveWorkspaceTask", { ...data, eventId: event.id, status: "Not Started" });
+      upsertCachedWorkspaceTask(savedTask);
+      savePlannerSessionCache();
+      renderWorkspaceEventPage();
+      setStatus(workspaceStatusEl, "Task added.", "success");
+    });
+    const workspaceTaskModal = workspaceEventPageContentEl.querySelector("#workspaceTaskModal");
+    const workspaceTaskEditForm = workspaceEventPageContentEl.querySelector("#workspaceTaskEditForm");
+    const workspaceTaskPhotoInput = workspaceTaskEditForm?.elements?.namedItem("workspaceTaskPhoto");
+    const workspaceTaskCameraInput = workspaceTaskEditForm?.elements?.namedItem("workspaceTaskCamera");
+    const workspaceTaskPhotoPreview = workspaceTaskEditForm?.querySelector("[data-workspace-task-photo-preview]");
+    const workspaceTaskPhotos = workspaceTaskEditForm?.querySelector("[data-workspace-task-photos]");
+    let pendingWorkspaceTaskPhoto = null;
+    let workspaceTaskModalReturnFocus = null;
+    const closeWorkspaceTaskModal = () => {
+      if (!workspaceTaskModal) return;
+      workspaceTaskModal.hidden = true;
+      workspaceTaskModal.setAttribute("aria-hidden", "true");
+      workspaceTaskModalReturnFocus?.focus();
+    };
+    workspaceEventPageContentEl.querySelectorAll("[data-edit-workspace-task]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const task = tasks.find((item) => String(item.id || "") === String(button.dataset.editWorkspaceTask || ""));
+        if (!task || !workspaceTaskModal || !workspaceTaskEditForm) return;
+        workspaceTaskModalReturnFocus = button;
+        workspaceTaskEditForm.elements.namedItem("id").value = String(task.id || "");
+        workspaceTaskEditForm.elements.namedItem("title").value = String(task.title || "");
+        workspaceTaskEditForm.elements.namedItem("assignedUserId").value = String(task.assignedUserId || "");
+        workspaceTaskEditForm.elements.namedItem("dueAt").value = String(task.dueAt || "").slice(0, 10);
+        workspaceTaskEditForm.elements.namedItem("listId").value = String(task.listId || "");
+        workspaceTaskEditForm.elements.namedItem("status").value = String(task.status || "Not Started");
+        workspaceTaskEditForm.elements.namedItem("notes").value = String(task.notes || "");
+        if (workspaceTaskPhotos) {
+          const photos = taskAssets(task.id).filter((asset) => isSafeImageUrl(asset.assetUrl));
+          workspaceTaskPhotos.innerHTML = photos.length ? `<p class="meta">Attached snapshots</p>${photos.map((asset) => `<img class="todo-snapshot" src="${escapeHtml(asset.assetUrl)}" alt="Snapshot attached to ${escapeHtml(task.title || "task")}" loading="lazy">`).join("")}` : "";
+        }
+        const editStatus = workspaceTaskEditForm.querySelector(".status");
+        if (editStatus) setStatus(editStatus, "", "");
+        workspaceTaskModal.hidden = false;
+        workspaceTaskModal.setAttribute("aria-hidden", "false");
+        window.setTimeout(() => workspaceTaskEditForm.elements.namedItem("title")?.focus(), 0);
+      });
+    });
+    workspaceEventPageContentEl.querySelectorAll("[data-close-workspace-task-modal]").forEach((button) => {
+      button.addEventListener("click", closeWorkspaceTaskModal);
+    });
+    const prepareWorkspaceTaskPhoto = async (fileInput) => {
+      const file = fileInput?.files?.[0];
+      if (!file) return;
+      const editStatus = workspaceTaskEditForm?.querySelector(".status");
+      try {
+        if (pendingWorkspaceTaskPhoto?.previewUrl) URL.revokeObjectURL(pendingWorkspaceTaskPhoto.previewUrl);
+        pendingWorkspaceTaskPhoto = await prepareTodoPhoto(file);
+        if (workspaceTaskPhotoPreview) {
+          workspaceTaskPhotoPreview.hidden = false;
+          workspaceTaskPhotoPreview.innerHTML = `<img src="${escapeHtml(pendingWorkspaceTaskPhoto.previewUrl)}" alt="Task snapshot preview">`;
+        }
+        if (editStatus) setStatus(editStatus, "Snapshot ready to attach when you save.", "success");
+      } catch (error) {
+        pendingWorkspaceTaskPhoto = null;
+        if (fileInput) fileInput.value = "";
+        if (workspaceTaskPhotoPreview) {
+          workspaceTaskPhotoPreview.hidden = true;
+          workspaceTaskPhotoPreview.replaceChildren();
+        }
+        if (editStatus) setStatus(editStatus, error.message || "Unable to prepare this task snapshot.", "error");
+      }
+    };
+    workspaceEventPageContentEl.querySelector("[data-capture-workspace-task-photo]")?.addEventListener("click", () => workspaceTaskCameraInput?.click());
+    workspaceEventPageContentEl.querySelector("[data-upload-workspace-task-photo]")?.addEventListener("click", () => workspaceTaskPhotoInput?.click());
+    workspaceTaskCameraInput?.addEventListener("change", () => prepareWorkspaceTaskPhoto(workspaceTaskCameraInput));
+    workspaceTaskPhotoInput?.addEventListener("change", () => prepareWorkspaceTaskPhoto(workspaceTaskPhotoInput));
+    workspaceTaskEditForm?.addEventListener("submit", async (formEvent) => {
+      formEvent.preventDefault();
+      const data = Object.fromEntries(new FormData(workspaceTaskEditForm).entries());
+      const existingTask = cachedWorkspaceTasks.find((task) => String(task.id || "") === String(data.id || ""));
+      if (!existingTask) return;
+      const editStatus = workspaceTaskEditForm.querySelector(".status");
+      const optimisticTask = { ...existingTask, ...data, eventId: event.id };
+      upsertCachedWorkspaceTask(optimisticTask);
+      savePlannerSessionCache();
+      closeWorkspaceTaskModal();
+      renderWorkspaceEventPage();
+      setStatus(workspaceStatusEl, "Saving task in the background…", "pending");
+
+      try {
+        const savedTask = await backendRequest("saveWorkspaceTask", { ...data, eventId: event.id });
+        upsertCachedWorkspaceTask(savedTask);
+        if (pendingWorkspaceTaskPhoto) {
+          setStatus(workspaceStatusEl, "Uploading task snapshot…", "pending");
+          const uploadedPhoto = await backendRequest("uploadTodoImage", {
+            ...pendingWorkspaceTaskPhoto,
+            taskTitle: String(data.title || "").trim()
+          });
+          const savedAsset = await backendRequest("saveWorkspaceAsset", {
+            title: `${String(data.title || "Task").trim()} snapshot`,
+            assetUrl: String(uploadedPhoto?.imageUrl || "").trim(),
+            assetType: "image",
+            eventId: event.id,
+            taskId: savedTask.id,
+            visibility: "linked"
+          });
+          if (savedAsset?.id) cachedWorkspaceAssets.push(savedAsset);
+        }
+        savePlannerSessionCache();
+        setStatus(workspaceStatusEl, pendingWorkspaceTaskPhoto ? "Task and snapshot saved." : "Task updated.", "success");
+      } catch (error) {
+        upsertCachedWorkspaceTask(existingTask);
+        savePlannerSessionCache();
+        renderWorkspaceEventPage();
+        setStatus(workspaceStatusEl, error.message || "Unable to update task.", "error");
+      } finally {
+        if (pendingWorkspaceTaskPhoto?.previewUrl) URL.revokeObjectURL(pendingWorkspaceTaskPhoto.previewUrl);
+        pendingWorkspaceTaskPhoto = null;
+        if (editStatus) setStatus(editStatus, "", "");
+      }
+    });
+
+    workspaceEventPageContentEl.querySelectorAll("[data-workspace-task-accordion]").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (!window.matchMedia("(max-width: 860px)").matches) return;
+        const row = button.closest(".workspace-task-accordion");
+        if (!row) return;
+        const expanded = row.classList.toggle("is-expanded");
+        button.setAttribute("aria-expanded", String(expanded));
+      });
+    });
+
+    const taskTableBody = workspaceEventPageContentEl.querySelector(".workspace-task-table tbody");
+    let draggedTaskRow = null;
+    const clearTaskDragUi = () => {
+      taskTableBody?.querySelectorAll(".workspace-event-task-edit").forEach((row) => {
+        row.classList.remove("is-dragging", "is-drag-over");
+      });
+    };
+    const saveWorkspaceTaskOrder = async () => {
+      if (!taskTableBody) return;
+      const rows = Array.from(taskTableBody.querySelectorAll(".workspace-event-task-edit"));
+      const orderById = new Map(rows.map((row, index) => [String(row.dataset.workspaceTaskId || ""), index + 1]));
+      const previousOrder = new Map(cachedWorkspaceTasks.map((task) => [String(task.id || ""), task.sortOrder]));
+      cachedWorkspaceTasks.forEach((task) => {
+        const nextOrder = orderById.get(String(task.id || ""));
+        if (nextOrder) task.sortOrder = nextOrder;
+      });
+      try {
+        setStatus(workspaceStatusEl, "Saving task order…", "pending");
+        for (const [id, sortOrder] of orderById) {
+          const savedTask = await backendRequest("saveWorkspaceTask", { id, eventId: event.id, sortOrder });
+          upsertCachedWorkspaceTask(savedTask);
+        }
+        savePlannerSessionCache();
+        setStatus(workspaceStatusEl, "Task order saved.", "success");
+      } catch (error) {
+        cachedWorkspaceTasks.forEach((task) => {
+          if (previousOrder.has(String(task.id || ""))) task.sortOrder = previousOrder.get(String(task.id || ""));
+        });
+        renderWorkspaceEventPage();
+        setStatus(workspaceStatusEl, error.message || "Unable to save task order.", "error");
+      }
+    };
+    taskTableBody?.addEventListener("dragstart", (dragEvent) => {
+      const handle = dragEvent.target.closest("[data-workspace-task-drag-handle]");
+      const row = handle?.closest(".workspace-event-task-edit");
+      if (!row) return;
+      draggedTaskRow = row;
+      row.classList.add("is-dragging");
+      if (dragEvent.dataTransfer) {
+        dragEvent.dataTransfer.effectAllowed = "move";
+        dragEvent.dataTransfer.setData("text/plain", String(row.dataset.workspaceTaskId || ""));
+      }
+    });
+    taskTableBody?.addEventListener("dragover", (dragEvent) => {
+      if (!draggedTaskRow) return;
+      const targetRow = dragEvent.target.closest(".workspace-event-task-edit");
+      if (!targetRow || targetRow === draggedTaskRow) return;
+      dragEvent.preventDefault();
+      if (dragEvent.dataTransfer) dragEvent.dataTransfer.dropEffect = "move";
+      taskTableBody.querySelectorAll(".workspace-event-task-edit.is-drag-over").forEach((row) => row.classList.remove("is-drag-over"));
+      targetRow.classList.add("is-drag-over");
+    });
+    taskTableBody?.addEventListener("drop", async (dragEvent) => {
+      const targetRow = dragEvent.target.closest(".workspace-event-task-edit");
+      if (!draggedTaskRow || !targetRow || targetRow === draggedTaskRow) return;
+      dragEvent.preventDefault();
+      const insertAfter = dragEvent.clientY > targetRow.getBoundingClientRect().top + (targetRow.getBoundingClientRect().height / 2);
+      taskTableBody.insertBefore(draggedTaskRow, insertAfter ? targetRow.nextSibling : targetRow);
+      draggedTaskRow = null;
+      clearTaskDragUi();
+      await saveWorkspaceTaskOrder();
+    });
+    taskTableBody?.addEventListener("dragend", () => {
+      draggedTaskRow = null;
+      clearTaskDragUi();
+    });
+    workspaceEventPageContentEl.querySelectorAll("[data-delete-workspace-task]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        await backendRequest("deleteWorkspaceTask", { id: button.dataset.deleteWorkspaceTask });
+        cachedWorkspaceTasks = cachedWorkspaceTasks.filter((task) => String(task.id || "") !== String(button.dataset.deleteWorkspaceTask || ""));
+        savePlannerSessionCache();
+        renderWorkspaceEventPage();
+        setStatus(workspaceStatusEl, "Task removed.", "success");
+      });
+    });
+    workspaceEventPageContentEl.querySelector("#workspaceEventListForm")?.addEventListener("submit", async (formEvent) => {
+      formEvent.preventDefault();
+      const data = Object.fromEntries(new FormData(formEvent.currentTarget).entries());
+      await backendRequest("saveWorkspaceList", { ...data, eventId: event.id });
+      await refreshWorkspaceCollections();
+      setStatus(workspaceStatusEl, "List added.", "success");
+    });
+    workspaceEventPageContentEl.querySelectorAll("[data-workspace-list-item]").forEach((checkbox) => {
+      checkbox.addEventListener("change", async () => {
+        const listId = String(checkbox.dataset.workspaceListId || "").trim();
+        const itemIndex = Number(checkbox.dataset.workspaceListItemIndex);
+        const completed = checkbox.checked;
+        checkbox.disabled = true;
+        try {
+          const savedList = await backendRequest("setWorkspaceListItemCompleted", { id: listId, itemIndex, completed });
+          const listIndex = cachedWorkspaceLists.findIndex((list) => String(list.id || "") === listId);
+          if (listIndex >= 0) cachedWorkspaceLists[listIndex] = savedList;
+          savePlannerSessionCache();
+          renderWorkspaceEventPage();
+        } catch (error) {
+          checkbox.checked = !completed;
+          checkbox.disabled = false;
+          setStatus(workspaceStatusEl, error.message || "Unable to update the list item.", "error");
+        }
+      });
+    });
+  }
+
+  function upsertCachedWorkspaceTask(savedTask) {
+    const id = String(savedTask?.id || "").trim();
+    if (!id) return;
+    const existingIndex = cachedWorkspaceTasks.findIndex((task) => String(task.id || "") === id);
+    if (existingIndex >= 0) {
+      cachedWorkspaceTasks[existingIndex] = savedTask;
+    } else {
+      cachedWorkspaceTasks.push(savedTask);
+    }
+  }
+
+  async function refreshWorkspaceCollections() {
+    // Apps Script serializes work against the spreadsheet poorly when many
+    // fresh requests arrive together. Load the startup collections in order
+    // so one opening dashboard does not exhaust the proxy/upstream.
+    const users = await backendRequest("listWorkspaceUsers", {});
+    const events = await backendRequest("listWorkspaceEvents", {});
+    const tasks = await backendRequest("listWorkspaceTasks", {});
+    const lists = await backendRequest("listWorkspaceLists", {});
+    const assets = await backendRequest("listWorkspaceAssets", {});
+    cachedWorkspaceUsers = Array.isArray(users) ? users : [];
+    cachedWorkspaceEvents = Array.isArray(events) ? events : [];
+    cachedWorkspaceTasks = Array.isArray(tasks) ? tasks : [];
+    cachedWorkspaceLists = Array.isArray(lists) ? lists : [];
+    cachedWorkspaceAssets = Array.isArray(assets) ? assets : [];
+    try {
+      const invitees = await backendRequest("listWorkspaceInvitees", {});
+      cachedWorkspaceInvitees = invitees && typeof invitees === "object" ? invitees : { groups: [], guests: [] };
+    } catch (error) {
+      cachedWorkspaceInvitees = { groups: [], guests: [] };
+      setStatus(workspaceStatusEl, `Guest choices could not load: ${String(error?.message || "unknown backend error")}`, "error");
+    }
+    renderWorkspace();
+  }
+
   function getRpcUrl() {
     const scriptBaseUrl = String(window.PLANNER_CTX.scriptBaseUrl || "").trim();
     if (scriptBaseUrl && !scriptBaseUrl.startsWith("<?")) {
@@ -5131,6 +6370,7 @@
     }
 
     window.sessionStorage.setItem(STORAGE_KEYS.authToken, credential);
+    const cacheShown = showCachedPlannerWhileVerifying(getGoogleCredentialEmail(credential));
     setStatus(plannerLoginStatusEl, "Checking Google account access...", "pending");
 
     try {
@@ -5138,7 +6378,7 @@
       if (!hasAccess) {
         setStatus(
           plannerLoginStatusEl,
-          `Signed in as ${viewerProfile.email || "this account"}, but that email is not shared on the planner spreadsheet yet.`,
+          `Signed in as ${viewerProfile.email || "this account"}, but that email has not been invited to the planner yet.`,
           "error"
         );
         return;
@@ -5146,7 +6386,13 @@
 
       setStatus(plannerLoginStatusEl, "Dashboard access granted.", "success");
       await maybeLoadPlannerData();
+      await refreshPlannerVersionInfo();
     } catch (error) {
+      if (cacheShown) {
+        setStatus(plannerLoginStatusEl, "Showing your saved planner while account verification retries.", "pending");
+        setStatus(plannerSyncStatusEl, error.message || "The planner connection is still waking up. Saved data is available.", "pending");
+        return;
+      }
       clearStoredAuthToken();
       viewerProfile = {
         signedIn: false,
@@ -5202,35 +6448,66 @@
       throw new Error("Planner backend URL is not configured yet.");
     }
 
-    const response = await fetch(rpcUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8"
-      },
-      body: JSON.stringify({
-        method,
-        payload,
-        authToken
-      })
-    });
+    const retryableRead = ["getViewerProfile", "getWorkspaceProfile"].includes(method);
+    const attempts = retryableRead ? 3 : 1;
+    let lastError = null;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        const controller = new AbortController();
+        // Apps Script may need a cold start, token verification, Drive access,
+        // and sheet access on a person's first sign-in. Give that one
+        // read-only handshake more time without making ordinary saves wait.
+        const requestTimeoutMs = ["getWorkspaceProfile", "getViewerProfile", "getPlannerBootstrap"].includes(method)
+          ? 60000
+          : 20000;
+        const requestTimeout = window.setTimeout(() => controller.abort(), requestTimeoutMs);
+        const response = await fetch(rpcUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            method,
+            payload,
+            authToken
+          })
+        });
+        window.clearTimeout(requestTimeout);
+        const result = await response.json();
+        if (result?.ok) return result.data;
 
-    const result = await response.json();
-    if (!result?.ok) {
-      const message = String(result?.error || "Planner request failed.");
-      if (/Please sign in with Google first\./i.test(message)) {
-        clearStoredAuthToken();
-        viewerProfile = {
-          signedIn: false,
-          email: "",
-          isAdmin: false
-        };
-        renderRoute();
-        throw new Error("Please sign in with a Google account that has access to the planner sheet.");
+        const message = String(result?.error || "Planner request failed.");
+        if (/Please sign in with Google first\./i.test(message)) {
+          clearStoredAuthToken();
+          viewerProfile = {
+            signedIn: false,
+            email: "",
+            isAdmin: false
+          };
+          renderRoute();
+          throw new Error("Please sign in with a Google account that has access to the planner sheet.");
+        }
+        if (retryableRead && attempt < attempts - 1 && /Apps Script upstream returned (404|502|503|504)|Apps Script upstream did not return JSON/i.test(message)) {
+          lastError = new Error(message);
+          await new Promise((resolve) => window.setTimeout(resolve, 900 * (attempt + 1)));
+          continue;
+        }
+        throw new Error(message);
+      } catch (error) {
+        if (String(error?.name || "") === "AbortError") {
+          lastError = new Error("The planner connection took too long. Please try signing in again.");
+          throw lastError;
+        }
+        lastError = error;
+        if (retryableRead && attempt < attempts - 1 && /Apps Script upstream returned (404|502|503|504)|Apps Script upstream did not return JSON/i.test(String(error?.message || ""))) {
+          await new Promise((resolve) => window.setTimeout(resolve, 900 * (attempt + 1)));
+          continue;
+        }
+        throw error;
       }
-      throw new Error(message);
     }
-
-    return result.data;
+    throw lastError || new Error("Planner request failed.");
   }
 
   async function refreshPlannerCollections() {
@@ -5306,21 +6583,18 @@
       }
     ];
 
-    const results = await Promise.allSettled(requests.map((request) => request.run()));
     const failures = [];
 
-    results.forEach((result, index) => {
-      const request = requests[index];
-      if (result.status === "fulfilled") {
-        request.apply(result.value);
-        return;
+    for (const request of requests) {
+      try {
+        request.apply(await request.run());
+      } catch (error) {
+        failures.push({
+          label: request.label,
+          message: String(error?.message || "Planner request failed.")
+        });
       }
-
-      failures.push({
-        label: request.label,
-        message: String(result.reason?.message || "Planner request failed.")
-      });
-    });
+    }
 
     renderPlannerData();
     return failures;
@@ -5338,12 +6612,31 @@
       return false;
     }
 
-    const profile = await backendRequest("getViewerProfile", {});
+    // This endpoint verifies the Google credential and determines workspace
+    // access together. Keeping it to one request avoids making people wait for
+    // two serial trips through the proxy and Apps Script after signing in.
+    let workspaceProfile;
+    try {
+      workspaceProfile = await backendRequest("getWorkspaceProfile", {});
+    } catch (error) {
+      // Older deployed Apps Script bundles predate the workspace profile
+      // endpoint. They can still authenticate full planners through the
+      // original profile method while a newer backend is rolled out.
+      if (!/Unknown RPC method:\s*getWorkspaceProfile/i.test(String(error?.message || ""))) {
+        throw error;
+      }
+      workspaceProfile = await backendRequest("getViewerProfile", {});
+    }
+    const supportsWorkspaceAccess = Object.prototype.hasOwnProperty.call(workspaceProfile || {}, "accessLevel");
     viewerProfile = {
-      signedIn: Boolean(profile?.signedIn),
-      email: String(profile?.email || "").trim(),
-      name: String(profile?.name || "").trim(),
-      isAdmin: Boolean(profile?.isAdmin)
+      signedIn: Boolean(workspaceProfile?.signedIn),
+      email: String(workspaceProfile?.email || "").trim(),
+      name: String(workspaceProfile?.name || "").trim(),
+      isAdmin: Boolean(workspaceProfile?.isAdmin) || String(workspaceProfile?.accessLevel || "") === "full_planner",
+      hasWorkspaceAccess: supportsWorkspaceAccess
+        ? Boolean(workspaceProfile?.signedIn)
+        : Boolean(workspaceProfile?.signedIn && workspaceProfile?.isAdmin),
+      accessLevel: String(workspaceProfile?.accessLevel || "").trim()
     };
 
     if (!viewerProfile.signedIn) {
@@ -5356,33 +6649,184 @@
     }
 
     renderRoute();
-    return viewerProfile.isAdmin;
+    return canUsePlanner();
+  }
+
+  function savePlannerSessionCache() {
+    if (!viewerProfile.email) return;
+    try {
+      window.sessionStorage.setItem(STORAGE_KEYS.plannerDataCache, JSON.stringify({
+        email: viewerProfile.email,
+        viewer: viewerProfile,
+        savedAt: Date.now(),
+        people: cachedPeople,
+        events: cachedEvents,
+        shots: cachedShots,
+        beds: cachedBeds,
+        tables: cachedTables,
+        todos: cachedTodos,
+        eventLists: cachedEventLists,
+        rsvps: cachedRsvps,
+        guests: cachedGuests,
+        workspaceUsers: cachedWorkspaceUsers,
+        workspaceEvents: cachedWorkspaceEvents,
+        workspaceTasks: cachedWorkspaceTasks,
+        workspaceLists: cachedWorkspaceLists,
+        workspaceAssets: cachedWorkspaceAssets,
+        workspaceInvitees: cachedWorkspaceInvitees
+      }));
+    } catch (_) {
+      // The cache is only a speed-up. If browser storage is full or disabled,
+      // the planner continues to load directly from Google Sheets.
+    }
+  }
+
+  function restorePlannerSessionCache() {
+    try {
+      const cached = JSON.parse(String(window.sessionStorage.getItem(STORAGE_KEYS.plannerDataCache) || ""));
+      if (!cached || String(cached.email || "").toLowerCase() !== viewerProfile.email.toLowerCase()) return false;
+      cachedPeople = Array.isArray(cached.people) ? cached.people : [];
+      cachedEvents = Array.isArray(cached.events) ? cached.events : [];
+      cachedShots = Array.isArray(cached.shots) ? cached.shots : [];
+      cachedBeds = Array.isArray(cached.beds) ? cached.beds : [];
+      cachedTables = Array.isArray(cached.tables) ? cached.tables : [];
+      cachedTodos = Array.isArray(cached.todos) ? cached.todos : [];
+      cachedEventLists = Array.isArray(cached.eventLists) ? cached.eventLists : [];
+      cachedRsvps = Array.isArray(cached.rsvps) ? cached.rsvps : [];
+      cachedGuests = Array.isArray(cached.guests) ? cached.guests : [];
+      cachedWorkspaceUsers = Array.isArray(cached.workspaceUsers) ? cached.workspaceUsers : [];
+      cachedWorkspaceEvents = Array.isArray(cached.workspaceEvents) ? cached.workspaceEvents : [];
+      cachedWorkspaceTasks = Array.isArray(cached.workspaceTasks) ? cached.workspaceTasks : [];
+      cachedWorkspaceLists = Array.isArray(cached.workspaceLists) ? cached.workspaceLists : [];
+      cachedWorkspaceAssets = Array.isArray(cached.workspaceAssets) ? cached.workspaceAssets : [];
+      cachedWorkspaceInvitees = cached.workspaceInvitees && typeof cached.workspaceInvitees === "object" ? cached.workspaceInvitees : { groups: [], guests: [] };
+      plannerCacheHydrated = true;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function getGoogleCredentialEmail(credential) {
+    try {
+      const payload = String(credential || "").split(".")[1] || "";
+      const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+      const decoded = JSON.parse(window.atob(base64.padEnd(base64.length + (4 - base64.length % 4) % 4, "=")));
+      return String(decoded?.email || "").trim().toLowerCase();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function showCachedPlannerWhileVerifying(expectedEmail = "") {
+    try {
+      const cached = JSON.parse(String(window.sessionStorage.getItem(STORAGE_KEYS.plannerDataCache) || ""));
+      const cachedEmail = String(cached?.email || "").trim().toLowerCase();
+      const requestedEmail = String(expectedEmail || "").trim().toLowerCase();
+      if (!cachedEmail || (requestedEmail && cachedEmail !== requestedEmail) || !cached?.viewer) return false;
+      viewerProfile = { ...viewerProfile, ...cached.viewer, signedIn: true };
+      if (!canUsePlanner() || !restorePlannerSessionCache()) return false;
+      renderRoute();
+      renderRestoredPlannerCache();
+      plannerContentEl.hidden = false;
+      setStatus(plannerSyncStatusEl, "Showing saved planner data while checking account access…", "pending");
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function renderRestoredPlannerCache() {
+    renderPlannerData();
+    renderWorkspace();
+    renderRsvps();
+    renderGuests();
+    renderTables();
+    renderTableTypeOptions();
+    renderEventAssignedTypeOptions(collectEventAssignedToFormValue());
+    rerenderGuestDrivenEventUi();
+  }
+
+  function applyPlannerBootstrap(snapshot) {
+    const planner = snapshot?.planner || {};
+    const workspace = snapshot?.workspace || {};
+    const feed = planner.feed || {};
+
+    cachedPeople = sortByUpdated(Array.isArray(planner.people) ? planner.people : [], "updatedAt");
+    cachedEvents = sortEvents(Array.isArray(planner.events) ? planner.events : []);
+    cachedShots = sortShots(Array.isArray(planner.shots) ? planner.shots : []);
+    cachedBeds = sortBeds(Array.isArray(planner.beds) ? planner.beds : []);
+    cachedTodos = sortTodos(Array.isArray(planner.todos) ? planner.todos : []);
+    cachedEventLists = sortEventLists(Array.isArray(planner.eventLists) ? planner.eventLists : []);
+    cachedTables = sortTables(Array.isArray(planner.tables) ? planner.tables : []);
+    cachedRsvps = normalizeRsvps(feed);
+    cachedGuests = normalizeGuests(feed);
+    cachedWorkspaceUsers = Array.isArray(workspace.users) ? workspace.users : [];
+    cachedWorkspaceEvents = Array.isArray(workspace.events) ? workspace.events : [];
+    cachedWorkspaceTasks = Array.isArray(workspace.tasks) ? workspace.tasks : [];
+    cachedWorkspaceLists = Array.isArray(workspace.lists) ? workspace.lists : [];
+    cachedWorkspaceAssets = Array.isArray(workspace.assets) ? workspace.assets : [];
+    cachedWorkspaceInvitees = workspace.invitees && typeof workspace.invitees === "object" ? workspace.invitees : { groups: [], guests: [] };
+    rsvpFeedConnected = true;
+
+    renderPlannerData();
+    renderWorkspace();
+    renderRsvps();
+    renderGuests();
+    renderTables();
+    renderTableTypeOptions();
+    renderEventAssignedTypeOptions(collectEventAssignedToFormValue());
+    rerenderGuestDrivenEventUi();
   }
 
   async function maybeLoadPlannerData() {
-    if (currentView !== "planner" || !viewerProfile.isAdmin) {
-      plannerContentEl.hidden = currentView !== "planner" || !viewerProfile.isAdmin;
+    if (currentView !== "planner" || !canUsePlanner()) {
+      plannerContentEl.hidden = currentView !== "planner" || !canUsePlanner();
       return;
     }
 
+    if (restorePlannerSessionCache()) {
+      renderRestoredPlannerCache();
+      plannerContentEl.hidden = false;
+      setStatus(plannerSyncStatusEl, "Showing saved planner data while checking for updates…", "pending");
+    }
+
     try {
-      const failures = await refreshPlannerCollections();
-      if (failures.length) {
-        const labels = failures.map((failure) => failure.label).join(", ");
-        setStatus(plannerSyncStatusEl, `Planner data partially synced. Failed: ${labels}.`, "pending");
-      } else {
+      let usedBootstrap = false;
+      try {
+        const snapshot = await backendRequest("getPlannerBootstrap", {});
+        if (!snapshot?.profile?.signedIn) throw new Error("Please sign in with Google first.");
+        applyPlannerBootstrap(snapshot);
+        usedBootstrap = true;
         setStatus(plannerSyncStatusEl, "Planner data synced from Google Sheets.", "success");
+      } catch (error) {
+        if (!/Unknown RPC method:\s*getPlannerBootstrap/i.test(String(error?.message || ""))) throw error;
+        const failures = viewerProfile.isAdmin ? await refreshPlannerCollections() : [];
+        if (viewerProfile.isAdmin) await backendRequest("initializePlannerWorkspace", {});
+        await refreshWorkspaceCollections();
+        if (failures.length) {
+          const labels = failures.map((failure) => failure.label).join(", ");
+          setStatus(plannerSyncStatusEl, `Planner data partially synced. Failed: ${labels}.`, "pending");
+        } else {
+          setStatus(plannerSyncStatusEl, "Planner data synced from Google Sheets.", "success");
+        }
+      }
+      if (usedBootstrap) {
+        setStatus(rsvpStatusEl, `Loaded ${getDashboardRsvps().length} RSVP rows from Guests.`, "success");
+        setStatus(guestsStatusEl, `Loaded ${cachedGuests.length} rows from Guests.`, "success");
       }
     } catch (error) {
       setStatus(plannerSyncStatusEl, error.message || "Unable to load planner data.", "error");
+      return;
     }
-    await refreshRsvps();
+    if (!rsvpFeedConnected) await refreshRsvps();
+    savePlannerSessionCache();
     plannerContentEl.hidden = false;
   }
 
   function requirePlannerAccess() {
     if (!viewerProfile.isAdmin) {
-      throw new Error("Sign in with a Google account that has access to the planner sheet first.");
+      throw new Error("Only full planners can make this change.");
     }
   }
 
@@ -6050,29 +7494,28 @@ function sortTables(items) {
   }
 
   async function refreshRsvps() {
-    const feedUrl = String(window.PLANNER_CTX.rsvpFeedUrl || "").trim();
-    if (!feedUrl) {
-      rsvpFeedConnected = false;
-      cachedRsvps = [];
-      cachedGuests = [];
-      renderRsvps();
-      renderGuests();
-      renderTables();
-      renderTableTypeOptions();
-      renderEventAssignedTypeOptions(collectEventAssignedToFormValue());
-      rerenderGuestDrivenEventUi();
-      renderSummary();
-      setStatus(rsvpStatusEl, "No RSVP feed URL configured yet.", "error");
-      setStatus(guestsStatusEl, "No Guests feed URL configured yet.", "error");
-      setStatus(plannerSyncStatusEl, "Planner sheets are not connected because the Apps Script URL is missing.", "error");
-      return;
-    }
-
     try {
-      const payload = await fetchJsonp(feedUrl);
+      requirePlannerAccess();
+      let payload;
+      try {
+        payload = await backendRequest("listPlannerDashboardFeed", {});
+      } catch (error) {
+        // Maintain guest/table functionality while an existing Apps Script
+        // deployment is upgraded. The fallback is used only after the
+        // authenticated planner access check above succeeds.
+        if (!/Unknown RPC method:\s*listPlannerDashboardFeed/i.test(String(error?.message || ""))) {
+          throw error;
+        }
+        const feedUrl = String(window.PLANNER_CTX.rsvpFeedUrl || "").trim();
+        if (!feedUrl) {
+          throw error;
+        }
+        payload = await fetchJsonp(feedUrl);
+      }
       rsvpFeedConnected = true;
       cachedRsvps = normalizeRsvps(payload);
       cachedGuests = normalizeGuests(payload);
+      if (workspaceDraftState) renderWorkspaceDraft();
       renderRsvps();
       renderGuests();
       renderTables();
@@ -6085,8 +7528,10 @@ function sortTables(items) {
       setStatus(plannerSyncStatusEl, "Spreadsheet feed connected. Planner data, including people, events, and shots, syncs through the backend.", "success");
     } catch (error) {
       rsvpFeedConnected = false;
-      cachedRsvps = [];
-      cachedGuests = [];
+      if (!plannerCacheHydrated) {
+        cachedRsvps = [];
+        cachedGuests = [];
+      }
       renderRsvps();
       renderGuests();
       renderTables();
@@ -6094,9 +7539,10 @@ function sortTables(items) {
       renderEventAssignedTypeOptions(collectEventAssignedToFormValue());
       rerenderGuestDrivenEventUi();
       renderSummary();
-      setStatus(rsvpStatusEl, error.message || "Unable to load RSVPs.", "error");
-      setStatus(guestsStatusEl, error.message || "Unable to load Guests.", "error");
-      setStatus(plannerSyncStatusEl, "Dashboard unlocked, but the spreadsheet feed could not be reached.", "error");
+      const message = error.message || "Unable to load RSVPs.";
+      setStatus(rsvpStatusEl, plannerCacheHydrated ? `Showing saved RSVP data. ${message}` : message, plannerCacheHydrated ? "pending" : "error");
+      setStatus(guestsStatusEl, plannerCacheHydrated ? `Showing saved guest data. ${message}` : message, plannerCacheHydrated ? "pending" : "error");
+      setStatus(plannerSyncStatusEl, plannerCacheHydrated ? "Showing saved planner data because the spreadsheet could not be reached." : "Dashboard unlocked, but the spreadsheet feed could not be reached.", plannerCacheHydrated ? "pending" : "error");
     }
   }
 
@@ -6322,6 +7768,18 @@ function sortTables(items) {
       const data = Object.fromEntries(new FormData(todoForm).entries());
       const todoId = String(data.id || "").trim() || createClientId("todo");
       const existingTodo = cachedTodos.find((item) => item.id === todoId);
+      let imageUrl = String(data.imageUrl || "").trim();
+      if (pendingTodoPhoto) {
+        setStatus(todoStatusEl, "Uploading task snapshot...", "pending");
+        const uploadedPhoto = await backendRequest("uploadTodoImage", {
+          ...pendingTodoPhoto,
+          taskTitle: String(data.title || "").trim()
+        });
+        imageUrl = String(uploadedPhoto?.imageUrl || "").trim();
+        if (!imageUrl) {
+          throw new Error("The task snapshot did not return a usable image link.");
+        }
+      }
       const optimisticTodo = {
         id: todoId,
         eventId: String(data.eventId || "").trim(),
@@ -6334,7 +7792,7 @@ function sortTables(items) {
         status: String(data.status || "Not Started").trim(),
         isComplete: String(data.isComplete || "false") === "true",
         completedAt: existingTodo?.completedAt || "",
-        imageUrl: String(data.imageUrl || "").trim(),
+        imageUrl,
         smsMessage: String(data.smsMessage || "").trim(),
         reminderDate: String(data.reminderDate || "").trim(),
         category: String(data.category || "").trim(),
@@ -6354,7 +7812,7 @@ function sortTables(items) {
         priority: String(data.priority || "Medium").trim(),
         status: String(data.status || "Not Started").trim(),
         isComplete: String(data.isComplete || "false") === "true",
-        imageUrl: String(data.imageUrl || "").trim(),
+        imageUrl,
         smsMessage: String(data.smsMessage || "").trim(),
         reminderDate: String(data.reminderDate || "").trim(),
         category: String(data.category || "").trim(),
@@ -6369,6 +7827,23 @@ function sortTables(items) {
       cachedTodos = previousTodos;
       rerenderTodoData();
       setStatus(todoStatusEl, error.message || "Unable to save task.", "error");
+    }
+  });
+
+  todoPhotoInput?.addEventListener("change", async () => {
+    const file = todoPhotoInput.files?.[0];
+    if (!file) return;
+    try {
+      setStatus(todoStatusEl, "Preparing task snapshot...", "pending");
+      if (pendingTodoPhoto?.previewUrl) URL.revokeObjectURL(pendingTodoPhoto.previewUrl);
+      pendingTodoPhoto = await prepareTodoPhoto(file);
+      renderTodoPhotoPreview();
+      setStatus(todoStatusEl, "Snapshot ready to attach when you save.", "success");
+    } catch (error) {
+      pendingTodoPhoto = null;
+      todoPhotoInput.value = "";
+      renderTodoPhotoPreview();
+      setStatus(todoStatusEl, error.message || "Unable to prepare this task snapshot.", "error");
     }
   });
 
@@ -6412,7 +7887,7 @@ function sortTables(items) {
     }
   });
 
-  refreshRsvpsButton.addEventListener("click", async () => {
+  refreshRsvpsButton?.addEventListener("click", async () => {
     try {
       requirePlannerAccess();
       setStatus(rsvpStatusEl, "Refreshing RSVPs...", "pending");
@@ -7088,6 +8563,202 @@ function sortTables(items) {
     }
   });
 
+  workspaceUserQuickForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      requirePlannerAccess();
+      const data = Object.fromEntries(new FormData(workspaceUserQuickForm).entries());
+      setStatus(workspaceStatusEl, "Adding planner access…", "pending");
+      await backendRequest("saveWorkspaceUser", data);
+      workspaceUserQuickForm.reset();
+      await refreshWorkspaceCollections();
+      setStatus(workspaceStatusEl, "Person added to the new planner.", "success");
+    } catch (error) {
+      setStatus(workspaceStatusEl, error.message || "Unable to add this person.", "error");
+    }
+  });
+
+  workspaceEventQuickForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      requirePlannerAccess();
+      const data = Object.fromEntries(new FormData(workspaceEventQuickForm).entries());
+      setStatus(workspaceStatusEl, "Adding schedule item…", "pending");
+      await backendRequest("saveWorkspaceEvent", data);
+      workspaceEventQuickForm.reset();
+      await refreshWorkspaceCollections();
+      setStatus(workspaceStatusEl, "Schedule item added to the new calendar.", "success");
+    } catch (error) {
+      setStatus(workspaceStatusEl, error.message || "Unable to add this schedule item.", "error");
+    }
+  });
+
+  workspaceTaskQuickForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      requirePlannerAccess();
+      const data = Object.fromEntries(new FormData(workspaceTaskQuickForm).entries());
+      setStatus(workspaceStatusEl, "Adding task…", "pending");
+      await backendRequest("saveWorkspaceTask", data);
+      workspaceTaskQuickForm.reset();
+      await refreshWorkspaceCollections();
+      setStatus(workspaceStatusEl, "Task added to the fresh planner.", "success");
+    } catch (error) {
+      setStatus(workspaceStatusEl, error.message || "Unable to add this task.", "error");
+    }
+  });
+
+  workspaceTasksEl?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-complete-workspace-task]");
+    if (!button) return;
+    try {
+      setStatus(workspaceStatusEl, "Marking task complete…", "pending");
+      await backendRequest("saveWorkspaceTask", {
+        id: String(button.dataset.completeWorkspaceTask || "").trim(),
+        status: "Done"
+      });
+      await refreshWorkspaceCollections();
+      setStatus(workspaceStatusEl, "Task marked complete.", "success");
+    } catch (error) {
+      setStatus(workspaceStatusEl, error.message || "Unable to complete this task.", "error");
+    }
+  });
+
+  workspaceCalendarEl?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-open-workspace-event]");
+    if (!button) return;
+    selectedWorkspaceEventId = String(button.dataset.openWorkspaceEvent || "").trim();
+    activeWorkspaceEventTab = "details";
+    window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
+    window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+    setActivePlannerPanel("workspace");
+    renderWorkspaceEventPage();
+  });
+
+  workspaceHubTabsEl?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-workspace-hub-view]");
+    if (!button) return;
+    setWorkspaceHubView(button.dataset.workspaceHubView);
+  });
+
+  workspaceEventDirectoryListEl?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-open-workspace-event]");
+    if (!button) return;
+    selectedWorkspaceEventId = String(button.dataset.openWorkspaceEvent || "").trim();
+    activeWorkspaceEventTab = "details";
+    window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
+    window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+    setActivePlannerPanel("workspace");
+    renderWorkspaceEventPage();
+  });
+
+  workspaceCaptureForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const planButton = event.currentTarget.querySelector("button[type=submit]");
+    try {
+      requirePlannerAccess();
+      setWorkspacePlanButton(planButton, true);
+      await makeWorkspaceDraft(String(workspaceCapturePromptEl?.value || "").trim());
+    } catch (error) {
+      setStatus(workspaceStatusEl, error.message || "Unable to make a plan from that yet.", "error");
+    } finally {
+      setWorkspacePlanButton(planButton, false);
+    }
+  });
+
+  workspaceStandaloneTaskForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitButton = event.currentTarget.querySelector("button[type=submit]");
+    const title = String(workspaceStandaloneTaskPromptEl?.value || "").trim();
+    if (!title) return;
+    try {
+      requirePlannerAccess();
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Adding larger task…";
+      }
+      await backendRequest("saveWorkspaceTask", { title, status: "Not Started" });
+      workspaceStandaloneTaskForm.reset();
+      await refreshWorkspaceCollections();
+      setStatus(workspaceStatusEl, `Added “${title}” to your larger tasks.`, "success");
+    } catch (error) {
+      setStatus(workspaceStatusEl, error.message || "Unable to add the larger task.", "error");
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = "Add larger task";
+      }
+    }
+  });
+
+  workspaceCaptureMicButton?.addEventListener("click", () => {
+    if (!EventWorkspaceSpeechRecognition) {
+      setStatus(workspaceStatusEl, "Voice input works in supported browsers such as Chrome. You can type the event instead.", "pending");
+      return;
+    }
+
+    if (workspaceCaptureRecognition) {
+      workspaceCaptureRecognition.__stoppedManually = true;
+      workspaceCaptureRecognition.stop();
+      return;
+    }
+
+    const recognition = new EventWorkspaceSpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognition.__stoppedManually = false;
+    recognition.__baseValue = String(workspaceCapturePromptEl?.value || "").trim();
+    recognition.__transcript = "";
+    workspaceCaptureRecognition = recognition;
+    recognition.onstart = () => {
+      setWorkspaceMicButton(workspaceCaptureMicButton, true);
+      setStatus(workspaceStatusEl, "", "");
+    };
+    recognition.onresult = (resultEvent) => {
+      let interimTranscript = "";
+      for (let index = resultEvent.resultIndex || 0; index < resultEvent.results.length; index += 1) {
+        const result = resultEvent.results[index];
+        if (result.isFinal) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
+        else interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+      }
+      if (workspaceCapturePromptEl) {
+        workspaceCapturePromptEl.value = [recognition.__baseValue, recognition.__transcript.trim(), interimTranscript.trim()].filter(Boolean).join(" ");
+      }
+    };
+    recognition.onerror = (errorEvent) => {
+      const error = String(errorEvent.error || "");
+      if (["not-allowed", "service-not-allowed", "audio-capture"].includes(error)) {
+        recognition.__stoppedManually = true;
+        setStatus(workspaceStatusEl, "Microphone access was not available. You can type the event instead.", "error");
+      }
+    };
+    recognition.onend = () => {
+      if (!recognition.__stoppedManually) {
+        try {
+          recognition.start();
+          return;
+        } catch (_) {
+          recognition.__stoppedManually = true;
+        }
+      }
+      if (workspaceCaptureRecognition === recognition) workspaceCaptureRecognition = null;
+      setWorkspaceMicButton(workspaceCaptureMicButton, false);
+    };
+    recognition.start();
+  });
+
+  workspaceStandaloneTaskMicButton?.addEventListener("click", () => {
+    toggleWorkspaceTextVoiceInput(
+      workspaceStandaloneTaskPromptEl,
+      workspaceStandaloneTaskMicButton,
+      () => workspaceStandaloneTaskRecognition,
+      (recognition) => { workspaceStandaloneTaskRecognition = recognition; },
+      "larger task"
+    );
+  });
+
   routeLinks.forEach((link) => {
     link.addEventListener("click", (event) => {
       const route = link.dataset.routeLink;
@@ -7099,7 +8770,15 @@ function sortTables(items) {
 
   plannerSectionButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      setActivePlannerPanel(button.dataset.plannerSection);
+      const section = button.dataset.plannerSection;
+      if (section === "workspace") {
+        selectedWorkspaceEventId = "";
+        activeWorkspaceEventTab = "details";
+        window.sessionStorage.removeItem(STORAGE_KEYS.workspaceEventId);
+        window.sessionStorage.removeItem(STORAGE_KEYS.workspaceEventTab);
+        if (workspaceEventPageEl) workspaceEventPageEl.hidden = true;
+      }
+      setActivePlannerPanel(section);
       if (plannerSidebarMediaQuery.matches) {
         closePlannerSidebar();
       }
@@ -7194,7 +8873,19 @@ function sortTables(items) {
 
   window.addEventListener("load", async () => {
     renderGoogleSignIn();
-    await refreshViewer();
+    const hasStoredToken = Boolean(getStoredAuthToken());
+    const cacheShown = hasStoredToken && showCachedPlannerWhileVerifying();
+    try {
+      await refreshViewer();
+    } catch (error) {
+      if (cacheShown) {
+        setStatus(plannerLoginStatusEl, "Showing your saved planner while account verification retries.", "pending");
+        setStatus(plannerSyncStatusEl, error.message || "The planner connection is still waking up. Saved data is available.", "pending");
+        return;
+      }
+      setStatus(plannerLoginStatusEl, error.message || "Unable to verify your Google sign-in.", "error");
+      return;
+    }
     renderRoute();
     renderPlannerVersionInfo();
     await maybeLoadPlannerData();

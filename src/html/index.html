@@ -6,16 +6,23 @@
          If you want to change the root landing page at /, edit /index.html instead. -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer-when-downgrade">
     <title>Hope & Caleb Wedding</title>
     <meta name="robots" content="noindex, nofollow, noarchive">
     <meta name="planner-google-client-id" content="<?= googleClientId ?>">
     <meta name="planner-rsvp-feed-url" content="<?= rsvpFeedUrl ?>">
     <meta name="planner-script-base-url" content="<?= scriptBaseUrl ?>">
     <meta name="planner-build-version" content="<?= plannerBuildVersion ?>">
+    <script>
+      // Google Identity Services treats localhost as the supported local-development
+      // host. Keep local testing on the matching OAuth origin automatically.
+      if (window.location.hostname === "127.0.0.1" && window.location.port === "5173") {
+        window.location.replace(`http://localhost:5173${window.location.pathname}${window.location.search}${window.location.hash}`);
+      }
+    </script>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
       (function () {
@@ -37,6 +44,7 @@
         --green-light: #cfd1d1;
         --blush: #995566;
         --gold: #9c9a45;
+        --wine: #6f1d2a;
         --white: #fffaf7;
         --shadow: 0 24px 60px rgba(89, 0, 0, 0.14);
         --planner-panel: rgba(255, 250, 247, 0.92);
@@ -72,7 +80,10 @@
       }
 
       html[data-dashboard-entry="planner"] body {
-        background: linear-gradient(180deg, #fcfaf8 0%, #f5efea 100%);
+        min-height: 100vh;
+        min-height: 100svh;
+        min-height: 100dvh;
+        background: #fff;
       }
 
       img {
@@ -161,9 +172,9 @@
       }
 
       .nav__brand {
-        font-family: "Pacifico", "Brush Script MT", cursive;
+        font-family: Georgia, "Times New Roman", serif;
         font-size: clamp(1.5rem, 3.5vw, 2.15rem);
-        font-weight: 400;
+        font-weight: 700;
       }
 
       .nav__links {
@@ -207,13 +218,15 @@
       }
 
       h2 {
-        font-family: "Great Vibes", "Brush Script MT", "Lucida Handwriting", cursive;
+        font-family: Georgia, "Times New Roman", serif;
         font-size: clamp(2rem, 4.8vw, 3.8rem);
+        font-weight: 700;
       }
 
       h3 {
-        font-family: "Great Vibes", "Brush Script MT", "Lucida Handwriting", cursive;
+        font-family: Georgia, "Times New Roman", serif;
         font-size: clamp(1.2rem, 2.4vw, 1.8rem);
+        font-weight: 700;
       }
 
       .hero__copy {
@@ -582,7 +595,10 @@
         margin: 0;
         min-height: 100vh;
         min-height: 100svh;
-        padding: 2rem 0 0;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        padding: 0;
       }
 
       .planner-shell__layout {
@@ -591,9 +607,10 @@
         gap: 0;
         align-items: stretch;
         position: relative;
-        min-height: calc(100vh - 7.5rem);
-        min-height: calc(100svh - 7.5rem);
-        padding: 0 1rem;
+        flex: 1 0 auto;
+        min-height: 0;
+        padding: 0;
+        background: #f3f7ef;
       }
 
       .planner-shell .planner-banner {
@@ -602,12 +619,12 @@
       }
 
       .planner-shell__intro {
-        margin-bottom: 1.25rem;
-        padding: 0 1rem 1rem;
+        margin-bottom: 0.75rem;
+        padding: 0 1rem 0.75rem;
         border: 0;
         border-bottom: 1px solid rgba(89, 0, 0, 0.14);
         border-radius: 0;
-        background: transparent;
+        background: #f3f7ef;
         box-shadow: none;
       }
 
@@ -620,9 +637,71 @@
 
       .planner-banner__titlebar h2 {
         margin: 0;
+        font-size: clamp(1.3rem, 2.2vw, 1.8rem);
+        line-height: 1.1;
+      }
+
+      .planner-heading-group {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        gap: 0.5rem;
+      }
+
+      .planner-version-details {
+        position: relative;
+        flex: 0 0 auto;
+      }
+
+      .planner-version-details summary {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.6rem;
+        height: 1.6rem;
+        cursor: pointer;
+        list-style: none;
+        border: 1px solid currentColor;
+        border-radius: 50%;
+        color: #6f1d2a;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .planner-version-details summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .planner-version-details summary:hover,
+      .planner-version-details summary:focus-visible {
+        background: rgba(111, 29, 42, 0.08);
+      }
+
+      .planner-version-info {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        left: 0;
+        z-index: 20;
+        width: max-content;
+        max-width: min(20rem, calc(100vw - 3rem));
+        margin: 0;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 0.45rem;
+        background: var(--planner-panel);
+        box-shadow: var(--shadow);
+        color: var(--ink);
+        font-size: 0.82rem;
+        line-height: 1.35;
       }
 
       .planner-heading__mobile-suffix {
+        display: inline;
+      }
+
+      .planner-heading__mobile-wedding {
         display: inline;
       }
 
@@ -631,6 +710,16 @@
         align-items: center;
         gap: 0.75rem;
         margin-left: auto;
+      }
+
+      .planner-page-title {
+        margin: 0;
+        color: #4e6650;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(1.15rem, 2vw, 1.45rem);
+        font-weight: 700;
+        line-height: 1.1;
+        white-space: nowrap;
       }
 
       .planner-menu-toggle {
@@ -703,6 +792,7 @@
         gap: 0.75rem;
         width: max-content;
         justify-self: start;
+        background: #f3f7ef;
       }
 
       .planner-summary-grid {
@@ -840,12 +930,51 @@
         color: #fffaf7;
       }
 
+      .legacy-planner-group {
+        width: 100%;
+        margin-top: 0.45rem;
+        border-top: 1px solid var(--planner-border);
+        padding-top: 0.55rem;
+      }
+
+      .legacy-planner-group summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.55rem 0.4rem;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 800;
+        list-style: none;
+      }
+
+      .legacy-planner-group summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .legacy-planner-group summary::after {
+        content: "+";
+        font-size: 1.15rem;
+      }
+
+      .legacy-planner-group[open] summary::after {
+        content: "−";
+      }
+
+      .legacy-planner-group__items {
+        display: grid;
+        gap: 0.15rem;
+      }
+
       .planner-stage {
         min-width: 0;
         display: grid;
         align-self: stretch;
         min-height: 0;
         min-height: 100%;
+        background: #fff;
       }
 
       .planner-home {
@@ -859,6 +988,7 @@
         border: 0;
         border-left: 1px solid rgba(89, 0, 0, 0.14);
         border-radius: 0;
+        background: #fff;
         box-shadow: none;
       }
 
@@ -3114,9 +3244,9 @@
           width: 100vw;
           max-width: 100vw;
           margin-inline: calc(50% - 50vw);
-          height: calc(100dvh - 5.4rem);
-          min-height: calc(100vh - 5.4rem);
-          min-height: calc(100svh - 5.4rem);
+          flex: 1 0 auto;
+          height: auto;
+          min-height: 0;
           padding-inline: 0;
         }
 
@@ -3165,7 +3295,7 @@
           max-width: calc(100vw - 1rem);
           padding: 0.9rem 0.75rem 1rem 0;
           border-radius: 0 1rem 1rem 0;
-          background: rgba(252, 250, 248, 0.98);
+          background: #f3f7ef;
           box-shadow: 0 22px 56px rgba(43, 30, 29, 0.22);
           transform: translateX(calc(-100% - 1rem));
           opacity: 0;
@@ -3231,10 +3361,11 @@
         .planner-banner__titlebar h2 {
           flex: 1 1 auto;
           min-width: 0;
-          font-size: clamp(2rem, 9vw, 2.8rem);
-          line-height: 1.05;
+          font-size: clamp(1.15rem, 5vw, 1.4rem);
+          line-height: 1.1;
         }
 
+        .planner-heading__mobile-wedding,
         .planner-heading__mobile-suffix {
           display: none;
         }
@@ -3244,6 +3375,13 @@
           width: 2.5rem;
           height: 2.5rem;
           min-width: 2.5rem;
+        }
+
+        .planner-page-title {
+          max-width: 7rem;
+          overflow: hidden;
+          font-size: 0.95rem;
+          text-overflow: ellipsis;
         }
 
         .story-slider,
@@ -3422,6 +3560,816 @@
           order: 3;
         }
       }
+      .workspace-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.9fr);
+        gap: 1rem;
+      }
+
+      .workspace-calendar {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.4rem;
+      }
+
+      .workspace-calendar__weekday {
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      .workspace-calendar__day {
+        min-height: 6.25rem;
+        padding: 0.45rem;
+        border: 1px solid var(--planner-border);
+        background: var(--white);
+      }
+
+      .workspace-calendar__day--outside {
+        background: rgba(207, 209, 209, 0.24);
+        color: var(--muted);
+      }
+
+      .workspace-calendar__date {
+        display: block;
+        margin-bottom: 0.3rem;
+        font-size: 0.8rem;
+        font-weight: 800;
+      }
+
+      .workspace-calendar__event {
+        display: block;
+        width: 100%;
+        margin: 0.2rem 0;
+        padding: 0.16rem 0.28rem;
+        overflow: hidden;
+        border-top: 0;
+        border-right: 0;
+        border-bottom: 0;
+        border-left: 3px solid var(--blush);
+        background: rgba(153, 85, 102, 0.1);
+        color: var(--ink);
+        cursor: pointer;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .workspace-stack {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .workspace-quick-form {
+        display: grid;
+        gap: 0.7rem;
+        margin-top: 1.1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--planner-border);
+      }
+
+      .workspace-capture,
+      .workspace-draft,
+      .workspace-event-page {
+        width: 100%;
+        max-width: none;
+        margin-bottom: 1rem;
+      }
+
+      #workspaceStatus:empty {
+        display: none;
+      }
+
+      .workspace-event-page {
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+      }
+
+      .workspace-start-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+        align-items: start;
+        max-width: none;
+      }
+
+      .workspace-start-grid .workspace-capture {
+        max-width: none;
+      }
+
+      .workspace-hub-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin: 0 0 1rem;
+      }
+
+      .workspace-hub-tab {
+        min-height: 2.45rem;
+        padding: 0.45rem 0.8rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 0.45rem;
+        background: var(--white);
+        color: var(--ink);
+        cursor: pointer;
+        font: inherit;
+        font-weight: 800;
+      }
+
+      .workspace-hub-tab.is-active {
+        border-color: var(--wine);
+        background: var(--wine);
+        color: var(--white);
+      }
+
+      .workspace-event-directory__item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-top: 1px solid var(--planner-border);
+      }
+
+      .workspace-event-directory__item:first-child {
+        border-top: 0;
+      }
+
+      .workspace-capture {
+        background: #f1dfe2;
+        border-color: #d8b9c0;
+      }
+
+      .workspace-capture textarea {
+        min-height: 7rem;
+        font-size: 1.05rem;
+      }
+
+      .workspace-capture--task {
+        background: #f1dfe2;
+        border-color: #d8b9c0;
+      }
+
+      .workspace-standalone-tasks {
+        display: grid;
+        gap: 0.35rem;
+        margin-top: 0.9rem;
+      }
+
+      .workspace-standalone-tasks p {
+        margin: 0;
+      }
+
+      #workspaceManualTools {
+        display: none !important;
+      }
+
+      .workspace-mic-button--active,
+      .workspace-action-button--pending {
+        align-items: center;
+        display: inline-flex;
+        gap: 0.5rem;
+      }
+
+      .workspace-mic-button--active::before,
+      .workspace-action-button--pending::before {
+        width: 0.8rem;
+        height: 0.8rem;
+        content: "";
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: workspace-mic-spin 0.8s linear infinite;
+      }
+
+      @keyframes workspace-mic-spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .workspace-manual-tools {
+        margin-top: 1rem;
+      }
+
+      .workspace-manual-tools summary {
+        color: var(--muted);
+        cursor: pointer;
+        font-weight: 800;
+      }
+
+      .workspace-draft__tasks {
+        display: grid;
+        gap: 0.55rem;
+        margin: 1rem 0;
+      }
+
+      .workspace-task-table-wrap {
+        width: 100%;
+        margin: 1rem 0;
+        overflow-x: auto;
+      }
+
+      .workspace-task-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--white);
+      }
+
+      .workspace-task-table tbody tr {
+        background: #fff;
+      }
+
+      .workspace-task-table tbody tr.is-complete {
+        background: #e6e7e8;
+        color: #74777b;
+      }
+
+      .workspace-task-table tbody tr.is-complete .workspace-task-accordion-toggle {
+        color: inherit;
+        text-decoration: line-through;
+      }
+
+      .workspace-task-table tbody tr.is-complete .workspace-task-drag-handle,
+      .workspace-task-table tbody tr.is-complete .workspace-task-icon-button {
+        opacity: 0.55;
+      }
+
+      .workspace-task-associated-list {
+        display: none;
+      }
+
+      .workspace-task-table th,
+      .workspace-task-table td {
+        padding: 0.65rem;
+        border: 1px solid var(--planner-border);
+        text-align: left;
+        vertical-align: middle;
+      }
+
+      .workspace-task-table th {
+        background: #eef0f2;
+        color: #590000;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+
+      .workspace-task-table th.workspace-task-table__order {
+        width: 5%;
+      }
+
+      .workspace-task-table th.workspace-task-table__task {
+        width: 43%;
+      }
+
+      .workspace-task-table input,
+      .workspace-task-table select {
+        width: 100%;
+      }
+
+      .workspace-task-table .workspace-voice-field {
+        margin: 0;
+      }
+
+      .workspace-task-table__actions {
+        white-space: nowrap;
+      }
+
+      .workspace-task-table__actions .button + .button {
+        margin-left: 0.35rem;
+      }
+
+      .workspace-task-drag-handle,
+      .workspace-task-icon-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .workspace-task-drag-handle {
+        width: 2.4rem;
+        min-width: 2.4rem;
+        height: 2.4rem;
+        min-height: 2.4rem;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: #8f2f4c;
+        box-shadow: none;
+        color: #fff;
+        cursor: grab;
+      }
+
+      .workspace-task-drag-handle:hover:not(:disabled),
+      .workspace-task-drag-handle:focus-visible {
+        background: #6f1d2a;
+        color: #fff;
+      }
+
+      .workspace-task-drag-handle:active {
+        cursor: grabbing;
+      }
+
+      .workspace-task-accordion-toggle {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+      }
+
+      .workspace-task-icon-button svg {
+        width: 1rem;
+        height: 1rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .workspace-task-drag-handle svg {
+        width: 1.3rem;
+        height: 1.3rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .workspace-event-task-edit.is-dragging {
+        opacity: 0.45;
+      }
+
+      .workspace-event-task-edit.is-drag-over td {
+        border-top: 3px solid var(--wine);
+      }
+
+      @media (max-width: 860px) {
+        .workspace-task-table-wrap {
+          overflow: visible;
+        }
+
+        .workspace-task-table,
+        .workspace-task-table tbody,
+        .workspace-task-table tr,
+        .workspace-task-table td {
+          display: block;
+        }
+
+        .workspace-task-table thead {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          overflow: hidden;
+          clip: rect(0 0 0 0);
+          white-space: nowrap;
+        }
+
+        .workspace-task-table tr {
+          position: relative;
+          margin-bottom: 0.65rem;
+          border: 1px solid var(--planner-border);
+          background: var(--white);
+        }
+
+        .workspace-task-accordion.is-expanded {
+          border: 2px solid var(--wine);
+        }
+
+        .workspace-task-table td {
+          display: grid;
+          grid-template-columns: minmax(7rem, 0.45fr) minmax(0, 1fr);
+          gap: 0.55rem;
+          align-items: center;
+          border-width: 0 0 1px;
+        }
+
+        .workspace-task-table td:last-child {
+          border-bottom: 0;
+        }
+
+        .workspace-task-table td::before {
+          content: attr(data-label);
+          justify-self: end;
+          font-weight: 800;
+          text-align: right;
+        }
+
+        .workspace-task-table td.workspace-task-table__order {
+          position: absolute;
+          top: 1.625rem;
+          right: 0.45rem;
+          z-index: 1;
+          display: flex;
+          justify-content: flex-end;
+          padding: 0;
+          transform: translateY(-50%);
+        }
+
+        .workspace-task-table__order::before {
+          display: none;
+        }
+
+        .workspace-task-table td.workspace-task-table__actions {
+          display: grid;
+          grid-template-columns: minmax(7rem, max-content) repeat(2, max-content);
+          gap: 0.35rem;
+          justify-content: start;
+          white-space: normal;
+        }
+
+        .workspace-task-table__actions .button + .button {
+          margin-left: 0;
+        }
+
+        .workspace-task-table td[data-label="Task"] {
+          display: flex;
+          align-items: center;
+          min-height: 3.25rem;
+          padding-right: 3.6rem;
+          border-color: rgba(111, 29, 42, 0.18);
+          background: #e4eddf;
+        }
+
+        .workspace-task-table td[data-label="Task"]::before {
+          display: none;
+        }
+
+        .workspace-task-table td.workspace-task-associated-list {
+          display: block;
+        }
+
+        .workspace-task-table td.workspace-task-associated-list::before {
+          display: block;
+          margin-bottom: 0.55rem;
+          text-align: left;
+        }
+
+        .workspace-task-accordion-toggle {
+          display: block;
+          width: 100%;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: inherit;
+          font: inherit;
+          font-weight: 800;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .workspace-task-accordion-toggle::before {
+          content: "▸";
+          display: inline-block;
+          width: 1.45rem;
+          color: var(--wine);
+          font-size: 1.45rem;
+          line-height: 0.8;
+          transition: transform 160ms ease;
+        }
+
+        .workspace-task-accordion.is-expanded .workspace-task-accordion-toggle::before {
+          transform: rotate(90deg);
+        }
+
+        .workspace-task-accordion:not(.is-expanded) td:not(.workspace-task-table__order):not([data-label="Task"]) {
+          display: none;
+        }
+      }
+
+      .workspace-draft__task {
+        display: grid;
+        gap: 0.55rem;
+        align-items: center;
+        padding: 0.65rem;
+        border: 1px solid var(--planner-border);
+        background: var(--white);
+      }
+
+      .workspace-checklist__items {
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .workspace-checklist__item {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .workspace-checklist__item input {
+        width: 1.1rem;
+        height: 1.1rem;
+        margin: 0;
+        accent-color: #6f1d2a;
+      }
+
+      .workspace-checklist__item.is-complete span {
+        color: var(--text-muted);
+        text-decoration: line-through;
+      }
+
+      .workspace-ai-task-generator {
+        margin-top: 1.25rem;
+      }
+
+      .workspace-ai-task-generator h4 {
+        margin-bottom: 0.35rem;
+      }
+
+      .workspace-event-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+        gap: 0.28rem;
+        margin: 1rem 0 0;
+        padding: 0;
+        border-bottom: 1px solid var(--planner-border);
+      }
+
+      .workspace-event-tab {
+        position: relative;
+        min-height: 2.55rem;
+        margin-bottom: 0;
+        padding: 0.5rem 0.9rem;
+        border: 1px solid var(--planner-border);
+        border-bottom: 0;
+        border-radius: 0.65rem 0.65rem 0 0;
+        background: #f7f7f7;
+        color: #6f1d2a;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 800;
+      }
+
+      .workspace-event-tab:hover {
+        background: #e1e5e9;
+      }
+
+      .workspace-event-tab:focus-visible {
+        border-color: var(--wine);
+        outline: 2px solid rgba(111, 29, 42, 0.35);
+        outline-offset: 2px;
+      }
+
+      .workspace-event-tab.is-active,
+      .workspace-event-tab[aria-selected="true"] {
+        z-index: 1;
+        margin-bottom: -1px;
+        padding-bottom: calc(0.5rem + 1px);
+        border-color: rgba(89, 0, 0, 0.22);
+        border-bottom: 1px solid #faf4ea;
+        background: #faf4ea;
+        color: #590000;
+        box-shadow: 0 -3px 0 rgba(111, 29, 42, 0.16);
+      }
+
+      .workspace-event-tab-panel {
+        min-height: 14rem;
+        padding: 1.25rem;
+        border: 1px solid #e4d5c3;
+        background: #faf4ea;
+      }
+
+      .workspace-voice-field {
+        display: flex;
+        min-width: 0;
+        margin-top: 0.28rem;
+      }
+
+      .workspace-voice-field input,
+      .workspace-voice-field textarea {
+        min-width: 0;
+        flex: 1 1 auto;
+        border-radius: 0.45rem 0 0 0.45rem;
+      }
+
+      .workspace-voice-field__button {
+        display: inline-grid;
+        width: 2.75rem;
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        place-items: center;
+        border: 1px solid var(--planner-border);
+        border-left: 0;
+        border-radius: 0 0.45rem 0.45rem 0;
+        background: #fff1c9;
+        color: #8b2a20;
+        cursor: pointer;
+      }
+
+      .workspace-voice-field__button:hover:not(:disabled),
+      .workspace-voice-field__button:focus-visible {
+        background: #ffe49a;
+      }
+
+      .workspace-voice-field__button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      .workspace-voice-field__button.is-listening {
+        background: #8b201f;
+        color: #fff;
+      }
+
+      .workspace-voice-field__button svg {
+        width: 1.1rem;
+        height: 1.1rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      #workspaceDraftForm .workspace-draft__task {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+      }
+
+      #workspaceDraftForm .workspace-draft__task .button {
+        white-space: nowrap;
+      }
+
+      .workspace-invitees {
+        display: grid;
+        gap: 0.8rem;
+        margin: 0.45rem 0 1rem;
+      }
+
+      .workspace-invitees-card {
+        margin: 1rem 0;
+        padding: 1rem;
+        border: 1px solid #e4d5c3;
+        background: #fffdf9;
+      }
+
+      .workspace-invitees-card h4 {
+        margin: 0;
+      }
+
+      .workspace-invitees__header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .workspace-invitees__count {
+        padding: 0.3rem 0.65rem;
+        border-radius: 999px;
+        background: #4e6650;
+        color: #fff;
+        font-size: 0.9rem;
+        white-space: nowrap;
+      }
+
+      .workspace-invitees-card .workspace-invitees {
+        margin-bottom: 0;
+      }
+
+      .workspace-invitees__choices {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 0.85rem;
+      }
+
+      .workspace-invitees__choices--groups {
+        display: block;
+        columns: 3 12rem;
+      }
+
+      .workspace-invitees__choice {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .workspace-invitees__choices--groups .workspace-invitees__choice {
+        display: flex;
+        width: 100%;
+        align-items: flex-start;
+        justify-content: flex-start;
+        margin: 0 0 0.55rem;
+        break-inside: avoid;
+        text-align: left;
+      }
+
+      .workspace-invitees__choices--groups .workspace-invitees__choice input[type="checkbox"] {
+        width: auto;
+        flex: 0 0 auto;
+        margin: 0.2rem 0 0;
+        padding: 0;
+      }
+
+      .workspace-invitees details {
+        padding: 0.65rem;
+        border: 1px solid var(--planner-border);
+        background: #f3f7ef;
+      }
+
+      .workspace-invitees summary {
+        cursor: pointer;
+        font-weight: 800;
+      }
+
+      .workspace-invitees__add {
+        display: flex;
+        align-items: end;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+      }
+
+      .workspace-invitees__add label {
+        flex: 1 1 16rem;
+      }
+
+      .workspace-invitees__guest {
+        padding: 0.25rem 0.7rem;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid var(--planner-border);
+      }
+
+      .workspace-invitees__guest--removable {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
+
+      .workspace-invitees__remove {
+        appearance: none;
+        border: 0;
+        padding: 0;
+        background: transparent;
+        color: #8d1d1d;
+        font: inherit;
+        font-size: 1.1rem;
+        font-weight: 800;
+        line-height: 1;
+        cursor: pointer;
+      }
+
+      .workspace-invitees__remove:hover,
+      .workspace-invitees__remove:focus-visible {
+        color: #590000;
+      }
+
+      @media (max-width: 650px) {
+        .workspace-start-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .workspace-invitees__choices--groups {
+          columns: 1;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .workspace-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .workspace-calendar__day {
+          min-height: 4.6rem;
+        }
+      }
+      .task-photo-field {
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .task-photo-preview {
+        width: min(100%, 22rem);
+        overflow: hidden;
+        border: 1px solid var(--planner-border);
+        border-radius: 10px;
+        background: #fffdf9;
+      }
+
+      .task-photo-preview img,
+      .todo-snapshot {
+        display: block;
+        width: 100%;
+        max-height: 20rem;
+        object-fit: cover;
+      }
+
+      .todo-snapshot {
+        margin-top: 0.9rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 10px;
+      }
     </style>
   </head>
   <body>
@@ -3566,8 +4514,15 @@
               <span class="sr-only">Toggle dashboard menu</span>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg>
             </button>
-            <h2 id="planner-heading">H &amp; C Wedding<span class="planner-heading__mobile-suffix"> Planner</span></h2>
+            <div class="planner-heading-group">
+              <h2 id="planner-heading">H &amp; C<span class="planner-heading__mobile-wedding"> Wedding</span><span class="planner-heading__mobile-suffix"> Planner</span></h2>
+              <details class="planner-version-details">
+                <summary aria-label="Show planner version information" title="Planner version information">i</summary>
+                <p class="planner-version-info" id="plannerVersionInfo">Planner version loading…</p>
+              </details>
+            </div>
             <div class="planner-banner__actions">
+              <h3 class="planner-page-title" id="plannerPageTitle" hidden>New Planner</h3>
               <button class="button button--light planner-signout-button" type="button" id="plannerSignOut" aria-label="Lock dashboard" title="Lock dashboard" hidden>
                 <span class="sr-only">Lock dashboard</span>
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -3581,7 +4536,6 @@
           <div class="planner-summary" id="plannerGate">
             <div id="plannerGateMessage" class="meta">Sign in with Google to continue.</div>
           </div>
-          <p class="meta" id="plannerVersionInfo"></p>
           <p class="status" id="plannerSyncStatus"></p>
         </section>
 
@@ -3589,14 +4543,22 @@
           <aside class="planner-sidebar" id="plannerSidebar">
             <section class="planner-banner" id="plannerLocked" aria-labelledby="planner-locked-heading">
               <h3 id="planner-locked-heading">Sign In</h3>
-              <p class="meta">Use a Google account that has been shared on the planner spreadsheet.</p>
+              <p class="meta">Use the Google account connected to your planner invitation.</p>
               <div id="plannerGoogleSignIn" class="toolbar"></div>
               <p class="status" id="plannerLoginStatus"></p>
             </section>
 
             <div id="plannerUnlocked" hidden>
-              <nav class="planner-sections" aria-label="Dashboard sections">
-                <button class="planner-section-button is-active" type="button" data-planner-section="home">
+              <nav class="planner-sections" aria-label="Planner sections">
+                <button class="planner-section-button is-active" type="button" data-planner-section="workspace">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path><path d="M8 14h3"></path><path d="M13 14h3"></path><path d="M8 17h3"></path></svg>
+                  <strong>New Planner</strong>
+                </button>
+                <button class="planner-section-button" type="button" data-planner-section="calendar">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path><path d="M8 14h3"></path><path d="M13 14h3"></path><path d="M8 17h3"></path></svg>
+                  <strong>Calendar</strong>
+                </button>
+                <button class="planner-section-button" type="button" data-planner-section="home">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path></svg>
                   <strong>Home</strong>
                 </button>
@@ -3614,24 +4576,29 @@
                 </button>
                 <button class="planner-section-button" type="button" data-planner-section="people">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"></circle><circle cx="17" cy="7" r="2.5"></circle><path d="M3.5 20a4.5 4.5 0 0 1 9 0"></path><path d="M13.5 19.5a4 4 0 0 1 7 0"></path></svg>
-                  <strong>P &amp; V</strong>
-                </button>
-                <button class="planner-section-button" type="button" data-planner-section="events">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path></svg>
-                  <strong>Timeline</strong>
-                </button>
-                <button class="planner-section-button" type="button" data-planner-section="shots">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"></path><circle cx="9" cy="10" r="2"></circle><path d="m20 16-5.5-5.5L7 18"></path></svg>
-                  <strong>Shot List</strong>
-                </button>
-                <button class="planner-section-button" type="button" data-planner-section="todos">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-4"></path><path d="M21 12c0 4.97-4.03 9-9 9S3 16.97 3 12 7.03 3 12 3c1.74 0 3.37.49 4.75 1.34"></path></svg>
-                  <strong>Todo</strong>
+                  <strong>People &amp; Vendors</strong>
                 </button>
                 <button class="planner-section-button" type="button" data-planner-section="beds">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11V7h8a4 4 0 0 1 4 4"></path><path d="M3 11h18v6"></path><path d="M3 17v3"></path><path d="M21 17v3"></path><path d="M15 9h3a3 3 0 0 1 3 3"></path></svg>
                   <strong>Beds</strong>
                 </button>
+                <details class="legacy-planner-group" id="legacyPlannerDetails">
+                  <summary><span>Legacy Planner</span><span class="meta">Being rebuilt</span></summary>
+                  <div class="legacy-planner-group__items">
+                    <button class="planner-section-button" type="button" data-planner-section="events">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path></svg>
+                      <strong>Timeline</strong>
+                    </button>
+                    <button class="planner-section-button" type="button" data-planner-section="shots">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"></path><circle cx="9" cy="10" r="2"></circle><path d="m20 16-5.5-5.5L7 18"></path></svg>
+                      <strong>Shot List</strong>
+                    </button>
+                    <button class="planner-section-button" type="button" data-planner-section="todos">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-4"></path><path d="M21 12c0 4.97-4.03 9-9 9S3 16.97 3 12 7.03 3 12 3c1.74 0 3.37.49 4.75 1.34"></path></svg>
+                      <strong>Todo</strong>
+                    </button>
+                  </div>
+                </details>
               </nav>
             </div>
           </aside>
@@ -3643,14 +4610,56 @@
               </div>
             </section>
 
+            <section class="panel planner-panel" data-planner-panel="workspace" hidden>
+              <p class="status" id="workspaceStatus"></p>
+              <div class="workspace-start-grid">
+                <section class="card workspace-capture" id="workspaceCaptureCard">
+                  <p class="eyebrow">Create an event</p>
+                  <h4>What event needs to happen?</h4>
+                  <p class="meta">Tell me the event title, time, date, and location. I will draft the event and its next steps for you to review.</p>
+                  <form id="workspaceCaptureForm">
+                    <label class="sr-only" for="workspaceCapturePrompt">Describe an event</label>
+                    <textarea id="workspaceCapturePrompt" name="prompt" rows="3" placeholder="Wedding Day Breakfast, 7 AM January 8 at Main House." required></textarea>
+                    <div class="toolbar">
+                      <button class="button button--light" type="button" id="workspaceCaptureMic">Use microphone</button>
+                      <button class="button" type="submit">Make an event plan</button>
+                    </div>
+                  </form>
+                </section>
+                <section class="card workspace-capture workspace-capture--task" id="workspaceStandaloneTaskCard">
+                  <p class="eyebrow">Plan a larger task</p>
+                  <h4>What needs attention?</h4>
+                  <p class="meta">For planning work not tied to a specific event, such as wedding dress alterations.</p>
+                  <form id="workspaceStandaloneTaskForm">
+                    <label class="sr-only" for="workspaceStandaloneTaskPrompt">Describe a larger task</label>
+                    <textarea id="workspaceStandaloneTaskPrompt" name="prompt" rows="3" placeholder="Wedding dress alterations" required></textarea>
+                    <div class="toolbar">
+                      <button class="button button--light" type="button" id="workspaceStandaloneTaskMic">Use microphone</button>
+                      <button class="button" type="submit">Add larger task</button>
+                    </div>
+                  </form>
+                </section>
+              </div>
+              <section class="card workspace-draft" id="workspaceDraft" hidden>
+                <div id="workspaceDraftContent"></div>
+              </section>
+              <section class="card workspace-event-page" id="workspaceEventPage" hidden>
+                <div id="workspaceEventPageContent"></div>
+              </section>
+            </section>
+
+            <section class="panel planner-panel" data-planner-panel="calendar" hidden>
+              <p class="status" id="calendarStatus"></p>
+              <section class="card workspace-event-directory" id="workspaceEventDirectory">
+                <div id="workspaceEventDirectoryList"><p class="meta">Loading events…</p></div>
+              </section>
+              <section class="card">
+                <div class="toolbar"><h3 id="workspaceCalendarTitle">Calendar</h3></div>
+                <div class="workspace-calendar" id="workspaceCalendar"><p class="meta">Loading the calendar…</p></div>
+              </section>
+            </section>
+
             <section class="panel planner-panel" data-planner-panel="rsvps" hidden>
-          <div class="toolbar">
-            <div>
-              <h3>RSVPs</h3>
-              <p class="meta">Read-only RSVP summary from the `Guests` tab in your planning spreadsheet.</p>
-            </div>
-            <button class="button button--light" type="button" id="refreshRsvps">Refresh Feed</button>
-          </div>
           <div class="list" id="rsvpList">
             <p class="meta">No RSVP feed loaded yet.</p>
           </div>
@@ -4017,7 +5026,7 @@
             <div class="modal__header">
               <div>
                 <h3 id="todoModalTitle">Add Task</h3>
-                <p class="meta">Save a wedding task with dates, assignee, notes, image link, complete status, and SMS message.</p>
+                <p class="meta">Save a wedding task with dates, assignee, notes, a snapshot, complete status, and SMS message.</p>
               </div>
             </div>
             <form id="todoForm">
@@ -4069,7 +5078,15 @@
                 <label>Category <input name="category" placeholder="Stationery"></label>
                 <label>Tags <input name="tags" placeholder="mailing, guests"></label>
               </div>
-              <label>Image URL <input name="imageUrl" placeholder="https://..."></label>
+              <div class="task-photo-field">
+                <label>
+                  Task snapshot
+                  <input id="todoPhoto" name="todoPhoto" type="file" accept="image/*" capture="environment">
+                </label>
+                <p class="meta">Take a photo or choose one from your phone. The photo is attached when you save the task.</p>
+                <div id="todoPhotoPreview" class="task-photo-preview" hidden></div>
+              </div>
+              <label>Image URL <input name="imageUrl" placeholder="https://..." inputmode="url"></label>
               <label>SMS Message <textarea name="smsMessage" placeholder="Reminder: invitations need to go in the mail by Friday."></textarea></label>
               <label>Notes <textarea name="notes" placeholder="Any details, links, vendor notes, or next steps."></textarea></label>
               <div class="toolbar">

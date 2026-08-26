@@ -54,7 +54,7 @@ For local dashboard development with auto-rebuild:
 npm run dev:standalone
 ```
 
-That watches source files, rebuilds `dist-standalone`, and serves the local frontend on `http://localhost:5173`.
+That watches source files, rebuilds `dist-standalone`, and serves the local frontend on `http://localhost:5173`. It also listens on your local network, so devices on the same Wi-Fi can use `http://YOUR-COMPUTER-IP:5173/dashboard.html`.
 
 For root static site work:
 
@@ -194,7 +194,7 @@ npm run build:standalone
 npm run serve:standalone
 ```
 
-Then open `http://localhost:5173`.
+Then open `http://localhost:5173` on this computer, or `http://YOUR-COMPUTER-IP:5173/dashboard.html` from a tablet on the same Wi-Fi network. When Windows asks, allow Node.js through the firewall on **Private networks**.
 
 ### RSVP Feed Setup
 

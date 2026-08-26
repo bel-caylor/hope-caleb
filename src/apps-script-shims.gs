@@ -6,6 +6,7 @@ function runSyncGuestSummarySheets() {
   return globalThis.syncGuestSummarySheets();
 }
 
+
 function runSyncGroupsSheet() {
   if (typeof globalThis.syncGroupsSheetForEditor !== "function") {
     throw new Error("syncGroupsSheetForEditor is not available in the bundled script.");

@@ -46,13 +46,31 @@ export default {
     }
 
     const body = await request.text();
-    const upstream = await fetch(`${appsScriptBase}/exec`, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body
-    });
+    const retryableRead = isRetryablePlannerRead(body);
+    let upstream: Response | undefined;
+    let text = "";
 
-    const text = await upstream.text();
+    // A newly published Apps Script web app can briefly return 404/502 while
+    // Google's edge routing catches up. Retry only read-only RPC calls so a
+    // save/delete request is never repeated.
+    for (let attempt = 0; attempt < (retryableRead ? 3 : 1); attempt += 1) {
+      upstream = await fetch(`${appsScriptBase}/exec`, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body
+      });
+      text = await upstream.text();
+      const transientStatus = [404, 502, 503, 504].includes(upstream.status);
+      if (!transientStatus || attempt === 2) break;
+      await new Promise((resolve) => setTimeout(resolve, 450 * (attempt + 1)));
+    }
+
+    if (!upstream) {
+      return new Response(JSON.stringify({ ok: false, error: "Apps Script upstream did not respond." }), {
+        status: 502,
+        headers: { ...cors(origin), "Content-Type": "application/json" }
+      });
+    }
     const contentType = upstream.headers.get("Content-Type") || "application/json";
 
     if (!upstream.ok) {
@@ -144,6 +162,15 @@ function normalizeAppsScriptBase(value: string) {
     .trim()
     .replace(/\/exec\/?$/i, "")
     .replace(/\/+$/, "");
+}
+
+function isRetryablePlannerRead(body: string) {
+  try {
+    const method = String(JSON.parse(body)?.method || "").trim();
+    return /^(get|list)/i.test(method);
+  } catch (_) {
+    return false;
+  }
 }
 
 function normalizeAbsoluteUrl(value: string) {
