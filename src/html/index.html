@@ -4370,6 +4370,51 @@
         border: 1px solid var(--planner-border);
         border-radius: 10px;
       }
+
+      .workspace-task-photo {
+        display: grid;
+        gap: 0.45rem;
+        margin: 0.8rem 0 0;
+      }
+
+      .workspace-task-photo .button {
+        justify-self: start;
+      }
+
+      .workspace-task-title-with-photo {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .workspace-task-photo-button {
+        width: 2rem;
+        min-width: 2rem;
+        min-height: 2rem;
+        padding: 0.35rem;
+        border-radius: 50%;
+        color: #6f1d2a;
+      }
+
+      .workspace-task-photo-button svg {
+        width: 1rem;
+        height: 1rem;
+        display: block;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .workspace-task-photo-viewer {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .workspace-task-photo-viewer .todo-snapshot {
+        margin-top: 0;
+      }
     </style>
   </head>
   <body>

@@ -5897,6 +5897,12 @@
       const parsed = new Date(`${date}T12:00:00`);
       return Number.isNaN(parsed.getTime()) ? date : parsed.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
     };
+    const taskPhotoButton = (task) => taskAssets(task.id).some((asset) => isSafeImageUrl(asset.assetUrl))
+      ? `<button class="button button--icon button--light workspace-task-photo-button" type="button" data-view-workspace-task-photos="${escapeHtml(task.id)}" aria-label="View photos for ${escapeHtml(task.title || "task")}" title="View task photos"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="15" rx="2"></rect><path d="M8 5l1.5-2h5L16 5"></path><circle cx="12" cy="12.5" r="3.2"></circle></svg></button>`
+      : "";
+    const taskListButton = (task) => lists.some((list) => String(list.id || "") === String(task.listId || ""))
+      ? `<button class="button button--icon button--light workspace-task-photo-button" type="button" data-view-workspace-task-list="${escapeHtml(task.listId)}" aria-label="View associated list for ${escapeHtml(task.title || "task")}" title="View associated list"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6h11"></path><path d="M9 12h11"></path><path d="M9 18h11"></path><path d="M4 6h.01"></path><path d="M4 12h.01"></path><path d="M4 18h.01"></path></svg></button>`
+      : "";
     workspaceEventPageEl.hidden = false;
     if (activePlannerPanel === "workspace" && plannerPageTitleEl) {
       plannerPageTitleEl.textContent = "Event Workspace";
@@ -5945,13 +5951,15 @@
         <tbody>${tasks.map((task) => canManageEvent ? `
           <tr class="workspace-event-task-edit workspace-task-accordion ${String(task.status || "").trim().toLowerCase() === "done" ? "is-complete" : ""}" data-workspace-task-id="${escapeHtml(task.id)}">
             <td class="workspace-task-table__order" data-label="Order"><button class="button button--icon button--light workspace-task-drag-handle" type="button" draggable="true" data-workspace-task-drag-handle aria-label="Drag to reorder ${escapeHtml(task.title || "task")}" title="Drag to reorder"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6h.01"></path><path d="M9 12h.01"></path><path d="M9 18h.01"></path><path d="M15 6h.01"></path><path d="M15 12h.01"></path><path d="M15 18h.01"></path></svg></button></td>
-            <td data-label="Task"><button class="workspace-task-accordion-toggle" type="button" data-workspace-task-accordion aria-expanded="false">${escapeHtml(task.title || "Untitled task")}</button></td>
+            <td data-label="Task"><span class="workspace-task-title-with-photo"><button class="workspace-task-accordion-toggle" type="button" data-workspace-task-accordion aria-expanded="false">${escapeHtml(task.title || "Untitled task")}</button>${taskPhotoButton(task)}${taskListButton(task)}</span></td>
             <td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserId))}</td>
             <td data-label="Due">${escapeHtml(formatTaskDueDate(task.dueAt))}</td>
             <td class="workspace-task-associated-list" data-label="Associated list">${renderTaskList(task.listId)}</td>
             <td class="workspace-task-table__actions" data-label="Actions"><button class="button button--icon button--light workspace-task-icon-button" type="button" data-edit-workspace-task="${escapeHtml(task.id)}" aria-label="Edit ${escapeHtml(task.title || "task")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button><button class="button button--icon button--light workspace-task-icon-button" type="button" data-delete-workspace-task="${escapeHtml(task.id)}" aria-label="Remove ${escapeHtml(task.title || "task")}" title="Remove"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg></button></td>
-          </tr>` : `<tr class="workspace-task-accordion ${String(task.status || "").trim().toLowerCase() === "done" ? "is-complete" : ""}"><td data-label="Task"><button class="workspace-task-accordion-toggle" type="button" data-workspace-task-accordion aria-expanded="false">${escapeHtml(task.title || "Untitled task")}</button></td><td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserId))}</td><td data-label="Due">${escapeHtml(formatTaskDueDate(task.dueAt))}</td><td class="workspace-task-associated-list" data-label="Associated list">${renderTaskList(task.listId)}</td></tr>`).join("")}</tbody>
+          </tr>` : `<tr class="workspace-task-accordion ${String(task.status || "").trim().toLowerCase() === "done" ? "is-complete" : ""}"><td data-label="Task"><span class="workspace-task-title-with-photo"><button class="workspace-task-accordion-toggle" type="button" data-workspace-task-accordion aria-expanded="false">${escapeHtml(task.title || "Untitled task")}</button>${taskPhotoButton(task)}${taskListButton(task)}</span></td><td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserId))}</td><td data-label="Due">${escapeHtml(formatTaskDueDate(task.dueAt))}</td><td class="workspace-task-associated-list" data-label="Associated list">${renderTaskList(task.listId)}</td></tr>`).join("")}</tbody>
       </table>` : '<p class="meta">No tasks yet.</p>'}</div>
+      <section class="modal" id="workspaceTaskPhotosModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-photos-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskPhotosModalTitle"><button class="modal__close" type="button" data-close-workspace-task-photos-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskPhotosModalTitle">Task snapshots</h3></div></div><div class="workspace-task-photo-viewer" id="workspaceTaskPhotosModalContent"></div></div></section>
+      <section class="modal" id="workspaceTaskListModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-list-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskListModalTitle"><button class="modal__close" type="button" data-close-workspace-task-list-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskListModalTitle">Associated list</h3></div></div><div class="workspace-checklist__items" id="workspaceTaskListModalContent"></div></div></section>
       ${canManageEvent ? `<section class="modal" id="workspaceTaskModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskModalTitle"><button class="modal__close" type="button" data-close-workspace-task-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskModalTitle">Edit task</h3><p class="meta">Update task details without losing the table view.</p></div></div><form id="workspaceTaskEditForm"><input type="hidden" name="id"><label>Task <input name="title" required></label><div class="split"><label>Assigned to <select name="assignedUserId">${assigneeOptions("")}</select></label><label>Due date <input name="dueAt" type="date"></label></div><label>Associated list <select name="listId"><option value="">No associated list</option>${lists.map((list) => `<option value="${escapeHtml(list.id)}">${escapeHtml(list.title || "Untitled list")}</option>`).join("")}</select></label><label>Status <select name="status"><option value="Not Started">Not started</option><option value="In Progress">In progress</option><option value="Done">Done</option></select></label><label>Notes <textarea name="notes" placeholder="Helpful details, links, or next steps."></textarea></label><div class="task-photo-field"><span>Task snapshot</span><div class="toolbar task-photo-actions"><button class="button" type="button" data-capture-workspace-task-photo>Take photo</button><button class="button button--light" type="button" data-upload-workspace-task-photo>Upload photo</button></div><input name="workspaceTaskCamera" type="file" accept="image/*" capture="environment" hidden><input name="workspaceTaskPhoto" type="file" accept="image/*" hidden><p class="meta">Take a new photo now, or upload one from your library. It is attached when you save.</p><div class="task-photo-preview" data-workspace-task-photo-preview hidden></div><div class="workspace-task-photos" data-workspace-task-photos></div></div><div class="toolbar"><button class="button" type="submit">Save task</button><button class="button button--light" type="button" data-close-workspace-task-modal>Cancel</button></div><p class="status" id="workspaceTaskEditStatus"></p></form></div></section>` : ""}
       ${canManageEvent ? `<form id="workspaceEventTaskForm" class="workspace-quick-form"><label>Add a task <span class="workspace-voice-field"><input name="title" required placeholder="What needs to happen?">${workspaceInlineVoiceButton(`new-task-${event.id}`, "new task")}</span></label><button class="button button--light" type="submit">Add task</button></form>` : ""}
       </section>
@@ -6092,6 +6100,12 @@
     });
     const workspaceTaskModal = workspaceEventPageContentEl.querySelector("#workspaceTaskModal");
     const workspaceTaskEditForm = workspaceEventPageContentEl.querySelector("#workspaceTaskEditForm");
+    const workspaceTaskPhotosModal = workspaceEventPageContentEl.querySelector("#workspaceTaskPhotosModal");
+    const workspaceTaskPhotosModalTitle = workspaceEventPageContentEl.querySelector("#workspaceTaskPhotosModalTitle");
+    const workspaceTaskPhotosModalContent = workspaceEventPageContentEl.querySelector("#workspaceTaskPhotosModalContent");
+    const workspaceTaskListModal = workspaceEventPageContentEl.querySelector("#workspaceTaskListModal");
+    const workspaceTaskListModalTitle = workspaceEventPageContentEl.querySelector("#workspaceTaskListModalTitle");
+    const workspaceTaskListModalContent = workspaceEventPageContentEl.querySelector("#workspaceTaskListModalContent");
     const workspaceTaskPhotoInput = workspaceTaskEditForm?.elements?.namedItem("workspaceTaskPhoto");
     const workspaceTaskCameraInput = workspaceTaskEditForm?.elements?.namedItem("workspaceTaskCamera");
     const workspaceTaskPhotoPreview = workspaceTaskEditForm?.querySelector("[data-workspace-task-photo-preview]");
@@ -6104,6 +6118,46 @@
       workspaceTaskModal.setAttribute("aria-hidden", "true");
       workspaceTaskModalReturnFocus?.focus();
     };
+    const closeWorkspaceTaskPhotosModal = () => {
+      if (!workspaceTaskPhotosModal) return;
+      workspaceTaskPhotosModal.hidden = true;
+      workspaceTaskPhotosModal.setAttribute("aria-hidden", "true");
+      workspaceTaskPhotosModalContent?.replaceChildren();
+    };
+    workspaceEventPageContentEl.querySelectorAll("[data-view-workspace-task-photos]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const task = tasks.find((item) => String(item.id || "") === String(button.dataset.viewWorkspaceTaskPhotos || ""));
+        if (!task || !workspaceTaskPhotosModal || !workspaceTaskPhotosModalContent) return;
+        const photos = taskAssets(task.id).filter((asset) => isSafeImageUrl(asset.assetUrl));
+        if (!photos.length) return;
+        if (workspaceTaskPhotosModalTitle) workspaceTaskPhotosModalTitle.textContent = `${task.title || "Task"} snapshots`;
+        workspaceTaskPhotosModalContent.innerHTML = photos.map((asset) => `<img class="todo-snapshot" src="${escapeHtml(asset.assetUrl)}" alt="Snapshot attached to ${escapeHtml(task.title || "task")}" loading="lazy">`).join("");
+        workspaceTaskPhotosModal.hidden = false;
+        workspaceTaskPhotosModal.setAttribute("aria-hidden", "false");
+      });
+    });
+    workspaceEventPageContentEl.querySelectorAll("[data-close-workspace-task-photos-modal]").forEach((button) => {
+      button.addEventListener("click", closeWorkspaceTaskPhotosModal);
+    });
+    workspaceEventPageContentEl.querySelectorAll("[data-view-workspace-task-list]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const list = lists.find((item) => String(item.id || "") === String(button.dataset.viewWorkspaceTaskList || ""));
+        if (!list || !workspaceTaskListModal || !workspaceTaskListModalContent) return;
+        const items = String(list.items || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+        const completedItems = new Set(Array.isArray(list.completedItems) ? list.completedItems.map(Number) : []);
+        if (workspaceTaskListModalTitle) workspaceTaskListModalTitle.textContent = list.title || "Associated list";
+        workspaceTaskListModalContent.innerHTML = items.length ? items.map((item, index) => `<div class="workspace-checklist__item ${completedItems.has(index) ? "is-complete" : ""}"><input type="checkbox" ${completedItems.has(index) ? "checked" : ""} disabled><span>${escapeHtml(item)}</span></div>`).join("") : '<p class="meta">This list has no items yet.</p>';
+        workspaceTaskListModal.hidden = false;
+        workspaceTaskListModal.setAttribute("aria-hidden", "false");
+      });
+    });
+    workspaceEventPageContentEl.querySelectorAll("[data-close-workspace-task-list-modal]").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (!workspaceTaskListModal) return;
+        workspaceTaskListModal.hidden = true;
+        workspaceTaskListModal.setAttribute("aria-hidden", "true");
+      });
+    });
     workspaceEventPageContentEl.querySelectorAll("[data-edit-workspace-task]").forEach((button) => {
       button.addEventListener("click", () => {
         const task = tasks.find((item) => String(item.id || "") === String(button.dataset.editWorkspaceTask || ""));
@@ -6118,7 +6172,7 @@
         workspaceTaskEditForm.elements.namedItem("notes").value = String(task.notes || "");
         if (workspaceTaskPhotos) {
           const photos = taskAssets(task.id).filter((asset) => isSafeImageUrl(asset.assetUrl));
-          workspaceTaskPhotos.innerHTML = photos.length ? `<p class="meta">Attached snapshots</p>${photos.map((asset) => `<img class="todo-snapshot" src="${escapeHtml(asset.assetUrl)}" alt="Snapshot attached to ${escapeHtml(task.title || "task")}" loading="lazy">`).join("")}` : "";
+          workspaceTaskPhotos.innerHTML = photos.length ? `<p class="meta">Attached snapshots</p>${photos.map((asset) => `<figure class="workspace-task-photo"><img class="todo-snapshot" src="${escapeHtml(asset.assetUrl)}" alt="Snapshot attached to ${escapeHtml(task.title || "task")}" loading="lazy"><button class="button button--light" type="button" data-delete-workspace-task-photo="${escapeHtml(asset.id)}">Delete photo</button></figure>`).join("")}` : "";
         }
         const editStatus = workspaceTaskEditForm.querySelector(".status");
         if (editStatus) setStatus(editStatus, "", "");
@@ -6129,6 +6183,23 @@
     });
     workspaceEventPageContentEl.querySelectorAll("[data-close-workspace-task-modal]").forEach((button) => {
       button.addEventListener("click", closeWorkspaceTaskModal);
+    });
+    workspaceTaskPhotos?.addEventListener("click", async (photoEvent) => {
+      const deleteButton = photoEvent.target.closest("[data-delete-workspace-task-photo]");
+      if (!deleteButton) return;
+      const assetId = String(deleteButton.dataset.deleteWorkspaceTaskPhoto || "").trim();
+      if (!assetId) return;
+      deleteButton.disabled = true;
+      try {
+        await backendRequest("deleteWorkspaceAsset", { id: assetId });
+        cachedWorkspaceAssets = cachedWorkspaceAssets.filter((asset) => String(asset.id || "") !== assetId);
+        deleteButton.closest(".workspace-task-photo")?.remove();
+        if (!workspaceTaskPhotos.querySelector(".workspace-task-photo")) workspaceTaskPhotos.replaceChildren();
+        setStatus(workspaceTaskEditForm?.querySelector(".status"), "Photo deleted.", "success");
+      } catch (error) {
+        deleteButton.disabled = false;
+        setStatus(workspaceTaskEditForm?.querySelector(".status"), error.message || "Unable to delete this photo.", "error");
+      }
     });
     const prepareWorkspaceTaskPhoto = async (fileInput) => {
       const file = fileInput?.files?.[0];
@@ -6457,9 +6528,8 @@
         // Apps Script may need a cold start, token verification, Drive access,
         // and sheet access on a person's first sign-in. Give that one
         // read-only handshake more time without making ordinary saves wait.
-        const requestTimeoutMs = ["getWorkspaceProfile", "getViewerProfile", "getPlannerBootstrap"].includes(method)
-          ? 60000
-          : 20000;
+        const longRunningRequest = ["getWorkspaceProfile", "getViewerProfile", "getPlannerBootstrap", "uploadTodoImage", "saveWorkspaceAsset"].includes(method);
+        const requestTimeoutMs = longRunningRequest ? 90000 : 20000;
         const requestTimeout = window.setTimeout(() => controller.abort(), requestTimeoutMs);
         const response = await fetch(rpcUrl, {
           method: "POST",
@@ -6496,7 +6566,9 @@
         throw new Error(message);
       } catch (error) {
         if (String(error?.name || "") === "AbortError") {
-          lastError = new Error("The planner connection took too long. Please try signing in again.");
+          lastError = new Error(["uploadTodoImage", "saveWorkspaceAsset"].includes(method)
+            ? "The photo upload took too long. Please try saving the task again."
+            : "The planner connection took too long. Please try signing in again.");
           throw lastError;
         }
         lastError = error;

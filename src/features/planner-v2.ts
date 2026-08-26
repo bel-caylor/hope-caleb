@@ -511,3 +511,11 @@ export function saveWorkspaceAsset(input: SaveWorkspaceAssetInput) {
   upsertRow(PLANNER_V2_ASSETS_SHEET, PLANNER_V2_ASSET_HEADERS, id, saved);
   return mapAsset(saved);
 }
+
+export function deleteWorkspaceAsset(input: { id?: string }) {
+  requireWorkspaceManager();
+  const id = String(input.id || "").trim();
+  if (!id) throw new Error("Missing task snapshot id.");
+  deleteRowById(PLANNER_V2_ASSETS_SHEET, PLANNER_V2_ASSET_HEADERS, id);
+  return { ok: true, id };
+}
