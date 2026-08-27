@@ -1199,6 +1199,37 @@
         font: inherit;
       }
 
+      .todo-group-toggle {
+        display: inline-flex;
+        justify-self: end;
+        overflow: hidden;
+        border: 1px solid var(--planner-border);
+        border-radius: 8px;
+        background: #fffdf9;
+      }
+
+      .todo-group-toggle__button {
+        min-height: 0;
+        padding: 0.52rem 0.7rem;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-size: 0.83rem;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .todo-group-toggle__button + .todo-group-toggle__button {
+        border-left: 1px solid var(--planner-border);
+      }
+
+      .todo-group-toggle__button.is-active {
+        background: #810d0b;
+        color: var(--white);
+      }
+
       .planner-panel__title--mobile-only {
         display: block;
       }
@@ -1489,6 +1520,37 @@
 
       .todo-accordion .guest-card__field--full {
         column-span: all;
+      }
+
+      .todo-accordion .guest-card__field select {
+        width: 100%;
+        min-height: 2.25rem;
+        border: 1px solid rgba(89, 0, 0, 0.18);
+        border-radius: 5px;
+        background: #fffdfd;
+        color: var(--ink);
+        font: inherit;
+        font-weight: 700;
+      }
+
+      .todo-task-grid--with-checklist {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1.35fr) minmax(12rem, 1fr);
+        column-count: unset !important;
+        align-items: start;
+      }
+
+      .todo-task-grid--with-checklist .todo-task-checklist {
+        grid-column: 1;
+        grid-row: 1 / span 3;
+      }
+
+      .todo-task-grid--with-checklist > .guest-card__field:not(.todo-task-checklist):not(.guest-card__field--full) {
+        grid-column: 2;
+      }
+
+      .todo-task-grid--with-checklist .guest-card__field--full {
+        grid-column: 1 / -1;
       }
 
       .shot-groups {
@@ -4161,10 +4223,10 @@
 
       .workspace-calendar__day-event {
         width: 100%;
-        border: 1px solid var(--planner-border);
-        border-left: 4px solid var(--blush);
-        background: var(--white);
-        color: var(--ink);
+        border: 1px solid rgba(95, 111, 58, 0.35);
+        border-left: 4px solid var(--planner-success);
+        background: #edf2e4;
+        color: #405020;
       }
 
       .workspace-calendar__day-event summary {
@@ -4178,11 +4240,11 @@
       }
 
       .workspace-calendar__day-event summary::-webkit-details-marker { display: none; }
-      .workspace-calendar__day-event[open] summary { border-bottom: 1px solid var(--planner-border); }
+      .workspace-calendar__day-event[open] summary { border-bottom: 1px solid rgba(95, 111, 58, 0.26); }
       .workspace-calendar__day-event time { font-weight: 800; }
       .workspace-calendar__day-event summary > span:last-child { display: grid; gap: 0.18rem; }
       .workspace-calendar__day-event small { color: var(--muted); }
-      .workspace-calendar__day-event-details { padding: 0.8rem; }
+      .workspace-calendar__day-event-details { padding: 0.8rem; background: #f8faf3; }
       .workspace-calendar__day-event-details p { margin-top: 0; }
       .workspace-calendar__empty { margin: 0; padding: 1.25rem 0.25rem; }
 
@@ -5695,12 +5757,6 @@
             </section>
 
             <section class="panel planner-panel" data-planner-panel="todos" hidden>
-          <div class="list-header">
-            <div class="list-header__copy">
-              <h3>To-Dos</h3>
-              <p class="meta">Version 2 tasks, grouped under their event or planning project and filterable by assignee.</p>
-            </div>
-          </div>
           <div class="planner-filter-row">
             <div class="planner-filter-field">
               <span class="planner-filter-field__label">Assigned To</span>
@@ -5712,6 +5768,10 @@
                   <span class="planner-filter-checklist--empty">All assignees</span>
                 </div>
               </details>
+            </div>
+            <div class="todo-group-toggle" role="group" aria-label="Group to-dos by">
+              <button class="todo-group-toggle__button is-active" type="button" data-todo-group-by="event" aria-pressed="true">By event</button>
+              <button class="todo-group-toggle__button" type="button" data-todo-group-by="due" aria-pressed="false">By due date</button>
             </div>
           </div>
           <div class="list" id="todosList">

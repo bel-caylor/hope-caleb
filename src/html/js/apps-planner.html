@@ -80,6 +80,7 @@
   const eventAssignedToFilterSummaryEl = document.querySelector("#eventAssignedToFilterSummary");
   const todoAssignedToFilterEl = document.querySelector("#todoAssignedToFilter");
   const todoAssignedToFilterSummaryEl = document.querySelector("#todoAssignedToFilterSummary");
+  const todoGroupToggleButtons = Array.from(document.querySelectorAll("[data-todo-group-by]"));
   const eventDetailShellEl = document.querySelector("#eventDetailShell");
   const eventIncludedPeopleModalSummaryEl = document.querySelector("#eventIncludedPeopleModalSummary");
   const eventIncludedPeopleModalListEl = document.querySelector("#eventIncludedPeopleModalList");
@@ -164,6 +165,7 @@
   let selectedEventDate = "";
   let selectedEventAssignedTo = [];
   let selectedTodoAssignedTo = [];
+  let todoGroupBy = "event";
   let selectedEventDetailId = "";
   let activeEventDetailTab = "overview";
   const openEventDetailAccordionSections = new Set();
@@ -3959,6 +3961,18 @@
       return;
     }
 
+    if (todoGroupBy === "due") {
+      const byDueDate = [...filteredTodos].sort((left, right) => {
+        const leftDue = String(left.dueAt || "").trim();
+        const rightDue = String(right.dueAt || "").trim();
+        if (!leftDue && rightDue) return -1;
+        if (leftDue && !rightDue) return 1;
+        return leftDue.localeCompare(rightDue) || String(left.title || "").localeCompare(String(right.title || ""));
+      });
+      todosListEl.innerHTML = `<div class="event-accordion todo-accordion todo-accordion--by-date">${byDueDate.map(renderTodoByDateAccordion).join("")}</div>`;
+      return;
+    }
+
     const lists = filteredTodos.reduce((groups, todo) => {
       const parent = getWorkspaceTaskParent(todo.eventId);
       const groupId = parent?.id || "unassigned";
@@ -3977,7 +3991,10 @@
             </div>
             ${group.tasks.map((todo) => {
           const assignee = getWorkspaceTaskAssigneeLabel(todo.assignedUserId);
-          const listName = getWorkspaceTaskListName(todo.listId);
+          const checklist = cachedWorkspaceLists.find((list) => String(list.id || "") === String(todo.listId || ""));
+          const checklistItems = String(checklist?.items || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+          const completedChecklistItems = new Set(Array.isArray(checklist?.completedItems) ? checklist.completedItems.map(Number) : []);
+          const hasChecklist = Boolean(checklist && checklistItems.length);
           const normalizedStatus = String(todo.status || "Not Started").trim().toLowerCase();
           const statusClass = ["done", "complete", "completed"].includes(normalizedStatus)
             ? "todo-accordion__item--complete"
@@ -3993,19 +4010,26 @@
                   <span class="accordion-toggle" aria-hidden="true"></span>
                   <span class="event-accordion__title-main">
                     <span class="accordion-title">${escapeHtml(todo.title || "Untitled task")} — ${escapeHtml(assignee)}</span>
+                    ${todo.eventId ? `<button class="button todo-parent-edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}">Edit</button>` : ""}
                   </span>
                 </span>
                 <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(dueLabel)}</span>
               </summary>
               <div class="guest-card__body">
-                <div class="guest-card__grid">
-                  <div class="guest-card__field">
-                    <span>Checklist</span>
-                    <strong>${escapeHtml(listName)}</strong>
-                  </div>
+                <div class="guest-card__grid ${hasChecklist ? "todo-task-grid--with-checklist" : ""}">
+                  ${hasChecklist ? `
+                    <div class="guest-card__field todo-task-checklist">
+                      <span>${escapeHtml(checklist.title || "Checklist")}</span>
+                      <div class="workspace-checklist__items">
+                        ${checklistItems.map((item, index) => `<span class="workspace-checklist__item ${completedChecklistItems.has(index) ? "is-complete" : ""}"><input type="checkbox" disabled ${completedChecklistItems.has(index) ? "checked" : ""}><span>${escapeHtml(item)}</span></span>`).join("")}
+                      </div>
+                    </div>
+                  ` : ""}
                   <div class="guest-card__field">
                     <span>Assigned To</span>
-                    <strong>${escapeHtml(assignee)}</strong>
+                    <select data-workspace-todo-assignee data-workspace-todo-id="${escapeHtml(todo.id)}">
+                      ${renderTodoAssigneeOptions(todo.assignedUserId)}
+                    </select>
                   </div>
                   <div class="guest-card__field">
                     <span>Priority</span>
@@ -4013,7 +4037,9 @@
                   </div>
                   <div class="guest-card__field">
                     <span>Status</span>
-                    <strong>${escapeHtml(todo.status || "Not Started")}</strong>
+                    <select data-workspace-todo-status data-workspace-todo-id="${escapeHtml(todo.id)}">
+                      ${renderTodoStatusOptions(todo.status)}
+                    </select>
                   </div>
                   ${todo.notes ? `
                     <div class="guest-card__field guest-card__field--full">
@@ -4029,6 +4055,59 @@
           </section>
         `).join("")}
       </div>
+    `;
+  }
+
+  function renderTodoByDateAccordion(todo) {
+    const assignee = getWorkspaceTaskAssigneeLabel(todo.assignedUserId);
+    const parent = getWorkspaceTaskParent(todo.eventId);
+    const parentTitle = parent?.title || "Tasks without a parent";
+    const checklist = cachedWorkspaceLists.find((list) => String(list.id || "") === String(todo.listId || ""));
+    const checklistItems = String(checklist?.items || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+    const completedChecklistItems = new Set(Array.isArray(checklist?.completedItems) ? checklist.completedItems.map(Number) : []);
+    const hasChecklist = Boolean(checklist && checklistItems.length);
+    const normalizedStatus = String(todo.status || "Not Started").trim().toLowerCase();
+    const statusClass = ["done", "complete", "completed"].includes(normalizedStatus)
+      ? "todo-accordion__item--complete"
+      : normalizedStatus === "in progress"
+        ? "todo-accordion__item--in-progress"
+        : "todo-accordion__item--not-started";
+
+    return `
+      <details class="guest-card ${statusClass}">
+        <summary>
+          <span class="accordion-summary__main">
+            <span class="accordion-toggle" aria-hidden="true"></span>
+            <span class="event-accordion__title-main">
+              <span class="accordion-title">${escapeHtml(parentTitle)} — ${escapeHtml(todo.title || "Untitled task")}</span>
+              ${todo.eventId ? `<button class="button todo-parent-edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}">Edit</button>` : ""}
+            </span>
+          </span>
+          <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(assignee)}</span>
+        </summary>
+        <div class="guest-card__body">
+          <div class="guest-card__grid ${hasChecklist ? "todo-task-grid--with-checklist" : ""}">
+            ${hasChecklist ? `
+              <div class="guest-card__field todo-task-checklist">
+                <span>${escapeHtml(checklist.title || "Checklist")}</span>
+                <div class="workspace-checklist__items">
+                  ${checklistItems.map((item, index) => `<span class="workspace-checklist__item ${completedChecklistItems.has(index) ? "is-complete" : ""}"><input type="checkbox" disabled ${completedChecklistItems.has(index) ? "checked" : ""}><span>${escapeHtml(item)}</span></span>`).join("")}
+                </div>
+              </div>
+            ` : ""}
+            <div class="guest-card__field">
+              <span>Assigned To</span>
+              <select data-workspace-todo-assignee data-workspace-todo-id="${escapeHtml(todo.id)}">${renderTodoAssigneeOptions(todo.assignedUserId)}</select>
+            </div>
+            <div class="guest-card__field"><span>Priority</span><strong>${escapeHtml(todo.priority || "Medium")}</strong></div>
+            <div class="guest-card__field">
+              <span>Status</span>
+              <select data-workspace-todo-status data-workspace-todo-id="${escapeHtml(todo.id)}">${renderTodoStatusOptions(todo.status)}</select>
+            </div>
+            ${todo.notes ? `<div class="guest-card__field guest-card__field--full"><span>Notes</span><strong>${escapeHtml(todo.notes)}</strong></div>` : ""}
+          </div>
+        </div>
+      </details>
     `;
   }
 
@@ -5007,6 +5086,14 @@
     todoAssignedToFilterSummaryEl.title = selectedLabels.join(", ");
   }
 
+  function syncTodoGroupToggle() {
+    todoGroupToggleButtons.forEach((button) => {
+      const active = button.dataset.todoGroupBy === todoGroupBy;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
   function getFilteredTodos() {
     if (!selectedTodoAssignedTo.length) return cachedWorkspaceTasks;
     const selectedLookup = new Set(selectedTodoAssignedTo);
@@ -5029,6 +5116,29 @@
     if (id.startsWith("guest:")) return id.slice("guest:".length) || "Guest";
     const user = cachedWorkspaceUsers.find((item) => String(item.id || "") === id);
     return user?.name || user?.email || id;
+  }
+
+  function renderTodoAssigneeOptions(selectedId) {
+    const selected = String(selectedId || "");
+    const users = cachedWorkspaceUsers.filter((user) => user.active);
+    const guestTypes = Array.isArray(cachedWorkspaceInvitees.groups)
+      ? cachedWorkspaceInvitees.groups.map((group) => String(group || "").trim()).filter(Boolean)
+      : [];
+    return `
+      <option value="">Unassigned</option>
+      ${users.length ? `<optgroup label="Planner members">${users.map((user) => `<option value="${escapeHtml(user.id)}" ${String(user.id) === selected ? "selected" : ""}>${escapeHtml(user.name || user.email)}</option>`).join("")}</optgroup>` : ""}
+      ${guestTypes.length ? `<optgroup label="Guest types">${guestTypes.map((type) => {
+        const id = `guest-type:${type}`;
+        return `<option value="${escapeHtml(id)}" ${id === selected ? "selected" : ""}>${escapeHtml(type)}</option>`;
+      }).join("")}</optgroup>` : ""}
+    `;
+  }
+
+  function renderTodoStatusOptions(selectedStatus) {
+    const selected = String(selectedStatus || "Not Started");
+    return ["Not Started", "In Progress", "Waiting", "Done"].map((status) => (
+      `<option value="${escapeHtml(status)}" ${status === selected ? "selected" : ""}>${escapeHtml(status)}</option>`
+    )).join("");
   }
 
   function formatWorkspaceTaskDueDate(dueAt) {
@@ -5774,10 +5884,19 @@
         <section class="workspace-calendar__day-group">
           <h4 class="workspace-calendar__day-heading"><time datetime="${escapeHtml(workspaceDateKey(date))}">${escapeHtml(formatWorkspaceDay(date))}</time></h4>
           ${events.map(({ event, date: eventDate }) => `
-            <button class="workspace-calendar__day-event" type="button" data-open-workspace-event="${escapeHtml(event.id)}">
-              <time datetime="${escapeHtml(String(event.startsAt || ""))}">${escapeHtml(eventDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }))}</time>
-              <span><strong>${escapeHtml(event.title || "Untitled event")}</strong>${event.location ? `<small>${escapeHtml(event.location)}</small>` : ""}</span>
-            </button>
+            <details class="workspace-calendar__day-event">
+              <summary>
+                <span class="accordion-toggle" aria-hidden="true"></span>
+                <time datetime="${escapeHtml(String(event.startsAt || ""))}">${escapeHtml(eventDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }))}</time>
+                <span><strong>${escapeHtml(event.title || "Untitled event")}</strong>${event.location ? `<small>${escapeHtml(event.location)}</small>` : ""}</span>
+              </summary>
+              <div class="workspace-calendar__day-event-details">
+                <p><strong>When:</strong> ${escapeHtml(formatWorkspaceEventSchedule(event))}</p>
+                <p><strong>Location:</strong> ${escapeHtml(event.location || "Location not set")}</p>
+                ${event.notes ? `<p><strong>Notes:</strong> ${escapeHtml(event.notes)}</p>` : ""}
+                <button class="button button--light" type="button" data-open-workspace-event="${escapeHtml(event.id)}">Edit event</button>
+              </div>
+            </details>
           `).join("")}
         </section>
       `).join("") : `<p class="meta workspace-calendar__empty">No events are scheduled yet.</p>`;
@@ -8778,6 +8897,14 @@ function sortTables(items) {
     renderTodos();
   });
 
+  todoGroupToggleButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      todoGroupBy = button.dataset.todoGroupBy === "due" ? "due" : "event";
+      syncTodoGroupToggle();
+      renderTodos();
+    });
+  });
+
   document.addEventListener("click", (event) => {
     if (eventAssignedToDropdownEl?.open && !eventAssignedToDropdownEl.contains(event.target)) {
       eventAssignedToDropdownEl.open = false;
@@ -9177,6 +9304,20 @@ function sortTables(items) {
   });
 
   todosListEl.addEventListener("click", async (event) => {
+    const taskButton = event.target.closest("[data-open-workspace-task]");
+    if (taskButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      selectedWorkspaceEventId = String(taskButton.dataset.workspaceParentId || "").trim();
+      if (!selectedWorkspaceEventId) return;
+      activeWorkspaceEventTab = "tasks";
+      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
+      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+      setActivePlannerPanel("workspace");
+      renderWorkspaceEventPage();
+      return;
+    }
+
     const projectButton = event.target.closest("[data-open-workspace-project]");
     if (projectButton) {
       selectedWorkspaceEventId = String(projectButton.dataset.openWorkspaceProject || "").trim();
@@ -9218,6 +9359,35 @@ function sortTables(items) {
       cachedTodos = previousTodos;
       rerenderTodoData();
       setStatus(todoStatusEl, error.message || "Unable to delete task.", "error");
+    }
+  });
+
+  todosListEl.addEventListener("change", async (event) => {
+    const control = event.target.closest("[data-workspace-todo-assignee], [data-workspace-todo-status]");
+    if (!control) return;
+    const todo = cachedWorkspaceTasks.find((item) => String(item.id || "") === String(control.dataset.workspaceTodoId || ""));
+    if (!todo) return;
+
+    const patch = control.matches("[data-workspace-todo-assignee]")
+      ? { assignedUserId: String(control.value || "") }
+      : { status: String(control.value || "Not Started") };
+    const previousTask = { ...todo };
+
+    try {
+      requirePlannerAccess();
+      upsertCachedWorkspaceTask({ ...todo, ...patch });
+      savePlannerSessionCache();
+      renderTodos();
+      const savedTask = await backendRequest("saveWorkspaceTask", { id: todo.id, ...patch });
+      upsertCachedWorkspaceTask(savedTask);
+      savePlannerSessionCache();
+      renderTodos();
+      setStatus(workspaceStatusEl, "Task updated.", "success");
+    } catch (error) {
+      upsertCachedWorkspaceTask(previousTask);
+      savePlannerSessionCache();
+      renderTodos();
+      setStatus(workspaceStatusEl, error.message || "Unable to update task.", "error");
     }
   });
 
