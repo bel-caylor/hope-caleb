@@ -12,6 +12,7 @@
   const workspaceCalendarTitleEl = document.querySelector("#workspaceCalendarTitle");
   const workspaceCalendarViewEl = document.querySelector("#workspaceCalendarView");
   const workspaceCalendarViewTabsEl = document.querySelector(".workspace-calendar-view-tabs");
+  const workspaceCalendarNavigationEl = document.querySelector("#workspaceCalendarNavigation");
   const workspaceHubTabsEl = document.querySelector(".workspace-hub-tabs");
   const workspaceEventDirectoryEl = document.querySelector("#workspaceEventDirectory");
   const workspaceEventDirectoryListEl = document.querySelector("#workspaceEventDirectoryList");
@@ -126,6 +127,7 @@
     workspaceHubView: "hope-caleb-workspace-hub-view",
     workspaceCalendarView: "hope-caleb-workspace-calendar-view",
     workspaceCalendarDate: "hope-caleb-workspace-calendar-date",
+    workspaceCalendarMonth: "hope-caleb-workspace-calendar-month",
     plannerDataCache: "hope-caleb-planner-data-cache-v1"
   };
 
@@ -150,6 +152,7 @@
   let activeWorkspaceHubView = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceHubView) || "create").trim() || "create";
   let activeWorkspaceCalendarView = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarView) || "month").trim() || "month";
   let selectedWorkspaceCalendarDate = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarDate) || "").trim();
+  let workspaceCalendarMonth = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarMonth) || "").trim();
   let plannerCacheHydrated = false;
   let workspaceCaptureRecognition = null;
   let workspaceDraftRefineRecognition = null;
@@ -1108,7 +1111,7 @@
       .replace(/^(please\s+)?(?:add|create|schedule|plan|set up|put in|make)\s+(?:an?\s+)?(?:event|timeline item|reminder)\s+(?:for\s+)?/i, "")
       .replace(/^(please\s+)?(?:add|create|schedule|plan|set up|put in|make)\s+/i, "")
       .replace(/^(?:on\s+)?(?:wedding day|day of the wedding|ceremony day|today|tomorrow)\s+/i, "")
-      .replace(/^(?:on\s+)?(?:\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|january\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|february\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|march\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|april\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|may\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|june\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|july\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|august\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|september\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|october\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|november\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?|december\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?)\s+/i, "")
+      .replace(/^(?:on\s+)?(?:\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|(?:january|jan\.?|february|feb\.?|march|mar\.?|april|apr\.?|may|june|jun\.?|july|jul\.?|august|aug\.?|september|sep\.?|sept\.?|october|oct\.?|november|nov\.?|december|dec\.?)\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?)\s+/i, "")
       .replace(/^(?:at\s+)?(?:\d{1,2}(?::\d{2})?\s*[ap]\.?\s*m\.?|[01]?\d:\d{2}|noon|midnight)\s+/i, "");
 
     const firstClause = title.split(/\b(?:at|in|on|with|for|by|before|after|during)\b/i)[0];
@@ -1116,7 +1119,7 @@
       .replace(/\b\d{1,2}:\d{2}\s*[ap]\.?\s*m\.?\b/ig, "")
       .replace(/\b\d{1,2}\s*[ap]\.?\s*m\.?\b/ig, "")
       .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g, "")
-      .replace(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?\b/ig, "")
+      .replace(/\b(january|jan\.?|february|feb\.?|march|mar\.?|april|apr\.?|may|june|jun\.?|july|jul\.?|august|aug\.?|september|sep\.?|sept\.?|october|oct\.?|november|nov\.?|december|dec\.?)\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?(?=\s|$)/ig, "")
       .replace(/[,:;.\-]+$/g, "")
       .trim();
 
@@ -2132,6 +2135,17 @@
     return currentValue ? `${currentValue} ${nextTranscript}` : nextTranscript;
   }
 
+  function isNewFinalSpeechResult(recognition, index) {
+    if (!recognition.__finalResultIndexes) {
+      recognition.__finalResultIndexes = new Set();
+    }
+    if (recognition.__finalResultIndexes.has(index)) {
+      return false;
+    }
+    recognition.__finalResultIndexes.add(index);
+    return true;
+  }
+
   function stopEventWorkspaceVoiceRecognition(nextStatus, isError = false) {
     const activeRecognition = activeEventVoiceRecognition;
     if (!activeRecognition) {
@@ -2193,6 +2207,7 @@
     recognition.__eventId = normalizedEventId;
     recognition.__baseValue = planningNotesField.value;
     recognition.__finalTranscript = "";
+    recognition.__finalResultIndexes = new Set();
     recognition.__codexStoppedManually = false;
 
     recognition.onstart = () => {
@@ -2211,9 +2226,9 @@
         if (!transcript) {
           continue;
         }
-        if (result.isFinal) {
+        if (result.isFinal && isNewFinalSpeechResult(recognition, index)) {
           recognition.__finalTranscript = mergeVoiceTranscriptIntoNotes(recognition.__finalTranscript, transcript);
-        } else {
+        } else if (!result.isFinal) {
           interimTranscript = mergeVoiceTranscriptIntoNotes(interimTranscript, transcript);
         }
       }
@@ -5700,11 +5715,16 @@
       .map((event) => ({ event, date: parseWorkspaceDate(event.startsAt) }))
       .filter((item) => item.date);
     const selectedDate = parseWorkspaceDate(selectedWorkspaceCalendarDate);
-    const anchor = selectedDate || datedEvents[0]?.date || new Date();
+    const savedMonth = parseWorkspaceDate(workspaceCalendarMonth);
+    const fallbackAnchor = datedEvents[0]?.date || new Date();
+    const anchor = activeWorkspaceCalendarView === "day"
+      ? selectedDate || savedMonth || fallbackAnchor
+      : savedMonth || selectedDate || fallbackAnchor;
     const monthStart = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
     const gridStart = new Date(monthStart);
     gridStart.setDate(monthStart.getDate() - monthStart.getDay());
     if (workspaceCalendarTitleEl) workspaceCalendarTitleEl.textContent = activeWorkspaceCalendarView === "day" ? formatWorkspaceDay(anchor) : formatWorkspaceMonth(monthStart);
+    if (workspaceCalendarNavigationEl) workspaceCalendarNavigationEl.hidden = activeWorkspaceCalendarView !== "month";
 
     const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const cells = weekdays.map((day) => `<span class="workspace-calendar__weekday">${day}</span>`);
@@ -5979,8 +5999,12 @@
     recognition.__stoppedManually = false;
     recognition.__baseValue = String(input.value || "").trim();
     recognition.__transcript = "";
+    recognition.__finalResultIndexes = new Set();
     workspaceInlineVoiceRecognitions.set(key, recognition);
     recognition.onstart = () => {
+      recognition.__baseValue = String(input.value || "").trim();
+      recognition.__transcript = "";
+      recognition.__finalResultIndexes = new Set();
       button.classList.add("is-listening");
       button.setAttribute("aria-label", `Stop voice input for ${fallbackLabel}`);
       button.title = "Stop recording";
@@ -5989,8 +6013,11 @@
       let interimTranscript = "";
       for (let index = resultEvent.resultIndex || 0; index < resultEvent.results.length; index += 1) {
         const result = resultEvent.results[index];
-        if (result.isFinal) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
-        else interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+        if (result.isFinal) {
+          if (isNewFinalSpeechResult(recognition, index)) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
+        } else {
+          interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+        }
       }
       input.value = [recognition.__baseValue, recognition.__transcript.trim(), interimTranscript.trim()].filter(Boolean).join(" ");
       input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -6039,8 +6066,12 @@
     recognition.__stoppedManually = false;
     recognition.__baseValue = String(input.value || "").trim();
     recognition.__transcript = "";
+    recognition.__finalResultIndexes = new Set();
     setRecognition(recognition);
     recognition.onstart = () => {
+      recognition.__baseValue = String(input.value || "").trim();
+      recognition.__transcript = "";
+      recognition.__finalResultIndexes = new Set();
       setWorkspaceMicButton(button, true);
       setStatus(workspaceStatusEl, "", "");
     };
@@ -6048,8 +6079,11 @@
       let interimTranscript = "";
       for (let index = resultEvent.resultIndex || 0; index < resultEvent.results.length; index += 1) {
         const result = resultEvent.results[index];
-        if (result.isFinal) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
-        else interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+        if (result.isFinal) {
+          if (isNewFinalSpeechResult(recognition, index)) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
+        } else {
+          interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+        }
       }
       input.value = [recognition.__baseValue, recognition.__transcript.trim(), interimTranscript.trim()].filter(Boolean).join(" ");
     };
@@ -6121,8 +6155,12 @@
     recognition.__stoppedManually = false;
     recognition.__baseValue = String(input.value || "").trim();
     recognition.__transcript = "";
+    recognition.__finalResultIndexes = new Set();
     workspaceDraftRefineRecognition = recognition;
     recognition.onstart = () => {
+      recognition.__baseValue = String(input.value || "").trim();
+      recognition.__transcript = "";
+      recognition.__finalResultIndexes = new Set();
       setWorkspaceMicButton(button, true);
       setStatus(workspaceStatusEl, "", "");
     };
@@ -6130,8 +6168,11 @@
       let interimTranscript = "";
       for (let index = resultEvent.resultIndex || 0; index < resultEvent.results.length; index += 1) {
         const result = resultEvent.results[index];
-        if (result.isFinal) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
-        else interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+        if (result.isFinal) {
+          if (isNewFinalSpeechResult(recognition, index)) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
+        } else {
+          interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+        }
       }
       input.value = [recognition.__baseValue, recognition.__transcript.trim(), interimTranscript.trim()].filter(Boolean).join(" ");
     };
@@ -7068,7 +7109,7 @@
         // Apps Script may need a cold start, token verification, Drive access,
         // and sheet access on a person's first sign-in. Give that one
         // read-only handshake more time without making ordinary saves wait.
-        const longRunningRequest = ["getWorkspaceProfile", "getViewerProfile", "getPlannerBootstrap", "getWorkspaceAssetImage", "saveWorkspaceTask", "uploadTodoImage", "saveWorkspaceAsset"].includes(method);
+        const longRunningRequest = ["getWorkspaceProfile", "getViewerProfile", "getPlannerBootstrap", "getWorkspaceAssetImage", "saveWorkspaceEvent", "saveWorkspaceTask", "uploadTodoImage", "saveWorkspaceAsset"].includes(method);
         const requestTimeoutMs = longRunningRequest ? 90000 : 20000;
         const requestTimeout = window.setTimeout(() => controller.abort(), requestTimeoutMs);
         const response = await fetch(rpcUrl, {
@@ -9485,7 +9526,9 @@ function sortTables(items) {
     const dateButton = event.target.closest("[data-workspace-calendar-date]");
     if (!dateButton) return;
     selectedWorkspaceCalendarDate = String(dateButton.dataset.workspaceCalendarDate || "").trim();
+    workspaceCalendarMonth = `${selectedWorkspaceCalendarDate.slice(0, 7)}-01`;
     window.sessionStorage.setItem(STORAGE_KEYS.workspaceCalendarDate, selectedWorkspaceCalendarDate);
+    window.sessionStorage.setItem(STORAGE_KEYS.workspaceCalendarMonth, workspaceCalendarMonth);
     setWorkspaceCalendarView("day");
     renderWorkspace();
   });
@@ -9495,6 +9538,18 @@ function sortTables(items) {
     if (!button) return;
     setWorkspaceCalendarView(button.dataset.workspaceCalendarView);
     if (activeWorkspaceCalendarView !== "list") renderWorkspace();
+  });
+
+  workspaceCalendarNavigationEl?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-workspace-calendar-month-shift]");
+    if (!button) return;
+    const shift = Number(button.dataset.workspaceCalendarMonthShift || 0);
+    if (!Number.isInteger(shift) || !shift) return;
+    const current = parseWorkspaceDate(workspaceCalendarMonth) || parseWorkspaceDate(selectedWorkspaceCalendarDate) || cachedWorkspaceEvents.map((item) => parseWorkspaceDate(item.startsAt)).find(Boolean) || new Date();
+    const nextMonth = new Date(current.getFullYear(), current.getMonth() + shift, 1);
+    workspaceCalendarMonth = workspaceDateKey(nextMonth);
+    window.sessionStorage.setItem(STORAGE_KEYS.workspaceCalendarMonth, workspaceCalendarMonth);
+    renderWorkspace();
   });
 
   workspaceHubTabsEl?.addEventListener("click", (event) => {
@@ -9580,8 +9635,12 @@ function sortTables(items) {
     recognition.__stoppedManually = false;
     recognition.__baseValue = String(workspaceCapturePromptEl?.value || "").trim();
     recognition.__transcript = "";
+    recognition.__finalResultIndexes = new Set();
     workspaceCaptureRecognition = recognition;
     recognition.onstart = () => {
+      recognition.__baseValue = String(workspaceCapturePromptEl?.value || "").trim();
+      recognition.__transcript = "";
+      recognition.__finalResultIndexes = new Set();
       setWorkspaceMicButton(workspaceCaptureMicButton, true);
       setStatus(workspaceStatusEl, "", "");
     };
@@ -9589,8 +9648,11 @@ function sortTables(items) {
       let interimTranscript = "";
       for (let index = resultEvent.resultIndex || 0; index < resultEvent.results.length; index += 1) {
         const result = resultEvent.results[index];
-        if (result.isFinal) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
-        else interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+        if (result.isFinal) {
+          if (isNewFinalSpeechResult(recognition, index)) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
+        } else {
+          interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+        }
       }
       if (workspaceCapturePromptEl) {
         workspaceCapturePromptEl.value = [recognition.__baseValue, recognition.__transcript.trim(), interimTranscript.trim()].filter(Boolean).join(" ");

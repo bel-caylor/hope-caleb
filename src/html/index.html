@@ -5482,7 +5482,13 @@
                 <div id="workspaceEventDirectoryList"><p class="meta">Loading events…</p></div>
               </section>
               <section class="card" id="workspaceCalendarView" role="tabpanel" aria-labelledby="workspaceMonthTab">
-                <div class="toolbar"><h3 id="workspaceCalendarTitle">Calendar</h3></div>
+                <div class="toolbar">
+                  <h3 id="workspaceCalendarTitle" aria-live="polite">Calendar</h3>
+                  <div id="workspaceCalendarNavigation" class="workspace-calendar-navigation" aria-label="Month navigation">
+                    <button class="button button--light" type="button" data-workspace-calendar-month-shift="-1" aria-label="Previous month">Previous</button>
+                    <button class="button button--light" type="button" data-workspace-calendar-month-shift="1" aria-label="Next month">Next</button>
+                  </div>
+                </div>
                 <div class="workspace-calendar" id="workspaceCalendar"><p class="meta">Loading the calendar…</p></div>
               </section>
             </section>
