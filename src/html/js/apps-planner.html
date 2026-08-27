@@ -3952,7 +3952,7 @@
         ${Array.from(lists.values()).map((group) => `
           <section class="todo-list-group">
             <div class="event-detail-section__header">
-              <h4>${escapeHtml(group.title)}${group.id ? ` <button class="button button--light" type="button" data-open-workspace-project="${escapeHtml(group.id)}">Edit</button>` : ""}</h4>
+              <h4>${escapeHtml(group.title)}${group.id ? ` <button class="button todo-parent-edit" type="button" data-open-workspace-project="${escapeHtml(group.id)}">Edit</button>` : ""}</h4>
               <span class="meta">${group.isProject ? "Planning project · " : ""}${group.tasks.length} task${group.tasks.length === 1 ? "" : "s"}</span>
             </div>
             ${group.tasks.map((todo) => {
@@ -3972,9 +3972,8 @@
                 <span class="accordion-summary__main">
                   <span class="accordion-toggle" aria-hidden="true"></span>
                   <span class="event-accordion__title-main">
-                    <span class="accordion-title">— ${escapeHtml(todo.title || "Untitled task")}</span>
+                    <span class="accordion-title">${escapeHtml(todo.title || "Untitled task")} — ${escapeHtml(assignee)}</span>
                   </span>
-                  <span class="event-accordion__time">Assigned to: ${escapeHtml(assignee)}</span>
                 </span>
                 <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(dueLabel)}</span>
               </summary>
