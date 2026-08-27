@@ -3004,21 +3004,25 @@
       .guest-card--attending.rsvp-submission-card,
       .guest-card--declined.rsvp-submission-card,
       .guest-card--pending.rsvp-submission-card {
-        border-color: #c9919d;
+        border-color: #b8d6b2;
         background: #fff7f8;
+        border-radius: 8px;
+        overflow: hidden;
       }
 
       .rsvp-submission-card summary,
       .guest-card--attending.rsvp-submission-card summary,
       .guest-card--declined.rsvp-submission-card summary,
       .guest-card--pending.rsvp-submission-card summary {
-        background: #e9cbd1;
-        color: #5a2833;
+        margin: 0;
+        border-radius: 0;
+        background: #dcebd7;
+        color: #284a2f;
       }
 
       .rsvp-submission-card .accordion-summary__meta,
       .rsvp-submission-card .rsvp-submission-count {
-        color: #6f3845;
+        color: #284a2f;
       }
 
       .rsvp-submission-count {
@@ -3036,7 +3040,13 @@
       .guest-card--attending.rsvp-submission-card .guest-card__body,
       .guest-card--declined.rsvp-submission-card .guest-card__body,
       .guest-card--pending.rsvp-submission-card .guest-card__body {
+        margin: 0;
+        border-radius: 0;
         background: #fff7f8;
+      }
+
+      .rsvp-submission-card[open] summary {
+        border-bottom-color: rgba(40, 74, 47, 0.2);
       }
 
       .rsvp-submission-members li {
@@ -4095,6 +4105,33 @@
         display: grid;
         grid-template-columns: 1fr;
         gap: 0.55rem;
+      }
+
+      .workspace-calendar__day-group {
+        display: grid;
+        gap: 0.45rem;
+        padding: 0.85rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 0.55rem;
+        background: #fcf4f5;
+      }
+
+      .workspace-calendar__day-heading {
+        margin: 0;
+        color: var(--wine);
+        font-size: 1rem;
+      }
+
+      .workspace-calendar--month-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+
+      .workspace-calendar__month h4 {
+        margin: 0 0 0.55rem;
+        font-family: var(--display-font);
+        font-size: 1.35rem;
       }
 
       .workspace-calendar__day-event {
@@ -5502,10 +5539,6 @@
               <section class="card" id="workspaceCalendarView" role="tabpanel" aria-labelledby="workspaceMonthTab">
                 <div class="toolbar">
                   <h3 id="workspaceCalendarTitle" aria-live="polite">Calendar</h3>
-                  <div id="workspaceCalendarNavigation" class="workspace-calendar-navigation" aria-label="Month navigation">
-                    <button class="button button--light" type="button" data-workspace-calendar-month-shift="-1" aria-label="Previous month">Previous</button>
-                    <button class="button button--light" type="button" data-workspace-calendar-month-shift="1" aria-label="Next month">Next</button>
-                  </div>
                 </div>
                 <div class="workspace-calendar" id="workspaceCalendar"><p class="meta">Loading the calendar…</p></div>
               </section>

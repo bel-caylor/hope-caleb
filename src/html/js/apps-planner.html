@@ -5714,43 +5714,66 @@
       .map((event) => ({ event, date: parseWorkspaceDate(event.startsAt) }))
       .filter((item) => item.date);
     const selectedDate = parseWorkspaceDate(selectedWorkspaceCalendarDate);
-    const savedMonth = parseWorkspaceDate(workspaceCalendarMonth);
     const fallbackAnchor = datedEvents[0]?.date || new Date();
-    const anchor = activeWorkspaceCalendarView === "day"
-      ? selectedDate || savedMonth || fallbackAnchor
-      : savedMonth || selectedDate || fallbackAnchor;
+    const anchor = selectedDate || fallbackAnchor;
     const monthStart = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-    const gridStart = new Date(monthStart);
-    gridStart.setDate(monthStart.getDate() - monthStart.getDay());
-    if (workspaceCalendarTitleEl) workspaceCalendarTitleEl.textContent = activeWorkspaceCalendarView === "day" ? formatWorkspaceDay(anchor) : formatWorkspaceMonth(monthStart);
-    if (workspaceCalendarNavigationEl) workspaceCalendarNavigationEl.hidden = activeWorkspaceCalendarView !== "month";
+    if (workspaceCalendarTitleEl) workspaceCalendarTitleEl.textContent = activeWorkspaceCalendarView === "day" ? "Days with events" : "Calendar";
 
-    const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const cells = weekdays.map((day) => `<span class="workspace-calendar__weekday">${day}</span>`);
-    for (let index = 0; index < 42; index += 1) {
-      const day = new Date(gridStart);
-      day.setDate(gridStart.getDate() + index);
-      const events = datedEvents.filter(({ date }) => date.getFullYear() === day.getFullYear() && date.getMonth() === day.getMonth() && date.getDate() === day.getDate());
-      const outside = day.getMonth() !== monthStart.getMonth();
-      cells.push(`
+    const renderMonthGrid = (currentMonth) => {
+      const gridStart = new Date(currentMonth);
+      gridStart.setDate(currentMonth.getDate() - currentMonth.getDay());
+      const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const cells = weekdays.map((day) => `<span class="workspace-calendar__weekday">${day}</span>`);
+      for (let index = 0; index < 42; index += 1) {
+        const day = new Date(gridStart);
+        day.setDate(gridStart.getDate() + index);
+        const events = datedEvents.filter(({ date }) => date.getFullYear() === day.getFullYear() && date.getMonth() === day.getMonth() && date.getDate() === day.getDate());
+        const outside = day.getMonth() !== currentMonth.getMonth();
+        cells.push(`
         <div class="workspace-calendar__day ${outside ? "workspace-calendar__day--outside" : ""}">
           <button class="workspace-calendar__date" type="button" data-workspace-calendar-date="${workspaceDateKey(day)}" aria-label="View ${escapeHtml(formatWorkspaceDay(day))}">${day.getDate()}</button>
           ${events.map(({ event }) => `<button class="workspace-calendar__event" type="button" data-open-workspace-event="${escapeHtml(event.id)}" title="Open ${escapeHtml(event.title || "Untitled event")}">${escapeHtml(event.title || "Untitled event")}</button>`).join("")}
         </div>
       `);
-    }
+      }
+      return cells.join("");
+    };
     if (activeWorkspaceCalendarView === "day") {
-      const dayEvents = datedEvents.filter(({ date }) => workspaceDateKey(date) === workspaceDateKey(anchor));
+      const daysWithEvents = new Map();
+      datedEvents
+        .sort((left, right) => left.date.getTime() - right.date.getTime() || String(left.event.title || "").localeCompare(String(right.event.title || "")))
+        .forEach((item) => {
+          const key = workspaceDateKey(item.date);
+          if (!daysWithEvents.has(key)) daysWithEvents.set(key, { date: item.date, events: [] });
+          daysWithEvents.get(key).events.push(item);
+        });
+      workspaceCalendarEl.classList.remove("workspace-calendar--month-list");
       workspaceCalendarEl.classList.add("workspace-calendar--day-view");
-      workspaceCalendarEl.innerHTML = dayEvents.length ? dayEvents.map(({ event, date }) => `
-        <button class="workspace-calendar__day-event" type="button" data-open-workspace-event="${escapeHtml(event.id)}">
-          <time datetime="${escapeHtml(String(event.startsAt || ""))}">${escapeHtml(date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }))}</time>
-          <span><strong>${escapeHtml(event.title || "Untitled event")}</strong>${event.location ? `<small>${escapeHtml(event.location)}</small>` : ""}</span>
-        </button>
-      `).join("") : `<p class="meta workspace-calendar__empty">Nothing is scheduled for this day.</p>`;
+      workspaceCalendarEl.innerHTML = daysWithEvents.size ? [...daysWithEvents.values()].map(({ date, events }) => `
+        <section class="workspace-calendar__day-group">
+          <h4 class="workspace-calendar__day-heading"><time datetime="${escapeHtml(workspaceDateKey(date))}">${escapeHtml(formatWorkspaceDay(date))}</time></h4>
+          ${events.map(({ event, date: eventDate }) => `
+            <button class="workspace-calendar__day-event" type="button" data-open-workspace-event="${escapeHtml(event.id)}">
+              <time datetime="${escapeHtml(String(event.startsAt || ""))}">${escapeHtml(eventDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }))}</time>
+              <span><strong>${escapeHtml(event.title || "Untitled event")}</strong>${event.location ? `<small>${escapeHtml(event.location)}</small>` : ""}</span>
+            </button>
+          `).join("")}
+        </section>
+      `).join("") : `<p class="meta workspace-calendar__empty">No events are scheduled yet.</p>`;
     } else {
+      const months = [...new Map(datedEvents.map(({ date }) => {
+        const start = new Date(date.getFullYear(), date.getMonth(), 1);
+        return [workspaceDateKey(start), start];
+      })).values()].sort((left, right) => right.getTime() - left.getTime());
+      const calendarMonths = months.length ? months : [monthStart];
       workspaceCalendarEl.classList.remove("workspace-calendar--day-view");
-      workspaceCalendarEl.innerHTML = cells.join("");
+      workspaceCalendarEl.classList.add("workspace-calendar--month-list");
+      workspaceCalendarEl.innerHTML = calendarMonths.map((calendarMonth) => `
+        <section class="workspace-calendar__month" aria-label="${escapeHtml(formatWorkspaceMonth(calendarMonth))}">
+          <h4>${escapeHtml(formatWorkspaceMonth(calendarMonth))}</h4>
+          <div class="workspace-calendar workspace-calendar__month-grid">${renderMonthGrid(calendarMonth)}</div>
+        </section>
+      `).join("");
     }
 
     renderWorkspaceEventDirectory();
@@ -9525,9 +9548,7 @@ function sortTables(items) {
     const dateButton = event.target.closest("[data-workspace-calendar-date]");
     if (!dateButton) return;
     selectedWorkspaceCalendarDate = String(dateButton.dataset.workspaceCalendarDate || "").trim();
-    workspaceCalendarMonth = `${selectedWorkspaceCalendarDate.slice(0, 7)}-01`;
     window.sessionStorage.setItem(STORAGE_KEYS.workspaceCalendarDate, selectedWorkspaceCalendarDate);
-    window.sessionStorage.setItem(STORAGE_KEYS.workspaceCalendarMonth, workspaceCalendarMonth);
     setWorkspaceCalendarView("day");
     renderWorkspace();
   });
