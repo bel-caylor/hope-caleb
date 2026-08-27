@@ -1396,20 +1396,23 @@
 
       .todo-parent-edit {
         min-height: 0;
-        padding-block: 0;
-        padding-inline: 0.35rem;
-        border-radius: 0;
-        background: transparent;
-        color: var(--planner-accent-strong);
-        font-size: 0.86rem;
-        text-decoration: underline;
-        text-underline-offset: 0.16em;
+        padding: 0.14rem 0.42rem;
+        border-radius: 4px;
+        background: #cfd1d1;
+        color: #590000;
+        font-size: 0.78rem;
+        text-decoration: none;
       }
 
       .todo-parent-edit:hover,
       .todo-parent-edit:focus-visible {
-        background: transparent;
+        background: #aeb081;
         color: #590000;
+      }
+
+      .todo-list-group .event-detail-section__header h4 {
+        font-size: clamp(1.45rem, 3vw, 2rem);
+        line-height: 1.08;
       }
 
       .planning-project-directory {
@@ -1768,8 +1771,10 @@
       }
 
       .rsvp-submission-history {
-        display: grid;
-        gap: 0.55rem;
+        overflow: hidden;
+        border: 1px solid #b8d6b2;
+        border-radius: 6px;
+        background: #fffdfd;
       }
 
       .rsvp-submission-history summary {
@@ -1777,10 +1782,11 @@
         align-items: center;
         gap: 0.7rem;
         padding: 0.8rem 0.9rem;
-        border: 1px solid #c9919d;
-        border-radius: 6px;
-        background: #e9cbd1;
-        color: #5a2833;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        background: #dcebd7;
+        color: #284a2f;
         cursor: pointer;
         font-weight: 700;
         list-style: none;
@@ -1800,8 +1806,9 @@
 
       .rsvp-submission-history__content {
         padding: 0.9rem 1rem;
-        border: 1px solid rgba(128, 61, 76, 0.28);
-        border-radius: 6px;
+        border: 0;
+        border-top: 1px solid rgba(40, 74, 47, 0.2);
+        border-radius: 0;
         background: #fffdfd;
       }
 
@@ -4014,11 +4021,22 @@
       .workspace-calendar-view-tabs {
         display: inline-flex;
         gap: 0.2rem;
-        margin-bottom: 1rem;
         padding: 0.2rem;
         border: 1px solid var(--planner-border);
         border-radius: 0.55rem;
         background: rgba(153, 85, 102, 0.06);
+      }
+
+      .workspace-calendar-view-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .workspace-calendar-view-header h3 {
+        margin: 0;
       }
 
       .workspace-calendar-view-tab {
@@ -4041,6 +4059,13 @@
       .workspace-calendar-view-tab:focus-visible {
         outline: 2px solid var(--green);
         outline-offset: 2px;
+      }
+
+      @media (max-width: 560px) {
+        .workspace-calendar-view-header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
       }
 
       .workspace-calendar__weekday {
@@ -4135,23 +4160,30 @@
       }
 
       .workspace-calendar__day-event {
-        display: grid;
-        grid-template-columns: minmax(5rem, 7rem) 1fr;
-        gap: 0.75rem;
         width: 100%;
-        padding: 0.8rem;
         border: 1px solid var(--planner-border);
         border-left: 4px solid var(--blush);
         background: var(--white);
         color: var(--ink);
-        cursor: pointer;
-        font: inherit;
-        text-align: left;
       }
 
+      .workspace-calendar__day-event summary {
+        display: grid;
+        grid-template-columns: auto minmax(5rem, 7rem) 1fr;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.8rem;
+        cursor: pointer;
+        list-style: none;
+      }
+
+      .workspace-calendar__day-event summary::-webkit-details-marker { display: none; }
+      .workspace-calendar__day-event[open] summary { border-bottom: 1px solid var(--planner-border); }
       .workspace-calendar__day-event time { font-weight: 800; }
-      .workspace-calendar__day-event span { display: grid; gap: 0.18rem; }
+      .workspace-calendar__day-event summary > span:last-child { display: grid; gap: 0.18rem; }
       .workspace-calendar__day-event small { color: var(--muted); }
+      .workspace-calendar__day-event-details { padding: 0.8rem; }
+      .workspace-calendar__day-event-details p { margin-top: 0; }
       .workspace-calendar__empty { margin: 0; padding: 1.25rem 0.25rem; }
 
       .workspace-stack {
@@ -5528,18 +5560,18 @@
 
             <section class="panel planner-panel" data-planner-panel="calendar" hidden>
               <p class="status" id="calendarStatus"></p>
-              <div class="workspace-calendar-view-tabs" role="tablist" aria-label="Calendar view">
-                <button class="workspace-calendar-view-tab" type="button" role="tab" id="workspaceMonthTab" data-workspace-calendar-view="month" aria-controls="workspaceCalendarView" aria-selected="true">Month</button>
-                <button class="workspace-calendar-view-tab" type="button" role="tab" id="workspaceDayTab" data-workspace-calendar-view="day" aria-controls="workspaceCalendarView" aria-selected="false">Day</button>
-                <button class="workspace-calendar-view-tab" type="button" role="tab" id="workspaceListTab" data-workspace-calendar-view="list" aria-controls="workspaceEventDirectory" aria-selected="false">List</button>
+              <div class="workspace-calendar-view-header">
+                <h3 id="workspaceCalendarTitle" aria-live="polite">Calendar</h3>
+                <div class="workspace-calendar-view-tabs" role="tablist" aria-label="Calendar view">
+                  <button class="workspace-calendar-view-tab" type="button" role="tab" id="workspaceMonthTab" data-workspace-calendar-view="month" aria-controls="workspaceCalendarView" aria-selected="true">Month</button>
+                  <button class="workspace-calendar-view-tab" type="button" role="tab" id="workspaceDayTab" data-workspace-calendar-view="day" aria-controls="workspaceCalendarView" aria-selected="false">Day</button>
+                  <button class="workspace-calendar-view-tab" type="button" role="tab" id="workspaceListTab" data-workspace-calendar-view="list" aria-controls="workspaceEventDirectory" aria-selected="false">List</button>
+                </div>
               </div>
               <section class="workspace-event-directory" id="workspaceEventDirectory" role="tabpanel" aria-labelledby="workspaceListTab" hidden>
                 <div id="workspaceEventDirectoryList"><p class="meta">Loading events…</p></div>
               </section>
-              <section class="card" id="workspaceCalendarView" role="tabpanel" aria-labelledby="workspaceMonthTab">
-                <div class="toolbar">
-                  <h3 id="workspaceCalendarTitle" aria-live="polite">Calendar</h3>
-                </div>
+              <section id="workspaceCalendarView" role="tabpanel" aria-labelledby="workspaceMonthTab">
                 <div class="workspace-calendar" id="workspaceCalendar"><p class="meta">Loading the calendar…</p></div>
               </section>
             </section>

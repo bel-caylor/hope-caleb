@@ -2132,17 +2132,37 @@
     if (!nextTranscript) {
       return currentValue;
     }
-    return currentValue ? `${currentValue} ${nextTranscript}` : nextTranscript;
+    if (!currentValue) {
+      return nextTranscript;
+    }
+
+    const currentWords = currentValue.split(/\s+/);
+    const nextWords = nextTranscript.split(/\s+/);
+    const normalizeWord = (word) => String(word || "").toLocaleLowerCase().replace(/[^\p{L}\p{N}']/gu, "");
+    const maxOverlap = Math.min(currentWords.length, nextWords.length);
+    let overlap = 0;
+    for (let size = maxOverlap; size > 0; size -= 1) {
+      const currentTail = currentWords.slice(-size).map(normalizeWord).join(" ");
+      const nextStart = nextWords.slice(0, size).map(normalizeWord).join(" ");
+      if (currentTail && currentTail === nextStart) {
+        overlap = size;
+        break;
+      }
+    }
+    return overlap >= nextWords.length
+      ? currentValue
+      : `${currentValue} ${nextWords.slice(overlap).join(" ")}`.trim();
   }
 
-  function isNewFinalSpeechResult(recognition, index) {
-    if (!recognition.__finalResultIndexes) {
-      recognition.__finalResultIndexes = new Set();
+  function isNewFinalSpeechResult(recognition, index, transcript) {
+    if (!recognition.__finalResultValues) {
+      recognition.__finalResultValues = new Map();
     }
-    if (recognition.__finalResultIndexes.has(index)) {
+    const normalizedTranscript = String(transcript || "").trim().toLocaleLowerCase();
+    if (recognition.__finalResultValues.get(index) === normalizedTranscript) {
       return false;
     }
-    recognition.__finalResultIndexes.add(index);
+    recognition.__finalResultValues.set(index, normalizedTranscript);
     return true;
   }
 
@@ -2207,7 +2227,7 @@
     recognition.__eventId = normalizedEventId;
     recognition.__baseValue = planningNotesField.value;
     recognition.__finalTranscript = "";
-    recognition.__finalResultIndexes = new Set();
+    recognition.__finalResultValues = new Map();
     recognition.__codexStoppedManually = false;
 
     recognition.onstart = () => {
@@ -2226,7 +2246,7 @@
         if (!transcript) {
           continue;
         }
-        if (result.isFinal && isNewFinalSpeechResult(recognition, index)) {
+        if (result.isFinal && isNewFinalSpeechResult(recognition, index, transcript)) {
           recognition.__finalTranscript = mergeVoiceTranscriptIntoNotes(recognition.__finalTranscript, transcript);
         } else if (!result.isFinal) {
           interimTranscript = mergeVoiceTranscriptIntoNotes(interimTranscript, transcript);
@@ -5006,6 +5026,7 @@
     const id = String(assignedUserId || "").trim();
     if (!id) return "Unassigned";
     if (id.startsWith("guest-type:")) return id.slice("guest-type:".length) || "Guest type";
+    if (id.startsWith("guest:")) return id.slice("guest:".length) || "Guest";
     const user = cachedWorkspaceUsers.find((item) => String(item.id || "") === id);
     return user?.name || user?.email || id;
   }
@@ -5764,7 +5785,7 @@
       const months = [...new Map(datedEvents.map(({ date }) => {
         const start = new Date(date.getFullYear(), date.getMonth(), 1);
         return [workspaceDateKey(start), start];
-      })).values()].sort((left, right) => right.getTime() - left.getTime());
+      })).values()].sort((left, right) => left.getTime() - right.getTime());
       const calendarMonths = months.length ? months : [monthStart];
       workspaceCalendarEl.classList.remove("workspace-calendar--day-view");
       workspaceCalendarEl.classList.add("workspace-calendar--month-list");
@@ -6021,12 +6042,12 @@
     recognition.__stoppedManually = false;
     recognition.__baseValue = String(input.value || "").trim();
     recognition.__transcript = "";
-    recognition.__finalResultIndexes = new Set();
+    recognition.__finalResultValues = new Map();
     workspaceInlineVoiceRecognitions.set(key, recognition);
     recognition.onstart = () => {
       recognition.__baseValue = String(input.value || "").trim();
       recognition.__transcript = "";
-      recognition.__finalResultIndexes = new Set();
+      recognition.__finalResultValues = new Map();
       button.classList.add("is-listening");
       button.setAttribute("aria-label", `Stop voice input for ${fallbackLabel}`);
       button.title = "Stop recording";
@@ -6035,13 +6056,17 @@
       let interimTranscript = "";
       for (let index = resultEvent.resultIndex || 0; index < resultEvent.results.length; index += 1) {
         const result = resultEvent.results[index];
+        const transcript = String(result?.[0]?.transcript || "").trim();
         if (result.isFinal) {
-          if (isNewFinalSpeechResult(recognition, index)) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
+          if (isNewFinalSpeechResult(recognition, index, transcript)) recognition.__transcript = mergeVoiceTranscriptIntoNotes(recognition.__transcript, transcript);
         } else {
-          interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+          interimTranscript = mergeVoiceTranscriptIntoNotes(interimTranscript, transcript);
         }
       }
-      input.value = [recognition.__baseValue, recognition.__transcript.trim(), interimTranscript.trim()].filter(Boolean).join(" ");
+      input.value = mergeVoiceTranscriptIntoNotes(
+        recognition.__baseValue,
+        mergeVoiceTranscriptIntoNotes(recognition.__transcript, interimTranscript)
+      );
       input.dispatchEvent(new Event("input", { bubbles: true }));
     };
     recognition.onerror = (errorEvent) => {
@@ -6088,12 +6113,12 @@
     recognition.__stoppedManually = false;
     recognition.__baseValue = String(input.value || "").trim();
     recognition.__transcript = "";
-    recognition.__finalResultIndexes = new Set();
+    recognition.__finalResultValues = new Map();
     setRecognition(recognition);
     recognition.onstart = () => {
       recognition.__baseValue = String(input.value || "").trim();
       recognition.__transcript = "";
-      recognition.__finalResultIndexes = new Set();
+      recognition.__finalResultValues = new Map();
       setWorkspaceMicButton(button, true);
       setStatus(workspaceStatusEl, "", "");
     };
@@ -6101,13 +6126,17 @@
       let interimTranscript = "";
       for (let index = resultEvent.resultIndex || 0; index < resultEvent.results.length; index += 1) {
         const result = resultEvent.results[index];
+        const transcript = String(result?.[0]?.transcript || "").trim();
         if (result.isFinal) {
-          if (isNewFinalSpeechResult(recognition, index)) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
+          if (isNewFinalSpeechResult(recognition, index, transcript)) recognition.__transcript = mergeVoiceTranscriptIntoNotes(recognition.__transcript, transcript);
         } else {
-          interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+          interimTranscript = mergeVoiceTranscriptIntoNotes(interimTranscript, transcript);
         }
       }
-      input.value = [recognition.__baseValue, recognition.__transcript.trim(), interimTranscript.trim()].filter(Boolean).join(" ");
+      input.value = mergeVoiceTranscriptIntoNotes(
+        recognition.__baseValue,
+        mergeVoiceTranscriptIntoNotes(recognition.__transcript, interimTranscript)
+      );
     };
     recognition.onerror = (errorEvent) => {
       if (["not-allowed", "service-not-allowed", "audio-capture"].includes(String(errorEvent.error || ""))) {
@@ -6177,12 +6206,12 @@
     recognition.__stoppedManually = false;
     recognition.__baseValue = String(input.value || "").trim();
     recognition.__transcript = "";
-    recognition.__finalResultIndexes = new Set();
+    recognition.__finalResultValues = new Map();
     workspaceDraftRefineRecognition = recognition;
     recognition.onstart = () => {
       recognition.__baseValue = String(input.value || "").trim();
       recognition.__transcript = "";
-      recognition.__finalResultIndexes = new Set();
+      recognition.__finalResultValues = new Map();
       setWorkspaceMicButton(button, true);
       setStatus(workspaceStatusEl, "", "");
     };
@@ -6190,13 +6219,17 @@
       let interimTranscript = "";
       for (let index = resultEvent.resultIndex || 0; index < resultEvent.results.length; index += 1) {
         const result = resultEvent.results[index];
+        const transcript = String(result?.[0]?.transcript || "").trim();
         if (result.isFinal) {
-          if (isNewFinalSpeechResult(recognition, index)) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
+          if (isNewFinalSpeechResult(recognition, index, transcript)) recognition.__transcript = mergeVoiceTranscriptIntoNotes(recognition.__transcript, transcript);
         } else {
-          interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+          interimTranscript = mergeVoiceTranscriptIntoNotes(interimTranscript, transcript);
         }
       }
-      input.value = [recognition.__baseValue, recognition.__transcript.trim(), interimTranscript.trim()].filter(Boolean).join(" ");
+      input.value = mergeVoiceTranscriptIntoNotes(
+        recognition.__baseValue,
+        mergeVoiceTranscriptIntoNotes(recognition.__transcript, interimTranscript)
+      );
     };
     recognition.onerror = (errorEvent) => {
       if (["not-allowed", "service-not-allowed", "audio-capture"].includes(String(errorEvent.error || ""))) {
@@ -6364,9 +6397,21 @@
     const guestTypes = Array.isArray(cachedWorkspaceInvitees.groups)
       ? cachedWorkspaceInvitees.groups.map((group) => String(group || "").trim()).filter(Boolean)
       : [];
+    const individualGuestsByType = getWorkspaceInviteeGuestChoices().reduce((groups, guest) => {
+      const name = String(guest?.name || "").trim();
+      if (!name) return groups;
+      const type = String(Array.isArray(guest?.types) ? guest.types[0] : "").trim() || "Guests";
+      if (!groups.has(type)) groups.set(type, []);
+      groups.get(type).push(name);
+      return groups;
+    }, new Map());
     const assigneeOptions = (selectedId) => `
       <option value="">Unassigned</option>
       ${cachedWorkspaceUsers.filter((person) => person.active).length ? `<optgroup label="Planner members">${cachedWorkspaceUsers.filter((person) => person.active).map((person) => `<option value="${escapeHtml(person.id)}" ${String(person.id) === String(selectedId || "") ? "selected" : ""}>${escapeHtml(person.name || person.email)}</option>`).join("")}</optgroup>` : ""}
+      ${Array.from(individualGuestsByType.entries()).sort(([left], [right]) => left.localeCompare(right)).map(([type, names]) => `<optgroup label="${escapeHtml(type)}">${names.sort((left, right) => left.localeCompare(right)).map((name) => {
+        const value = `guest:${name}`;
+        return `<option value="${escapeHtml(value)}" ${value === String(selectedId || "") ? "selected" : ""}>${escapeHtml(name)}</option>`;
+      }).join("")}</optgroup>`).join("")}
       ${guestTypes.length ? `<optgroup label="Guest types">${guestTypes.map((type) => {
         const value = `guest-type:${type}`;
         return `<option value="${escapeHtml(value)}" ${value === String(selectedId || "") ? "selected" : ""}>${escapeHtml(type)}</option>`;
@@ -6376,6 +6421,7 @@
       const value = String(assignedUserId || "").trim();
       if (!value) return "Unassigned";
       if (value.startsWith("guest-type:")) return value.slice("guest-type:".length) || "Guest type";
+      if (value.startsWith("guest:")) return value.slice("guest:".length) || "Guest";
       const person = cachedWorkspaceUsers.find((user) => String(user.id || "") === value);
       return person?.name || person?.email || value;
     };
@@ -9655,12 +9701,12 @@ function sortTables(items) {
     recognition.__stoppedManually = false;
     recognition.__baseValue = String(workspaceCapturePromptEl?.value || "").trim();
     recognition.__transcript = "";
-    recognition.__finalResultIndexes = new Set();
+    recognition.__finalResultValues = new Map();
     workspaceCaptureRecognition = recognition;
     recognition.onstart = () => {
       recognition.__baseValue = String(workspaceCapturePromptEl?.value || "").trim();
       recognition.__transcript = "";
-      recognition.__finalResultIndexes = new Set();
+      recognition.__finalResultValues = new Map();
       setWorkspaceMicButton(workspaceCaptureMicButton, true);
       setStatus(workspaceStatusEl, "", "");
     };
@@ -9668,14 +9714,18 @@ function sortTables(items) {
       let interimTranscript = "";
       for (let index = resultEvent.resultIndex || 0; index < resultEvent.results.length; index += 1) {
         const result = resultEvent.results[index];
+        const transcript = String(result?.[0]?.transcript || "").trim();
         if (result.isFinal) {
-          if (isNewFinalSpeechResult(recognition, index)) recognition.__transcript += `${String(result?.[0]?.transcript || "").trim()} `;
+          if (isNewFinalSpeechResult(recognition, index, transcript)) recognition.__transcript = mergeVoiceTranscriptIntoNotes(recognition.__transcript, transcript);
         } else {
-          interimTranscript += `${String(result?.[0]?.transcript || "").trim()} `;
+          interimTranscript = mergeVoiceTranscriptIntoNotes(interimTranscript, transcript);
         }
       }
       if (workspaceCapturePromptEl) {
-        workspaceCapturePromptEl.value = [recognition.__baseValue, recognition.__transcript.trim(), interimTranscript.trim()].filter(Boolean).join(" ");
+        workspaceCapturePromptEl.value = mergeVoiceTranscriptIntoNotes(
+          recognition.__baseValue,
+          mergeVoiceTranscriptIntoNotes(recognition.__transcript, interimTranscript)
+        );
       }
     };
     recognition.onerror = (errorEvent) => {
