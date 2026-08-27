@@ -453,6 +453,9 @@ type ParsedGroupRsvpSubmission = {
   plusOneName: string;
   childrenCount: number;
   childrenNote: string;
+  mobile: string;
+  smsOptedIn: boolean;
+  smsConsentRecordedAt: string;
   rehearsalRsvp: string;
   openHouseRsvp: string;
   comment: string;
@@ -552,6 +555,12 @@ function parseGroupRsvpSubmission(data: PublicSubmissionParams): ParsedGroupRsvp
   }
 
   const weddingAttendingCount = Object.values(weddingSelections).filter((value) => normalizeRsvpAnswer(value) === "attending").length;
+  const mobile = String(data.mobile || "").trim();
+  const smsOptedIn = String(data.smsOptIn || "").trim().toLowerCase() === "yes";
+
+  if (smsOptedIn && !mobile) {
+    throw new Error("A mobile number is required when text-message updates are selected.");
+  }
 
   return {
     submittedAt: String(data.submittedAt || new Date().toISOString()).trim(),
@@ -566,6 +575,11 @@ function parseGroupRsvpSubmission(data: PublicSubmissionParams): ParsedGroupRsvp
     plusOneName: String(data.plusOneName || "").trim(),
     childrenCount: normalizeWholeNumber(String(data.childrenCount || "")),
     childrenNote: String(data.childrenNote || "").trim(),
+    mobile,
+    smsOptedIn,
+    smsConsentRecordedAt: smsOptedIn
+      ? String(data.submittedAt || new Date().toISOString()).trim()
+      : "",
     rehearsalRsvp: normalizeRsvpAnswer(String(data.rehearsalRsvp || "")),
     openHouseRsvp: normalizeRsvpAnswer(String(data.openHouseRsvp || "")),
     comment: String(data.comment || "").trim()
@@ -757,7 +771,10 @@ function appendStructuredRsvpRow(
     String(submission.plusOneCount),
     submission.plusOneName,
     String(submission.childrenCount),
-    submission.childrenNote
+    submission.childrenNote,
+    submission.mobile,
+    submission.smsOptedIn ? "TRUE" : "FALSE",
+    submission.smsConsentRecordedAt
   ]);
 }
 

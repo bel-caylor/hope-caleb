@@ -2,6 +2,8 @@ import {
   PLANNER_ARCHIVE_HEADERS,
   PLANNER_ARCHIVE_SHEET,
   GUESTS_SHEET,
+  PEOPLE_HEADERS,
+  PEOPLE_SHEET,
   PLANNER_USERS_SHEET,
   PLANNER_USER_HEADERS,
   PLANNER_V2_ASSETS_SHEET,
@@ -23,6 +25,8 @@ type SaveWorkspaceUserInput = {
   id?: string;
   name?: string;
   email?: string;
+  phone?: string;
+  smsOptedIn?: boolean | string;
   weddingRole?: string;
   accessLevel?: WorkspaceAccessLevel | string;
   active?: boolean | string;
@@ -103,6 +107,8 @@ function mapUser(row: Record<string, unknown>) {
     id: String(row.Id || "").trim(),
     name: String(row.Name || "").trim(),
     email: String(row.Email || "").trim().toLowerCase(),
+    phone: String(row.Phone || "").trim(),
+    smsOptedIn: normalizeBoolean(row.SmsOptedIn, false),
     weddingRole: String(row.WeddingRole || "").trim(),
     accessLevel: normalizeAccessLevel(row.AccessLevel),
     active: normalizeBoolean(row.Active),
@@ -211,7 +217,7 @@ export function listWorkspaceUsers() {
 export function listWorkspaceInvitees() {
   requireWorkspaceManager();
   const groups = new Map<string, string>();
-  const guests = new Map<string, { name: string; types: string[] }>();
+  const guests = new Map<string, { name: string; email: string; phone: string; types: string[] }>();
   readRows(GUESTS_SHEET).forEach((row) => {
     const normalizedFields = Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toLowerCase().replace(/[^a-z0-9]/g, ""), value]));
     const name = String(
@@ -224,6 +230,8 @@ export function listWorkspaceInvitees() {
       || normalizedFields.guest
       || ""
     ).trim();
+    const email = String(row.Email || normalizedFields.email || "").trim();
+    const phone = String(row.Phone || row["Phone Number"] || normalizedFields.phone || normalizedFields.phonenumber || "").trim();
     const types = String(row.Type || "")
       .split(",")
       .map((item) => item.trim())
@@ -234,6 +242,8 @@ export function listWorkspaceInvitees() {
       const existing = guests.get(key);
       guests.set(key, {
         name: existing?.name || name,
+        email: existing?.email || email,
+        phone: existing?.phone || phone,
         types: [...new Set([...(existing?.types || []), ...types])]
       });
     }
@@ -248,26 +258,73 @@ export function saveWorkspaceUser(input: SaveWorkspaceUserInput) {
   requirePlannerAccess();
   initializePlannerWorkspace();
   const id = String(input.id || "").trim() || createId("workspace_user");
+  const name = String(input.name || "").trim();
   const email = String(input.email || "").trim().toLowerCase();
-  if (!email) throw new Error("A Google account email is required for each planner user.");
+  const active = normalizeBoolean(input.active);
+  if (!name) throw new Error("A name is required for each planner contact.");
+  if (active && !email) throw new Error("A Google account email is required for an active planner user.");
   const matchingEmail = readRows(PLANNER_USERS_SHEET)
     .map(mapUser)
-    .find((user) => user.email === email && user.id !== id);
+    .find((user) => email && user.email === email && user.id !== id);
   if (matchingEmail) throw new Error("That Google account is already connected to another planner user.");
   const now = new Date().toISOString();
   const existing = listWorkspaceUsers().find((user) => user.id === id);
   const saved = {
     Id: id,
-    Name: String(input.name || "").trim(),
+    Name: name,
     Email: email,
+    Phone: String(input.phone || "").trim(),
+    SmsOptedIn: normalizeBoolean(input.smsOptedIn, false) ? "TRUE" : "FALSE",
     WeddingRole: String(input.weddingRole || "").trim(),
     AccessLevel: normalizeAccessLevel(input.accessLevel),
-    Active: normalizeBoolean(input.active) ? "TRUE" : "FALSE",
+    Active: active ? "TRUE" : "FALSE",
     CreatedAt: existing?.createdAt || now,
     UpdatedAt: now
   };
   upsertRow(PLANNER_USERS_SHEET, PLANNER_USER_HEADERS, id, saved);
   return mapUser(saved);
+}
+
+export function importLegacyPeopleToWorkspaceUsers() {
+  requirePlannerAccess();
+  initializePlannerWorkspace();
+  ensureSheet(PEOPLE_SHEET, PEOPLE_HEADERS);
+  const existingNames = new Set(
+    readRows(PLANNER_USERS_SHEET)
+      .map(mapUser)
+      .map((user) => user.name.toLowerCase())
+      .filter(Boolean)
+  );
+  const now = new Date().toISOString();
+  let imported = 0;
+  let skipped = 0;
+
+  readRows(PEOPLE_SHEET).forEach((person) => {
+    const name = String(person.Name || "").trim();
+    if (!name || existingNames.has(name.toLowerCase())) {
+      skipped += 1;
+      return;
+    }
+    const consent = String(person.ConsentStatus || "").trim().toLowerCase();
+    const smsOptedIn = /^(opted[ -]?in|yes|true)$/i.test(consent);
+    const id = createId("workspace_user");
+    upsertRow(PLANNER_USERS_SHEET, PLANNER_USER_HEADERS, id, {
+      Id: id,
+      Name: name,
+      Email: "",
+      Phone: String(person.Phone || "").trim(),
+      SmsOptedIn: smsOptedIn ? "TRUE" : "FALSE",
+      WeddingRole: String(person.Role || "").trim(),
+      AccessLevel: "wedding_party",
+      Active: "FALSE",
+      CreatedAt: now,
+      UpdatedAt: now
+    });
+    existingNames.add(name.toLowerCase());
+    imported += 1;
+  });
+
+  return { imported, skipped };
 }
 
 function getWorkspaceViewer() {

@@ -13,7 +13,7 @@ const HONEYMOON_OPTIONS = {
 };
 
 const HOME_RSVP = {
-  scriptUrl: "https://script.google.com/macros/s/AKfycbzMPCdfCHOzwipiOyI0KpTAKX_lvsI2NqtGaUxgVlqeOuZ6MeqBhhN9kM_AXJgDGEmk/exec",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbz9rMRzqmqBsjCFXKe4AkfJLdR9zN0ANQGEwfEpHa4EJSrPdLlUpnOOCGrUzP6sV8qx/exec",
   deadlineLabel: "Please reply by December 1, 2026."
 };
 
@@ -481,6 +481,14 @@ if (rsvpLookupForm && rsvpResponseForm) {
     const openHouseSelect = rsvpResponseForm.elements.namedItem("openHouseRsvp");
     if (!rsvpOpenHouseSection.hidden && !openHouseSelect.value) {
       setRsvpStatus(rsvpSubmitStatus, "Please choose an open house response.", "error");
+      return;
+    }
+
+    const mobileInput = rsvpResponseForm.elements.namedItem("mobile");
+    const smsOptInInput = rsvpResponseForm.elements.namedItem("smsOptIn");
+    if (smsOptInInput.checked && !String(mobileInput.value || "").trim()) {
+      setRsvpStatus(rsvpSubmitStatus, "Enter a mobile number to receive text-message updates.", "error");
+      mobileInput.focus();
       return;
     }
 

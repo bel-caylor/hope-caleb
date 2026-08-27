@@ -464,7 +464,7 @@
         guests: "Guests",
         tables: "Tables",
         people: "People & Vendors",
-        "planner-users": "Planner Users",
+        "planner-users": "Contacts & Messaging",
         beds: "Beds",
         events: "Timeline",
         "event-detail": "Event Details",
@@ -5144,6 +5144,16 @@
     return String(typeColumn ? row[typeColumn] || "" : "").trim();
   }
 
+  function getGuestEmail(row) {
+    const emailColumn = findGuestColumn(row, /^e-?mail$/i);
+    return String(emailColumn ? row[emailColumn] || "" : "").trim();
+  }
+
+  function getGuestPhone(row) {
+    const phoneColumn = findGuestColumn(row, /^(mobile )?phone( number)?$/i);
+    return String(phoneColumn ? row[phoneColumn] || "" : "").trim();
+  }
+
   function findTableColumn(table, matcher) {
     return Object.keys(table || {}).find((column) => matcher.test(String(column || "").trim()));
   }
@@ -5430,6 +5440,7 @@
     if (!plannerUsersPanelEl || !viewerProfile.isAdmin) return;
     const users = [...cachedWorkspaceUsers]
       .sort((left, right) => String(left.name || left.email || "").localeCompare(String(right.name || right.email || "")));
+    const guestChoices = getPlannerUserGuestChoices();
     const weddingRoles = [
       "Bride",
       "Groom",
@@ -5455,29 +5466,53 @@
         : weddingRoles;
       return `<option value="">Choose a role</option>${roles.map((role) => `<option value="${escapeHtml(role)}" ${role.toLowerCase() === selectedRole.toLowerCase() ? "selected" : ""}>${escapeHtml(role)}</option>`).join("")}`;
     };
-    const userForm = (user = {}) => `
+    const userForm = (user = {}) => {
+      const selectedName = String(user.name || "").trim();
+      const hasSelectedGuest = guestChoices.some((guest) => guest.name.toLowerCase() === selectedName.toLowerCase());
+      const guestOptions = [
+        '<option value="">Choose a guest</option>',
+        !hasSelectedGuest && selectedName ? `<option value="${escapeHtml(selectedName)}" selected>${escapeHtml(selectedName)}</option>` : "",
+        ...guestChoices.map((guest) => `<option value="${escapeHtml(guest.name)}" ${guest.name.toLowerCase() === selectedName.toLowerCase() ? "selected" : ""}>${escapeHtml(guest.name)}</option>`)
+      ].join("");
+      return `
       <form class="planner-users-form" data-planner-user-form>
         <input name="id" type="hidden" value="${escapeHtml(user.id || "")}">
-        <label>Name <input name="name" required value="${escapeHtml(user.name || "")}" placeholder="First Last"></label>
-        <label>Google account email <input name="email" type="email" required value="${escapeHtml(user.email || "")}" placeholder="name@gmail.com"></label>
+        <label>Name <select name="name" required data-planner-user-guest>${guestOptions}</select></label>
+        <label>Google account email <input name="email" type="email" value="${escapeHtml(user.email || "")}" placeholder="name@gmail.com"></label>
+        <label>Mobile number <input name="phone" type="tel" value="${escapeHtml(user.phone || "")}" placeholder="+12105551234"></label>
         <label>Guest type / wedding role <select name="weddingRole">${weddingRoleOptions(user.weddingRole)}</select></label>
         <label>Access level <select name="accessLevel">${accessOptions(user.accessLevel)}</select></label>
         <label class="planner-users-form__wide planner-users-form__active"><input name="active" type="checkbox" ${user.active !== false ? "checked" : ""}> Active — this person can sign in using the email above</label>
-        <div class="toolbar planner-users-form__wide"><button class="button" type="submit">${user.id ? "Save changes" : "Add planner user"}</button>${user.id ? '<button class="button button--light" type="button" data-cancel-planner-user-edit>Cancel</button>' : ""}</div>
+        <label class="planner-users-form__wide planner-users-form__active"><input name="smsOptedIn" type="checkbox" ${user.smsOptedIn ? "checked" : ""}> This person has agreed to receive wedding-planning texts</label>
+        <div class="toolbar planner-users-form__wide"><button class="button" type="submit">${user.id ? "Save changes" : "Add contact"}</button>${user.id ? '<button class="button button--light" type="button" data-cancel-planner-user-edit>Cancel</button>' : ""}</div>
       </form>`;
+    };
+    const textContacts = users.filter((user) => user.smsOptedIn && String(user.phone || "").trim());
 
     plannerUsersPanelEl.innerHTML = `
       <section class="card">
-        <p class="eyebrow">Access & assignments</p>
-        <h3>Planner Users</h3>
-        <p class="meta">Add the exact Google account someone will use to sign in. Assigning a task to this member makes it appear on their Home page. Wedding party members see only their assigned work; contributors and full planners see the shared plan.</p>
+        <p class="eyebrow">Contacts, access & assignments</p>
+        <h3>Planner contacts</h3>
+        <p class="meta">Add the people you coordinate with here. An active contact needs a Google account email to sign in; a contact can still be saved for texting without planner access.</p>
+        <div class="toolbar"><button class="button button--light" type="button" data-import-legacy-people>Import People &amp; Vendors contacts</button></div>
         <div id="plannerUserEditor">${userForm()}</div>
         <p class="status" id="plannerUsersStatus"></p>
       </section>
       <section class="card">
-        <h3>Current planner users</h3>
+        <p class="eyebrow">Texting</p>
+        <h3>Start a text</h3>
+        <p class="meta">This opens your device’s messaging app with the recipient and message filled in. It only lists contacts with a mobile number and documented text-message consent.</p>
+        ${textContacts.length ? `<form class="planner-users-form" data-planner-message-form>
+          <label>To <select name="recipientId" required>${textContacts.map((user) => `<option value="${escapeHtml(user.id)}">${escapeHtml(user.name)} · ${escapeHtml(user.phone)}</option>`).join("")}</select></label>
+          <label class="planner-users-form__wide">Message <textarea name="message" required rows="4" placeholder="Hi! Here is the latest wedding-planning update..."></textarea></label>
+          <div class="toolbar planner-users-form__wide"><button class="button" type="submit">Open text message</button></div>
+        </form>` : '<p class="meta">Add a mobile number and record text-message consent for a contact to start a text.</p>'}
+        <p class="status" id="plannerMessageStatus"></p>
+      </section>
+      <section class="card">
+        <h3>Contacts</h3>
         <div class="workspace-task-table-wrap">
-          ${users.length ? `<table class="workspace-task-table planner-users-table"><thead><tr><th>Name</th><th>Google account</th><th>Wedding role</th><th>Access</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${users.map((user) => `<tr><td data-label="Name">${escapeHtml(user.name || "—")}</td><td data-label="Google account">${escapeHtml(user.email || "—")}</td><td data-label="Wedding role">${escapeHtml(user.weddingRole || "—")}</td><td data-label="Access">${escapeHtml(String(user.accessLevel || "").replace(/_/g, " "))}</td><td data-label="Status">${user.active ? "Active" : "Inactive"}</td><td data-label="Actions"><button class="button button--light" type="button" data-edit-planner-user="${escapeHtml(user.id)}">Edit</button></td></tr>`).join("")}</tbody></table>` : '<p class="meta">No planner users yet. Add the first person above.</p>'}
+          ${users.length ? `<table class="workspace-task-table planner-users-table"><thead><tr><th>Name</th><th>Mobile</th><th>Google account</th><th>Wedding role</th><th>Access</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${users.map((user) => `<tr><td data-label="Name">${escapeHtml(user.name || "—")}</td><td data-label="Mobile">${escapeHtml(user.phone || "—")}${user.smsOptedIn ? " · Text OK" : ""}</td><td data-label="Google account">${escapeHtml(user.email || "—")}</td><td data-label="Wedding role">${escapeHtml(user.weddingRole || "—")}</td><td data-label="Access">${escapeHtml(String(user.accessLevel || "").replace(/_/g, " "))}</td><td data-label="Status">${user.active ? "Active" : "Contact only"}</td><td data-label="Actions"><button class="button button--light" type="button" data-edit-planner-user="${escapeHtml(user.id)}">Edit</button></td></tr>`).join("")}</tbody></table>` : '<p class="meta">No contacts yet. Add the first person above.</p>'}
         </div>
       </section>
     `;
@@ -5818,6 +5853,27 @@
         types: [...new Set([...(existing?.types || []), ...types])]
       });
     });
+    return [...guestsByName.values()].sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  function getPlannerUserGuestChoices() {
+    const guestsByName = new Map();
+    const addGuest = (name, email = "", phone = "") => {
+      const normalizedName = String(name || "").trim();
+      if (!normalizedName) return;
+      const key = normalizedName.toLowerCase();
+      const existing = guestsByName.get(key);
+      guestsByName.set(key, {
+        name: existing?.name || normalizedName,
+        email: existing?.email || String(email || "").trim(),
+        phone: existing?.phone || String(phone || "").trim()
+      });
+    };
+
+    (Array.isArray(cachedWorkspaceInvitees.guests) ? cachedWorkspaceInvitees.guests : [])
+      .forEach((guest) => addGuest(guest?.name, guest?.email, guest?.phone));
+    cachedGuests.forEach((guest) => addGuest(getGuestDisplayName(guest), getGuestEmail(guest), getGuestPhone(guest)));
+
     return [...guestsByName.values()].sort((left, right) => left.name.localeCompare(right.name));
   }
 
@@ -9297,6 +9353,23 @@ function sortTables(items) {
 
   plannerUsersPanelEl?.addEventListener("submit", async (event) => {
     const form = event.target.closest("[data-planner-user-form]");
+    const messageForm = event.target.closest("[data-planner-message-form]");
+    if (messageForm) {
+      event.preventDefault();
+      const statusEl = plannerUsersPanelEl.querySelector("#plannerMessageStatus");
+      const data = new FormData(messageForm);
+      const recipient = cachedWorkspaceUsers.find((user) => String(user.id || "") === String(data.get("recipientId") || ""));
+      const phone = String(recipient?.phone || "").trim();
+      const message = String(data.get("message") || "").trim();
+      if (!recipient?.smsOptedIn || !phone || !message) {
+        setStatus(statusEl, "Choose a consented contact with a mobile number and write a message.", "error");
+        return;
+      }
+      const destination = phone.replace(/[^\d+]/g, "");
+      window.location.href = `sms:${encodeURIComponent(destination)}?body=${encodeURIComponent(message)}`;
+      setStatus(statusEl, `Opening a text to ${recipient.name || "this contact"}…`, "success");
+      return;
+    }
     if (!form) return;
     event.preventDefault();
     try {
@@ -9308,13 +9381,40 @@ function sortTables(items) {
       await backendRequest("saveWorkspaceUser", data);
       await refreshWorkspaceCollections();
       renderPlannerUsers();
-      setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), "Planner user saved. You can now assign tasks to them.", "success");
+      setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), "Contact saved. Active contacts can also be assigned tasks and sign in.", "success");
     } catch (error) {
       setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), error.message || "Unable to save planner user.", "error");
     }
   });
 
-  plannerUsersPanelEl?.addEventListener("click", (event) => {
+  plannerUsersPanelEl?.addEventListener("change", (event) => {
+    const nameSelect = event.target.closest("[data-planner-user-guest]");
+    if (!nameSelect) return;
+    const form = nameSelect.closest("[data-planner-user-form]");
+    const emailField = form?.elements?.namedItem("email");
+    const phoneField = form?.elements?.namedItem("phone");
+    if (!emailField) return;
+    const selectedName = String(nameSelect.value || "").trim().toLowerCase();
+    const guest = getPlannerUserGuestChoices().find((item) => item.name.toLowerCase() === selectedName);
+    if (guest?.email) emailField.value = guest.email;
+    if (guest?.phone && phoneField) phoneField.value = guest.phone;
+  });
+
+  plannerUsersPanelEl?.addEventListener("click", async (event) => {
+    if (event.target.closest("[data-import-legacy-people]")) {
+      try {
+        requirePlannerAccess();
+        const statusEl = plannerUsersPanelEl.querySelector("#plannerUsersStatus");
+        setStatus(statusEl, "Importing legacy contacts…", "pending");
+        const result = await backendRequest("importLegacyPeopleToWorkspaceUsers", {});
+        await refreshWorkspaceCollections();
+        renderPlannerUsers();
+        setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), `Imported ${Number(result?.imported || 0)} contact${Number(result?.imported || 0) === 1 ? "" : "s"}; skipped ${Number(result?.skipped || 0)} already in your contacts.`, "success");
+      } catch (error) {
+        setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), error.message || "Unable to import legacy contacts.", "error");
+      }
+      return;
+    }
     const editButton = event.target.closest("[data-edit-planner-user]");
     if (editButton) {
       const user = cachedWorkspaceUsers.find((item) => String(item.id || "") === String(editButton.dataset.editPlannerUser || ""));
@@ -9323,11 +9423,16 @@ function sortTables(items) {
       const form = plannerUsersPanelEl.querySelector("[data-planner-user-form]");
       if (!form) return;
       form.elements.id.value = String(user.id || "");
+      if (!Array.from(form.elements.name.options).some((option) => option.value === String(user.name || ""))) {
+        form.elements.name.add(new Option(String(user.name || ""), String(user.name || ""), true, true));
+      }
       form.elements.name.value = String(user.name || "");
       form.elements.email.value = String(user.email || "");
+      form.elements.phone.value = String(user.phone || "");
       form.elements.weddingRole.value = String(user.weddingRole || "");
       form.elements.accessLevel.value = String(user.accessLevel || "wedding_party");
       form.elements.active.checked = user.active !== false;
+      form.elements.smsOptedIn.checked = Boolean(user.smsOptedIn);
       form.querySelector("button[type=submit]").textContent = "Save changes";
       const cancel = document.createElement("button");
       cancel.type = "button";

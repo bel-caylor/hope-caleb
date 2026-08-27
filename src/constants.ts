@@ -122,6 +122,8 @@ export const PLANNER_USER_HEADERS = [
   "Id",
   "Name",
   "Email",
+  "Phone",
+  "SmsOptedIn",
   "WeddingRole",
   "AccessLevel",
   "Active",
@@ -195,7 +197,10 @@ export const RSVP_HEADERS = [
   "Plus One Count",
   "Plus One Name",
   "Children Count",
-  "Children Note"
+  "Children Note",
+  "Mobile",
+  "SMS Opted In",
+  "SMS Consent Recorded At"
 ];
 export const COMMENT_HEADERS = ["Submitted At", "Name", "Comment", "Media Url", "Media Type", "Media Name", "Media Error"];
 export const GROUP_HEADERS = [

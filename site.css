@@ -2296,6 +2296,29 @@ form[data-rsvp-response-form] {
   resize: vertical;
 }
 
+.rsvp-sms-consent {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin: 1rem 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.rsvp-sms-consent input {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  margin: 0.24rem 0 0;
+}
+
+.rsvp-sms-consent a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
 .rsvp-field input:focus,
 .rsvp-field select:focus,
 .rsvp-field textarea:focus {
