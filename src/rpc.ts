@@ -1,9 +1,9 @@
-import { listPlannerDashboardFeed, syncGroupsSheet, syncGuestSummarySheets } from "./features/feed";
+import { listPlannerDashboardFeed, savePlannerRsvpCorrection, syncGroupsSheet, syncGuestSummarySheets } from "./features/feed";
 import { getViewerProfile } from "./auth";
 import { deleteEventList, deleteShot, deleteTodo, listBeds, listEventLists, listEvents, listPeople, listShots, listTables, listTodos, saveBed, saveEvent, saveEventList, saveGuestDetails, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveShot, saveTable, saveTableReservedOpenSeats, saveTodo, uploadTodoImage } from "./features/planner";
 import { generateEventPlan } from "./util/ai";
 import { PLANNER_BUILD_VERSION } from "./version";
-import { archiveLegacyPlanningData, deleteWorkspaceAsset, deleteWorkspaceList, deleteWorkspaceTask, getWorkspaceProfile, initializePlannerWorkspace, listWorkspaceAssets, listWorkspaceEvents, listWorkspaceInvitees, listWorkspaceLists, listWorkspaceTasks, listWorkspaceUsers, saveWorkspaceAsset, saveWorkspaceEvent, saveWorkspaceList, saveWorkspaceTask, saveWorkspaceUser, setWorkspaceListItemCompleted } from "./features/planner-v2";
+import { archiveLegacyPlanningData, deleteWorkspaceAsset, deleteWorkspaceList, deleteWorkspaceTask, getWorkspaceAssetImage, getWorkspaceProfile, initializePlannerWorkspace, listWorkspaceAssets, listWorkspaceEvents, listWorkspaceInvitees, listWorkspaceLists, listWorkspaceTasks, listWorkspaceUsers, saveWorkspaceAsset, saveWorkspaceEvent, saveWorkspaceList, saveWorkspaceTask, saveWorkspaceUser, setWorkspaceListItemCompleted } from "./features/planner-v2";
 
 export function rpc(input: { method: string; payload: unknown }) {
   const { method, payload } = input;
@@ -67,6 +67,8 @@ export function rpc(input: { method: string; payload: unknown }) {
       return syncGroupsSheet();
     case "listPlannerDashboardFeed":
       return listPlannerDashboardFeed();
+    case "savePlannerRsvpCorrection":
+      return savePlannerRsvpCorrection(payload as Parameters<typeof savePlannerRsvpCorrection>[0]);
     case "generateEventPlan":
       return generateEventPlan(payload as Parameters<typeof generateEventPlan>[0]);
     case "initializePlannerWorkspace":
@@ -105,6 +107,8 @@ export function rpc(input: { method: string; payload: unknown }) {
       return saveWorkspaceAsset(payload as Parameters<typeof saveWorkspaceAsset>[0]);
     case "deleteWorkspaceAsset":
       return deleteWorkspaceAsset(payload as Parameters<typeof deleteWorkspaceAsset>[0]);
+    case "getWorkspaceAssetImage":
+      return getWorkspaceAssetImage(payload as Parameters<typeof getWorkspaceAssetImage>[0]);
     default:
       throw new Error(`Unknown RPC method: ${method}`);
   }

@@ -21,6 +21,8 @@ const LEGACY_FILES = [
   "slideshow.css",
   "slideshow.js",
   "favicon.svg",
+  "manifest.webmanifest",
+  "service-worker.js",
   "robots.txt",
   "CNAME"
 ];

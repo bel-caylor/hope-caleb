@@ -13,7 +13,7 @@ const HONEYMOON_OPTIONS = {
 };
 
 const HOME_RSVP = {
-  scriptUrl: "https://script.google.com/macros/s/AKfycbylaorPMXD9JeQn7x5-87EXpNKGH8mh0513NPx4vW3-ODIQbdLnKY0WAJbFGYLHyhZc/exec",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbwPGpE8uIcBPXHdNPrtV2sFCLxlxTI6FMk72UP9UkJ47BNjAII6-_izFJg9GK3WOUuF/exec",
   deadlineLabel: "Please reply by December 1, 2026."
 };
 
@@ -109,6 +109,55 @@ const sectionMenuPanel = document.querySelector("[data-section-menu-panel]");
 const submenuItems = Array.from(document.querySelectorAll(".section-nav__item--has-submenu"));
 const mobileNavMedia = window.matchMedia("(max-width: 760px)");
 const compactDesktopNavMedia = window.matchMedia("(min-width: 761px)");
+const RSVP_LOOKUP_STORAGE_KEY = "hope-caleb-rsvp-lookup";
+
+function saveRsvpLookupNames(firstName, lastName) {
+  if (!firstName || !lastName) return;
+  try {
+    window.sessionStorage.setItem(RSVP_LOOKUP_STORAGE_KEY, JSON.stringify({ firstName, lastName }));
+  } catch (_) {
+    // The URL remains the source of truth when browser storage is unavailable.
+  }
+}
+
+function getSavedRsvpLookupNames() {
+  const params = new URLSearchParams(window.location.search);
+  const firstName = normalizeNamePart(params.get("firstName"));
+  const lastName = normalizeNamePart(params.get("lastName"));
+  if (firstName && lastName) {
+    saveRsvpLookupNames(firstName, lastName);
+    return { firstName, lastName };
+  }
+
+  try {
+    const saved = JSON.parse(window.sessionStorage.getItem(RSVP_LOOKUP_STORAGE_KEY) || "{}");
+    return {
+      firstName: normalizeNamePart(saved.firstName),
+      lastName: normalizeNamePart(saved.lastName)
+    };
+  } catch (_) {
+    return { firstName: "", lastName: "" };
+  }
+}
+
+function preserveRsvpLookupInMenuLinks() {
+  const { firstName, lastName } = getSavedRsvpLookupNames();
+
+  if (!firstName || !lastName) {
+    return;
+  }
+
+  document.querySelectorAll(".section-nav a[href]").forEach((link) => {
+    const destination = new URL(link.getAttribute("href"), window.location.href);
+    if (destination.origin !== window.location.origin) {
+      return;
+    }
+
+    destination.searchParams.set("firstName", firstName);
+    destination.searchParams.set("lastName", lastName);
+    link.href = destination.toString();
+  });
+}
 
 function syncMobileMenuToggleVisibility() {
   if (!sectionNav) {
@@ -179,10 +228,8 @@ if (sectionMenuToggle && sectionMenuPanel) {
 
   sectionMenuPanel.querySelectorAll("a").forEach((link) => {
     link.addEventListener("click", () => {
-      if (mobileNavMedia.matches) {
-        setSectionMenuOpen(false);
-        closeAllSubmenus();
-      }
+      setSectionMenuOpen(false);
+      closeAllSubmenus();
     });
   });
 
@@ -230,7 +277,10 @@ submenuItems.forEach((item) => {
 });
 
 document.addEventListener("click", (event) => {
-  if (sectionNav && !sectionNav.contains(event.target)) {
+  const clickedMenuControl = sectionMenuToggle?.contains(event.target)
+    || sectionMenuPanel?.contains(event.target);
+
+  if (sectionNav?.classList.contains("is-menu-open") && !clickedMenuControl) {
     setSectionMenuOpen(false);
     closeAllSubmenus();
     return;
@@ -552,12 +602,15 @@ function syncRsvpLookupUrl(firstName, lastName, shouldPushState) {
   const url = new URL(window.location.href);
   url.searchParams.set("firstName", firstName);
   url.searchParams.set("lastName", lastName);
+  saveRsvpLookupNames(firstName, lastName);
 
   if (shouldPushState) {
     window.history.pushState({}, "", url);
   } else {
     window.history.replaceState({}, "", url);
   }
+
+  preserveRsvpLookupInMenuLinks();
 }
 
 function syncRsvpLookupInputs(firstName, lastName) {
@@ -576,6 +629,8 @@ function syncRsvpLookupInputs(firstName, lastName) {
     lastNameInput.value = lastName;
   }
 }
+
+preserveRsvpLookupInMenuLinks();
 
 async function loadRsvpLookupMatches(firstName, lastName) {
   if (!HOME_RSVP.scriptUrl) {

@@ -150,6 +150,15 @@ After that, every new RSVP submission will send an email with the guest name, em
 
 This repo now includes a protected dashboard under `src/`, with public wedding views and a private planner route in the same app.
 
+### Install on a Phone or Tablet
+
+After the site is deployed over HTTPS, open `https://hope-caleb.site/dashboard.html` in the device browser:
+
+- iPhone or iPad: tap **Share**, then **Add to Home Screen**.
+- Android: use the browser menu and choose **Install app** or **Add to Home screen**.
+
+The installed dashboard opens in its own app window and keeps the dashboard shell available when a connection is temporarily unavailable. It still needs an internet connection for live RSVP and planner data.
+
 Current dashboard pieces:
 
 - `src/html/index.html` - unified public + planner UI shell
@@ -213,6 +222,7 @@ The dashboard loads RSVPs with JSONP, so it avoids the CORS problem you hit when
 ### Source Of Truth
 
 - `src/http.ts` is the Apps Script entrypoint that builds to `dist/Code.js`
+- A front-page group RSVP is recorded in three places by `src/features/feed.ts`: the append-only `RSVPs` sheet is the submission history (time, note, event choices, and party details); `Guests` is the current per-person attendance list; and `Groups` is the current invitation-level summary. The planner RSVP panel shows both the submission history and the live guest attendance view.
 - `src/features/feed.ts` handles public RSVP submissions, comments, media, and the `Guests` sheet feed
 - `src/features/planner.ts` handles planner-only People and Events RPC methods
 - `dist/` is generated output for `clasp`, not a file you should edit directly

@@ -23,8 +23,59 @@ function toStringRecord(source: Record<string, unknown> | undefined): PublicSubm
   }, {} as PublicSubmissionParams);
 }
 
+/**
+ * The original RSVP sheet had six columns.  The group RSVP form later added
+ * structured fields, but `ensureSheet` appends missing headers rather than
+ * reordering old ones.  That made the new positional writes appear under the
+ * old headers (for example, an attendee count showed as a comment).  Normalize
+ * the header row once, retaining and repairing every existing response.
+ */
+function ensureRsvpSheet() {
+  const sheet = ensureSheet(RSVP_SHEET, RSVP_HEADERS);
+  const width = Math.max(sheet.getLastColumn(), RSVP_HEADERS.length);
+  const headers = sheet.getRange(1, 1, 1, width).getValues()[0]
+    .map((value) => String(value || "").trim());
+  const hasLegacyOrder = headers.slice(0, 6).join("\u0000") === [
+    "Submitted At", "Name", "Email", "Attending", "Guests", "Comment"
+  ].join("\u0000");
+
+  if (!hasLegacyOrder) {
+    return sheet;
+  }
+
+  const rows = sheet.getLastRow() > 1
+    ? sheet.getRange(2, 1, sheet.getLastRow() - 1, width).getValues()
+    : [];
+  const migratedRows = rows.map((row) => {
+    // Structured group submissions were already written in the new field
+    // order; only the header row was stale.  Legacy one-person RSVPs need a
+    // blank Form Type inserted before their original Name field.
+    if (String(row[1] || "").trim().toLowerCase() === "group-rsvp") {
+      return row.slice(0, RSVP_HEADERS.length);
+    }
+
+    return [
+      row[0] || "",
+      "rsvp",
+      row[1] || "",
+      row[2] || "",
+      row[3] || "",
+      row[4] || "",
+      row[5] || "",
+      ...Array(Math.max(RSVP_HEADERS.length - 7, 0)).fill("")
+    ];
+  });
+
+  sheet.getRange(1, 1, 1, RSVP_HEADERS.length).setValues([RSVP_HEADERS]);
+  if (migratedRows.length) {
+    sheet.getRange(2, 1, migratedRows.length, RSVP_HEADERS.length).setValues(migratedRows);
+  }
+
+  return sheet;
+}
+
 export function listPublicFeed() {
-  ensureSheet(RSVP_SHEET, RSVP_HEADERS);
+  ensureRsvpSheet();
   ensureSheet(COMMENT_SHEET, COMMENT_HEADERS);
 
   const responses = readRows(RSVP_SHEET)
@@ -58,21 +109,43 @@ export function listPublicFeed() {
 /** Full planner views use authenticated RPC, never the public JSONP feed. */
 export function listPlannerDashboardFeed() {
   requirePlannerAccess();
-  ensureSheet(RSVP_SHEET, RSVP_HEADERS);
+  ensureRsvpSheet();
 
   return {
     responses: readRows(RSVP_SHEET)
       .filter((row) => String(row.Name || row.Attending || row.Comment || "").trim())
       .map((row) => ({
         submittedAt: String(row["Submitted At"] || ""),
+        formType: String(row["Form Type"] || ""),
         name: String(row.Name || ""),
+        email: String(row.Email || ""),
         attending: String(row.Attending || ""),
         guests: String(row.Guests || ""),
-        comment: String(row.Comment || "")
+        comment: String(row.Comment || ""),
+        group: String(row.Group || ""),
+        groupMembers: String(row["Group Members"] || ""),
+        weddingRsvpSummary: String(row["Wedding RSVP Summary"] || ""),
+        rehearsalRsvp: String(row["Rehearsal RSVP"] || ""),
+        openHouseRsvp: String(row["Open House RSVP"] || ""),
+        plusOneCount: String(row["Plus One Count"] || ""),
+        plusOneName: String(row["Plus One Name"] || ""),
+        childrenCount: String(row["Children Count"] || ""),
+        childrenNote: String(row["Children Note"] || "")
       }))
       .reverse(),
     guests: readPlannerGuestRows()
   };
+}
+
+/** Records an administrator's RSVP correction as a new history entry. */
+export function savePlannerRsvpCorrection(rawParams: Record<string, unknown> | undefined) {
+  requirePlannerAccess();
+  const data = toStringRecord(rawParams);
+  return saveGroupRsvpSubmission({
+    ...data,
+    formType: "group-rsvp",
+    submittedAt: new Date().toISOString()
+  }, { sendNotification: false });
 }
 
 export function lookupPublicRsvpGroups(firstNameRaw: string | undefined, lastNameRaw: string | undefined) {
@@ -125,7 +198,7 @@ export function savePublicSubmission(rawParams: Record<string, unknown> | undefi
     ]]);
   } else {
     const submittedAt = data.submittedAt || new Date().toISOString();
-    ensureSheet(RSVP_SHEET, RSVP_HEADERS).appendRow([
+    ensureRsvpSheet().appendRow([
       submittedAt,
       data.formType || "rsvp",
       data.name || "",
@@ -389,7 +462,7 @@ function isGroupRsvpSubmission(data: PublicSubmissionParams) {
   return String(data.formType || "").trim().toLowerCase() === "group-rsvp";
 }
 
-function saveGroupRsvpSubmission(data: PublicSubmissionParams) {
+function saveGroupRsvpSubmission(data: PublicSubmissionParams, options: { sendNotification?: boolean } = {}) {
   const submission = parseGroupRsvpSubmission(data);
   const guestsSheet = getSheetByName(GUESTS_SHEET);
   const groupsSheet = ensureSheet(GROUPS_SHEET, GROUP_HEADERS);
@@ -402,20 +475,23 @@ function saveGroupRsvpSubmission(data: PublicSubmissionParams) {
     throw new Error("Groups sheet not found.");
   }
 
+  validateGroupRsvpSubmission(groupsSheet, submission);
   const guestResult = updateGuestRowsForGroupRsvp(guestsSheet, submission);
   const groupResult = updateGroupRowForRsvp(groupsSheet, submission, guestResult);
   appendStructuredRsvpRow(submission, guestResult);
-  sendRsvpNotification({
-    submittedAt: submission.submittedAt,
-    name: submission.contactName || submission.groupName,
-    email: submission.email,
-    attending: groupResult.weddingRsvpSummary,
-    guests: String(guestResult.weddingAttendingCount + submission.plusOneCount + submission.childrenCount),
-    comment: buildGroupRsvpNotificationComment(submission, guestResult),
-    group: submission.groupName,
-    rehearsalRsvp: submission.rehearsalRsvp,
-    openHouseRsvp: submission.openHouseRsvp
-  });
+  if (options.sendNotification !== false) {
+    sendRsvpNotification({
+      submittedAt: submission.submittedAt,
+      name: submission.contactName || submission.groupName,
+      email: submission.email,
+      attending: groupResult.weddingRsvpSummary,
+      guests: String(guestResult.weddingAttendingCount + submission.plusOneCount + submission.childrenCount),
+      comment: buildGroupRsvpNotificationComment(submission, guestResult),
+      group: submission.groupName,
+      rehearsalRsvp: submission.rehearsalRsvp,
+      openHouseRsvp: submission.openHouseRsvp
+    });
+  }
 
   return {
     ok: true,
@@ -426,6 +502,40 @@ function saveGroupRsvpSubmission(data: PublicSubmissionParams) {
   };
 }
 
+function validateGroupRsvpSubmission(
+  groupsSheet: GoogleAppsScript.Spreadsheet.Sheet,
+  submission: ParsedGroupRsvpSubmission
+) {
+  const values = groupsSheet.getDataRange().getDisplayValues();
+  const headers = values[0].map((header) => String(header || "").trim());
+  const groupIndex = findHeaderIndex(headers, [/^group$/i, /group\s*(name|id)/i]);
+  const childrenIndex = findHeaderIndex(headers, [/^#\s*(of\s*)?(children|child|kids?)$/i, /^children$/i, /children\s*count/i]);
+  const rehearsalInviteIndex = findHeaderIndex(headers, [/^invited\s*rehearsal$/i]);
+  const openHouseInviteIndex = findHeaderIndex(headers, [/^invited\s*open\s*house$/i]);
+  const targetRow = values.find((row, index) => index > 0 && getCell(row, groupIndex) === submission.groupName);
+
+  if (groupIndex < 0 || !targetRow) {
+    throw new Error("Could not find that invitation group.");
+  }
+
+  const childrenAllowed = normalizeWholeNumber(getCell(targetRow, childrenIndex));
+  if (submission.childrenCount > childrenAllowed) {
+    throw new Error("The children count exceeds this invitation's allowance.");
+  }
+
+  if (submission.rehearsalRsvp && !isAffirmative(getCell(targetRow, rehearsalInviteIndex))) {
+    throw new Error("This invitation does not include the rehearsal dinner.");
+  }
+
+  if (submission.openHouseRsvp && !isAffirmative(getCell(targetRow, openHouseInviteIndex))) {
+    throw new Error("This invitation does not include the open house.");
+  }
+}
+
+function isAffirmative(value: string) {
+  return ["yes", "y", "true", "1", "invited"].includes(String(value || "").trim().toLowerCase());
+}
+
 function parseGroupRsvpSubmission(data: PublicSubmissionParams): ParsedGroupRsvpSubmission {
   const groupName = String(data.group || "").trim();
   if (!groupName) {
@@ -433,6 +543,14 @@ function parseGroupRsvpSubmission(data: PublicSubmissionParams): ParsedGroupRsvp
   }
 
   const weddingSelections = parseJsonRecord(data.weddingSelections);
+  if (!Object.keys(weddingSelections).length) {
+    throw new Error("Please choose a wedding response for each guest.");
+  }
+
+  if (Object.values(weddingSelections).some((value) => !["attending", "not-attending"].includes(normalizeRsvpAnswer(value)))) {
+    throw new Error("Wedding responses must be attending or not attending.");
+  }
+
   const weddingAttendingCount = Object.values(weddingSelections).filter((value) => normalizeRsvpAnswer(value) === "attending").length;
 
   return {
@@ -492,6 +610,19 @@ function updateGuestRowsForGroupRsvp(
 
   if (groupIndex < 0 || nameIndex < 0 || rsvpIndex < 0) {
     throw new Error("Guests sheet is missing Group, Wedding Guest, or RSVP columns.");
+  }
+
+  const groupRows = rows.filter((row) => getCell(row, groupIndex) === submission.groupName);
+  const guestNames = groupRows.map((row) => getCell(row, nameIndex)).filter(Boolean);
+  const submittedGuestNames = Object.keys(submission.weddingSelections);
+  const unknownGuest = submittedGuestNames.find((name) => !guestNames.includes(name));
+  if (unknownGuest || submittedGuestNames.length !== guestNames.length) {
+    throw new Error("The RSVP does not match the guests on this invitation.");
+  }
+
+  const maxPlusOnes = groupRows.reduce((total, row) => total + normalizeWholeNumber(getCell(row, plusAllowedIndex)), 0);
+  if (submission.plusOneCount > maxPlusOnes) {
+    throw new Error("The plus-one count exceeds this invitation's allowance.");
   }
 
   let remainingPlusOnes = submission.plusOneCount;
@@ -604,7 +735,7 @@ function appendStructuredRsvpRow(
   submission: ParsedGroupRsvpSubmission,
   guestResult: { weddingAttendingCount: number; matchedGuestCount: number }
 ) {
-  ensureSheet(RSVP_SHEET, RSVP_HEADERS).appendRow([
+  ensureRsvpSheet().appendRow([
     submission.submittedAt,
     "group-rsvp",
     submission.contactName || submission.groupName,

@@ -248,12 +248,18 @@ export function saveWorkspaceUser(input: SaveWorkspaceUserInput) {
   requirePlannerAccess();
   initializePlannerWorkspace();
   const id = String(input.id || "").trim() || createId("workspace_user");
+  const email = String(input.email || "").trim().toLowerCase();
+  if (!email) throw new Error("A Google account email is required for each planner user.");
+  const matchingEmail = readRows(PLANNER_USERS_SHEET)
+    .map(mapUser)
+    .find((user) => user.email === email && user.id !== id);
+  if (matchingEmail) throw new Error("That Google account is already connected to another planner user.");
   const now = new Date().toISOString();
   const existing = listWorkspaceUsers().find((user) => user.id === id);
   const saved = {
     Id: id,
     Name: String(input.name || "").trim(),
-    Email: String(input.email || "").trim().toLowerCase(),
+    Email: email,
     WeddingRole: String(input.weddingRole || "").trim(),
     AccessLevel: normalizeAccessLevel(input.accessLevel),
     Active: normalizeBoolean(input.active) ? "TRUE" : "FALSE",
@@ -518,4 +524,36 @@ export function deleteWorkspaceAsset(input: { id?: string }) {
   if (!id) throw new Error("Missing task snapshot id.");
   deleteRowById(PLANNER_V2_ASSETS_SHEET, PLANNER_V2_ASSET_HEADERS, id);
   return { ok: true, id };
+}
+
+/**
+ * Supplies a task image through the authenticated planner API. Drive thumbnail
+ * URLs are not dependable across browsers because they may require Google
+ * session cookies, even when the file is link-shared.
+ */
+export function getWorkspaceAssetImage(input: { id?: string }) {
+  const id = String(input?.id || "").trim();
+  if (!id) throw new Error("Missing task snapshot id.");
+
+  const asset = listWorkspaceAssets().find((item) => item.id === id);
+  if (!asset) throw new Error("Task snapshot was not found or is not available to you.");
+
+  const fileId = extractDriveFileId(asset.assetUrl);
+  if (!fileId) throw new Error("This task snapshot does not have a usable Drive file.");
+
+  const blob = DriveApp.getFileById(fileId).getBlob();
+  const contentType = String(blob.getContentType() || "image/jpeg").toLowerCase();
+  if (!contentType.startsWith("image/")) throw new Error("The task snapshot is not an image.");
+
+  return {
+    dataUrl: `data:${contentType};base64,${Utilities.base64Encode(blob.getBytes())}`
+  };
+}
+
+function extractDriveFileId(value: string) {
+  const raw = String(value || "").trim();
+  const queryMatch = raw.match(/[?&]id=([^&#]+)/i);
+  if (queryMatch?.[1]) return decodeURIComponent(queryMatch[1]);
+  const pathMatch = raw.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return pathMatch?.[1] || "";
 }

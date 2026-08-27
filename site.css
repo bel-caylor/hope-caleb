@@ -408,9 +408,18 @@ main {
   box-shadow: none;
 }
 
+.section-nav.is-menu-open .section-nav__menu-toggle::after {
+  content: "×";
+  position: absolute;
+  z-index: 2;
+  font-family: Arial, sans-serif;
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
 .section-nav.is-menu-open .section-nav__menu-toggle span:nth-child(1) {
-  transform: translateY(0.16rem) rotate(45deg);
-  width: 1rem;
+  opacity: 0;
 }
 
 .section-nav.is-menu-open .section-nav__menu-toggle span:nth-child(2) {
@@ -418,8 +427,7 @@ main {
 }
 
 .section-nav.is-menu-open .section-nav__menu-toggle span:nth-child(3) {
-  transform: translateY(-0.16rem) rotate(-45deg);
-  width: 1rem;
+  opacity: 0;
 }
 
 .section-nav__inner {
@@ -482,7 +490,7 @@ main {
 .section-nav__item:focus-within .section-nav__toggle,
 .section-nav__item.is-open .section-nav__toggle,
 .section-nav__item--current .section-nav__toggle {
-  background: rgba(129, 13, 11, 0.08);
+  background: transparent;
   border-color: rgba(129, 13, 11, 0.32);
   color: var(--wine-soft);
 }
@@ -538,7 +546,7 @@ main {
 }
 
 @media (min-width: 761px) {
-  .section-nav.section-nav--compact {
+  .section-nav {
     position: static;
     height: 0;
     background: transparent;
@@ -547,16 +555,16 @@ main {
     z-index: 20;
   }
 
-  .section-nav.section-nav--compact .section-nav__menu-toggle {
+  .section-nav .section-nav__menu-toggle {
     display: inline-flex;
     position: fixed;
-    top: 1rem;
-    left: 1rem;
+    top: 1.15rem;
+    left: 1.15rem;
     z-index: 22;
     margin: 0;
   }
 
-  .section-nav.section-nav--compact::before {
+  .section-nav::before {
     content: "";
     position: fixed;
     inset: 0;
@@ -567,26 +575,29 @@ main {
     transition: opacity 220ms ease;
   }
 
-  .section-nav.section-nav--compact.is-menu-open::before {
+  .section-nav.is-menu-open::before {
     opacity: 1;
     pointer-events: auto;
   }
 
-  .section-nav.section-nav--compact .section-nav__inner {
+  .section-nav .section-nav__inner {
     position: fixed;
-    top: 0;
+    top: 0.75rem;
     left: 0;
     z-index: 21;
     display: flex;
-    width: min(24rem, calc(100vw - 0.75rem));
-    max-width: 100%;
-    height: 100vh;
-    height: 100svh;
+    width: fit-content;
+    min-width: 12.5rem;
+    max-width: calc(100vw - 1.5rem);
+    box-sizing: border-box;
+    height: auto;
+    max-height: calc(100dvh - 1.5rem);
     flex-direction: column;
     align-items: stretch;
+    justify-content: flex-start;
     gap: 0.3rem;
     margin: 0;
-    padding: 5.3rem 1rem 1rem;
+    padding: 4.75rem 1rem 1rem;
     overflow-y: auto;
     background:
       linear-gradient(180deg, rgba(247, 240, 234, 0.98), rgba(241, 232, 224, 0.98)),
@@ -597,24 +608,24 @@ main {
     transition: transform 240ms ease;
   }
 
-  .section-nav.section-nav--compact.is-menu-open .section-nav__inner {
+  .section-nav.is-menu-open .section-nav__inner {
     transform: translateX(0);
   }
 
-  .section-nav.section-nav--compact a {
+  .section-nav a {
     display: block;
     font-size: 0.95rem;
     text-align: left;
     padding: 0.7rem 0.9rem;
     border-radius: 0.85rem;
-    background: rgba(255, 250, 247, 0.68);
+    background: transparent;
   }
 
-  .section-nav.section-nav--compact .section-nav__item {
+  .section-nav .section-nav__item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
-      "link toggle"
+      "toggle link"
       "submenu submenu";
     width: 100%;
     align-items: center;
@@ -622,44 +633,46 @@ main {
     box-sizing: border-box;
   }
 
-  .section-nav.section-nav--compact .section-nav__item > a {
+  .section-nav .section-nav__item > a {
     grid-area: link;
     min-width: 0;
   }
 
-  .section-nav.section-nav--compact .section-nav__item--has-submenu {
+  .section-nav .section-nav__item--has-submenu {
     padding: 0.2rem;
     border-radius: 1rem;
-    background: rgba(255, 250, 247, 0.68);
+    background: transparent;
     box-shadow: inset 0 0 0 1px rgba(111, 120, 98, 0.08);
   }
 
-  .section-nav.section-nav--compact .section-nav__item--has-submenu > a {
+  .section-nav .section-nav__item--has-submenu > a {
     background: transparent;
     padding-right: 0;
   }
 
-  .section-nav.section-nav--compact .section-nav__item--has-submenu::after {
+  .section-nav .section-nav__item--has-submenu::after {
     display: none;
   }
 
-  .section-nav.section-nav--compact .section-nav__toggle {
+  .section-nav .section-nav__toggle {
     grid-area: toggle;
-    margin: 0 0.2rem 0 0;
+    margin: 0;
   }
 
-  .section-nav.section-nav--compact .section-nav__submenu {
+  .section-nav .section-nav__submenu {
     grid-area: submenu;
     position: static;
-    width: 100%;
+    width: auto;
     min-width: 0;
+    max-width: 100%;
+    justify-self: stretch;
     margin-top: 0;
     margin-left: 0;
     padding: 0.2rem 0 0;
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transform: none;
+    transform: none !important;
     display: none;
     box-shadow: none;
     border: 0;
@@ -669,11 +682,11 @@ main {
     overflow: visible;
   }
 
-  .section-nav.section-nav--compact .section-nav__item.is-open .section-nav__submenu {
+  .section-nav .section-nav__item.is-open .section-nav__submenu {
     display: grid;
   }
 
-  .section-nav.section-nav--compact .section-nav__submenu a {
+  .section-nav .section-nav__submenu a {
     display: block;
     width: 100%;
     white-space: normal;
@@ -2768,22 +2781,15 @@ form[data-rsvp-response-form] {
   .section-nav__menu-toggle {
     display: inline-flex;
     position: fixed;
-    top: 1rem;
-    left: 1rem;
+    top: 1.15rem;
+    left: 1.15rem;
     z-index: 22;
     margin: 0;
     box-shadow: none;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(-0.35rem);
-    transition: opacity 180ms ease, transform 180ms ease, color 160ms ease;
-  }
-
-  .section-nav.section-nav--show-toggle .section-nav__menu-toggle,
-  .section-nav.is-menu-open .section-nav__menu-toggle {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0);
+    transition: opacity 180ms ease, transform 180ms ease, color 160ms ease;
   }
 
   .section-nav::before {
@@ -2804,19 +2810,22 @@ form[data-rsvp-response-form] {
 
   .section-nav__inner {
     position: fixed;
-    top: 0;
+    top: 0.75rem;
     left: 0;
     z-index: 21;
     display: flex;
-    width: min(28rem, calc(100vw - 0.75rem));
-    max-width: 100%;
-    height: 100vh;
-    height: 100svh;
+    width: fit-content;
+    min-width: 12.5rem;
+    max-width: calc(100vw - 1.5rem);
+    box-sizing: border-box;
+    height: auto;
+    max-height: calc(100dvh - 1.5rem);
     flex-direction: column;
     align-items: stretch;
+    justify-content: flex-start;
     gap: 0.3rem;
     margin: 0;
-    padding: 5.3rem 1rem 1rem;
+    padding: 4.75rem 1rem 1rem;
     overflow-y: auto;
     background:
       linear-gradient(180deg, rgba(247, 240, 234, 0.98), rgba(241, 232, 224, 0.98)),
@@ -2842,9 +2851,9 @@ form[data-rsvp-response-form] {
 
   .section-nav__item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
-      "link toggle"
+      "toggle link"
       "submenu submenu";
     width: 100%;
     align-items: center;
@@ -2882,15 +2891,17 @@ form[data-rsvp-response-form] {
   .section-nav__submenu {
     grid-area: submenu;
     position: static;
-    width: 100%;
+    width: auto;
     min-width: 0;
+    max-width: 100%;
+    justify-self: stretch;
     margin-top: 0;
     margin-left: 0;
     padding: 0.2rem 0 0;
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transform: none;
+    transform: none !important;
     display: none;
     box-shadow: none;
     border: 0;
@@ -3086,4 +3097,41 @@ form[data-rsvp-response-form] {
   .rsvp-form-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Keep the slide-out navigation as simple text links at every viewport size. */
+.section-nav .section-nav__inner a,
+.section-nav .section-nav__inner .section-nav__submenu a {
+  background: transparent;
+}
+
+.section-nav .section-nav__item {
+  grid-template-areas:
+    "toggle link"
+    "submenu submenu";
+  column-gap: 0.25rem;
+}
+
+.section-nav .section-nav__item--has-submenu {
+  background: transparent;
+  box-shadow: none;
+}
+
+.section-nav .section-nav__item--has-submenu > a {
+  padding-left: 0;
+}
+
+.section-nav .section-nav__toggle {
+  width: 1.8rem;
+  height: 1.8rem;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--wine-soft);
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.section-nav .section-nav__toggle span {
+  transform: none;
 }

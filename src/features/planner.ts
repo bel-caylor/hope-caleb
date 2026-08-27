@@ -955,7 +955,7 @@ export function deleteTodo(input: { id?: string }) {
 }
 
 /**
- * Stores task snapshots in Drive and returns a browser-friendly thumbnail URL.
+ * Stores task snapshots in Drive and returns a browser-friendly public image URL.
  * The client resizes photos before sending them so ordinary phone snapshots
  * remain well within Apps Script request limits.
  */
@@ -991,7 +991,9 @@ export function uploadTodoImage(input: UploadTodoImageInput) {
 
   return {
     fileId: file.getId(),
-    imageUrl: `https://drive.google.com/thumbnail?id=${encodeURIComponent(file.getId())}&sz=w1600`,
+    // Unlike Drive's thumbnail endpoint, this public-content URL does not rely
+    // on the browser having an active Google session to render in an <img>.
+    imageUrl: `https://drive.usercontent.google.com/download?id=${encodeURIComponent(file.getId())}&export=view&authuser=0`,
     fileUrl: file.getUrl(),
     fileName: file.getName()
   };

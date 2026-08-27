@@ -1,0 +1,20 @@
+{
+  "id": "/dashboard.html",
+  "name": "Hope & Caleb Dashboard",
+  "short_name": "H&C Dashboard",
+  "description": "Private wedding planning dashboard for Hope and Caleb.",
+  "start_url": "/dashboard.html",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#ffffff",
+  "theme_color": "#590000",
+  "icons": [
+    {
+      "src": "/images/hero-monogram.png",
+      "sizes": "256x262",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
