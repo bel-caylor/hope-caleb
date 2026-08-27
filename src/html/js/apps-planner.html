@@ -3912,53 +3912,32 @@
   function renderTodos() {
     const assignees = collectTodoAssignedToOptions(cachedWorkspaceTasks);
     renderTodoAssignedToFilter(assignees);
-    const planningProjects = cachedWorkspaceEvents
-      .filter((item) => String(item.title || "").trim() && !String(item.startsAt || "").trim())
-      .sort((left, right) => String(left.title || "").localeCompare(String(right.title || "")));
-    const projectsMarkup = planningProjects.length ? `
-      <section class="planning-project-directory" aria-labelledby="planningProjectsTitle">
-        <div class="event-detail-section__header">
-          <h4 id="planningProjectsTitle">Planning projects</h4>
-          <span class="meta">${planningProjects.length} project${planningProjects.length === 1 ? "" : "s"}</span>
-        </div>
-        <div class="planning-project-directory__list">
-          ${planningProjects.map((project) => {
-            const taskCount = cachedWorkspaceTasks.filter((task) => String(task.eventId || "") === String(project.id || "")).length;
-            return `<button class="planning-project-directory__item" type="button" data-open-workspace-project="${escapeHtml(String(project.id || ""))}">
-              <span><strong>${escapeHtml(project.title)}</strong><small>${taskCount ? `${taskCount} task${taskCount === 1 ? "" : "s"}` : "No tasks yet"}</small></span>
-              <span class="button button--light">Open project</span>
-            </button>`;
-          }).join("")}
-        </div>
-      </section>
-    ` : "";
 
     if (!cachedWorkspaceTasks.length) {
-      todosListEl.innerHTML = `${projectsMarkup}<p class="meta">No Version 2 tasks yet. Open a planning project to add its tasks.</p>`;
+      todosListEl.innerHTML = '<p class="meta">No Version 2 tasks yet. Open an event or planning project to add its tasks.</p>';
       return;
     }
 
     const filteredTodos = getFilteredTodos();
     if (!filteredTodos.length) {
-      todosListEl.innerHTML = `${projectsMarkup}<p class="meta">No to-dos match the selected assignee.</p>`;
+      todosListEl.innerHTML = '<p class="meta">No to-dos match the selected assignee.</p>';
       return;
     }
 
     const lists = filteredTodos.reduce((groups, todo) => {
       const parent = getWorkspaceTaskParent(todo.eventId);
       const groupId = parent?.id || "unassigned";
-      if (!groups.has(groupId)) groups.set(groupId, { title: parent?.title || "Tasks without a parent", isProject: parent ? !String(parent.startsAt || "").trim() : false, tasks: [] });
+      if (!groups.has(groupId)) groups.set(groupId, { id: parent?.id || "", title: parent?.title || "Tasks without a parent", isProject: parent ? !String(parent.startsAt || "").trim() : false, tasks: [] });
       groups.get(groupId).tasks.push(todo);
       return groups;
     }, new Map());
 
     todosListEl.innerHTML = `
-      ${projectsMarkup}
       <div class="event-accordion todo-accordion">
         ${Array.from(lists.values()).map((group) => `
           <section class="todo-list-group">
             <div class="event-detail-section__header">
-              <h4>${escapeHtml(group.title)}</h4>
+              <h4>${escapeHtml(group.title)}${group.id ? ` <button class="button button--light" type="button" data-open-workspace-project="${escapeHtml(group.id)}">Edit</button>` : ""}</h4>
               <span class="meta">${group.isProject ? "Planning project · " : ""}${group.tasks.length} task${group.tasks.length === 1 ? "" : "s"}</span>
             </div>
             ${group.tasks.map((todo) => {
@@ -3977,10 +3956,10 @@
               <summary>
                 <span class="accordion-summary__main">
                   <span class="accordion-toggle" aria-hidden="true"></span>
-                  <span class="event-accordion__time">${escapeHtml(assignee)}</span>
                   <span class="event-accordion__title-main">
-                    <span class="accordion-title">${escapeHtml(todo.title || "Untitled task")}</span>
+                    <span class="accordion-title">— ${escapeHtml(todo.title || "Untitled task")}</span>
                   </span>
+                  <span class="event-accordion__time">Assigned to: ${escapeHtml(assignee)}</span>
                 </span>
                 <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(dueLabel)}</span>
               </summary>
