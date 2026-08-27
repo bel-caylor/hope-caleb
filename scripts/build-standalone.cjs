@@ -11,7 +11,9 @@ const VERSION_FILE = path.join(ROOT, "src", "version.ts");
 const INCLUDE_FILES = ["util", "apps-planner"];
 const LEGACY_FILES = [
   "index.html",
+  "privacy-policy.html",
   "story.html",
+  "terms-and-conditions.html",
   "travel.html",
   "site.css",
   "site.js",
