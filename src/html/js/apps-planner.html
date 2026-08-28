@@ -5779,6 +5779,14 @@
     return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
   }
 
+  function getWorkspaceCalendarHoliday(value) {
+    if (value.getMonth() === 11 && value.getDate() === 25) return "Christmas Day";
+    if (value.getMonth() !== 10) return "";
+    const novemberFirst = new Date(value.getFullYear(), 10, 1);
+    const thanksgivingDate = 1 + ((4 - novemberFirst.getDay() + 7) % 7) + 21;
+    return value.getDate() === thanksgivingDate ? "Thanksgiving" : "";
+  }
+
   function formatWorkspaceDay(value) {
     return value.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   }
@@ -5882,9 +5890,11 @@
 
     const renderCalendarDay = (day, outsideRange = false) => {
       const events = datedEvents.filter(({ date }) => date.getFullYear() === day.getFullYear() && date.getMonth() === day.getMonth() && date.getDate() === day.getDate());
+      const holiday = getWorkspaceCalendarHoliday(day);
       return `
-        <div class="workspace-calendar__day ${outsideRange ? "workspace-calendar__day--outside" : ""}">
-          <button class="workspace-calendar__date" type="button" data-workspace-calendar-date="${workspaceDateKey(day)}" aria-label="View ${escapeHtml(formatWorkspaceDay(day))}">${day.getDate()}${day.getDate() === 1 ? `<span class="workspace-calendar__month-label">${escapeHtml(formatWorkspaceMonth(day))}</span>` : ""}</button>
+        <div class="workspace-calendar__day ${outsideRange ? "workspace-calendar__day--outside" : ""} ${holiday ? "workspace-calendar__day--holiday" : ""}">
+          <button class="workspace-calendar__date" type="button" data-workspace-calendar-date="${workspaceDateKey(day)}" aria-label="View ${escapeHtml(formatWorkspaceDay(day))}">${day.getDate()}${day.getDate() === 1 ? `<span class="workspace-calendar__month-label">${escapeHtml(day.toLocaleDateString(undefined, { month: "long" }))}</span>` : ""}</button>
+          ${holiday ? `<span class="workspace-calendar__holiday">${escapeHtml(holiday)}</span>` : ""}
           ${events.map(({ event }) => `<button class="workspace-calendar__event" type="button" data-open-workspace-event="${escapeHtml(event.id)}" title="Open ${escapeHtml(event.title || "Untitled event")}">${escapeHtml(event.title || "Untitled event")}</button>`).join("")}
         </div>
       `;
@@ -5903,21 +5913,24 @@
       workspaceCalendarEl.innerHTML = daysWithEvents.size ? [...daysWithEvents.values()].map(({ date, events }) => `
         <section class="workspace-calendar__day-group">
           <h4 class="workspace-calendar__day-heading"><time datetime="${escapeHtml(workspaceDateKey(date))}">${escapeHtml(formatWorkspaceDay(date))}</time></h4>
-          ${events.map(({ event, date: eventDate }) => `
-            <details class="workspace-calendar__day-event">
-              <summary>
-                <span class="accordion-toggle" aria-hidden="true"></span>
-                <time datetime="${escapeHtml(String(event.startsAt || ""))}">${escapeHtml(eventDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }))}</time>
-                <span><strong>${escapeHtml(event.title || "Untitled event")}</strong>${event.location ? `<small>${escapeHtml(event.location)}</small>` : ""}</span>
-              </summary>
-              <div class="workspace-calendar__day-event-details">
-                <p><strong>When:</strong> ${escapeHtml(formatWorkspaceEventSchedule(event))}</p>
-                <p><strong>Location:</strong> ${escapeHtml(event.location || "Location not set")}</p>
-                ${event.notes ? `<p><strong>Notes:</strong> ${escapeHtml(event.notes)}</p>` : ""}
-                <button class="button button--light" type="button" data-open-workspace-event="${escapeHtml(event.id)}">Edit event</button>
-              </div>
-            </details>
-          `).join("")}
+          ${events.map(({ event, date: eventDate }) => {
+            const eventTasks = cachedWorkspaceTasks.filter((task) => String(task.eventId || "") === String(event.id || ""));
+            return `
+              <details class="workspace-calendar__day-event">
+                <summary>
+                  <span class="accordion-toggle" aria-hidden="true"></span>
+                  <span class="workspace-calendar__day-event-summary-copy"><strong>${escapeHtml(event.title || "Untitled event")}</strong><span class="workspace-calendar__day-event-summary-meta"><time datetime="${escapeHtml(String(event.startsAt || ""))}">${escapeHtml(formatWorkspaceEventSchedule(event))}</time>${event.location ? `<span class="workspace-calendar__day-event-summary-location">${escapeHtml(event.location)}</span>` : ""}</span></span>
+                  <button class="button workspace-calendar__day-event-edit" type="button" data-open-workspace-event="${escapeHtml(event.id)}">Edit event</button>
+                </summary>
+                <div class="workspace-calendar__day-event-details">
+                  <div class="workspace-calendar__day-event-tasks">
+                    ${eventTasks.length ? eventTasks.map((task) => `<button class="workspace-calendar__day-event-task" type="button" data-edit-calendar-task="${escapeHtml(task.id)}" data-calendar-event-id="${escapeHtml(event.id)}"><span>${escapeHtml(task.title || "Untitled task")}</span><span>Edit task</span></button>`).join("") : '<p class="meta">No tasks yet.</p>'}
+                  </div>
+                  ${event.notes ? `<p><strong>Notes:</strong> ${escapeHtml(event.notes)}</p>` : ""}
+                </div>
+              </details>
+            `;
+          }).join("")}
         </section>
       `).join("") : `<p class="meta workspace-calendar__empty">No events are scheduled yet.</p>`;
     } else {
@@ -9963,6 +9976,17 @@ function sortTables(items) {
   });
 
   workspaceCalendarEl?.addEventListener("click", (event) => {
+    const taskButton = event.target.closest("[data-edit-calendar-task]");
+    if (taskButton) {
+      selectedWorkspaceEventId = String(taskButton.dataset.calendarEventId || "").trim();
+      activeWorkspaceEventTab = "tasks";
+      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
+      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+      setActivePlannerPanel("workspace");
+      renderWorkspaceEventPage();
+      workspaceEventPageContentEl?.querySelector(`[data-edit-workspace-task="${CSS.escape(String(taskButton.dataset.editCalendarTask || ""))}"]`)?.click();
+      return;
+    }
     const button = event.target.closest("[data-open-workspace-event]");
     if (button) {
       selectedWorkspaceEventId = String(button.dataset.openWorkspaceEvent || "").trim();

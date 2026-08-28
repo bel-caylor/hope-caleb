@@ -1413,6 +1413,11 @@
         background: #fcf4f5;
       }
 
+      .todo-accordion .accordion-title,
+      .todo-list-group .event-detail-section__header h4 {
+        text-transform: capitalize;
+      }
+
       .todo-due-date-groups {
         display: grid;
         gap: 1.5rem;
@@ -4281,6 +4286,25 @@
         color: var(--muted);
       }
 
+      .workspace-calendar__day--holiday {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        border-color: rgba(40, 74, 47, 0.34);
+        background: #dcebd7;
+        color: #284a2f;
+      }
+
+      .workspace-calendar__holiday {
+        align-self: center;
+        padding: 0.35rem;
+        color: #284a2f;
+        font-family: var(--display-font);
+        font-size: 0.92rem;
+        font-weight: 800;
+        line-height: 1.12;
+        text-align: center;
+      }
+
       .workspace-calendar__date {
         display: block;
         margin-bottom: 0.3rem;
@@ -4300,8 +4324,8 @@
       }
 
       .workspace-calendar__month-label {
-        display: block;
-        margin-top: 0.2rem;
+        display: inline;
+        margin-left: 0.3rem;
         color: var(--wine);
         font-family: var(--display-font);
         font-size: 0.9rem;
@@ -4352,14 +4376,13 @@
       .workspace-calendar__day-event {
         width: 100%;
         border: 1px solid rgba(95, 111, 58, 0.35);
-        border-left: 4px solid var(--planner-success);
         background: #edf2e4;
         color: #405020;
       }
 
       .workspace-calendar__day-event summary {
         display: grid;
-        grid-template-columns: auto minmax(5rem, 7rem) 1fr;
+        grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: center;
         gap: 0.75rem;
         padding: 0.8rem;
@@ -4368,13 +4391,91 @@
       }
 
       .workspace-calendar__day-event summary::-webkit-details-marker { display: none; }
+      .workspace-calendar__day-event .accordion-toggle::before { content: "+"; }
+      .workspace-calendar__day-event[open] .accordion-toggle::before { content: "−"; }
       .workspace-calendar__day-event[open] summary { border-bottom: 1px solid rgba(95, 111, 58, 0.26); }
-      .workspace-calendar__day-event time { font-weight: 800; }
-      .workspace-calendar__day-event summary > span:last-child { display: grid; gap: 0.18rem; }
+      .workspace-calendar__day-event-summary-copy { display: grid; gap: 0.18rem; min-width: 0; }
+      .workspace-calendar__day-event-summary-meta { display: flex; flex-wrap: wrap; gap: 0.3rem; color: var(--muted); font-size: 0.85rem; }
+      .workspace-calendar__day-event-summary-meta time { font-weight: 700; }
+      .workspace-calendar__day-event-summary-location::before { content: "·"; margin-right: 0.3rem; }
       .workspace-calendar__day-event small { color: var(--muted); }
-      .workspace-calendar__day-event-details { padding: 0.8rem; background: #f8faf3; }
+      .workspace-calendar__day-event-details { padding: 0.8rem; background: #fff9fa; }
       .workspace-calendar__day-event-details p { margin-top: 0; }
+
+      .workspace-calendar__day-event-tasks {
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .workspace-calendar__day-event-task {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        width: 100%;
+        padding: 0.55rem 0.65rem;
+        border: 1px solid rgba(89, 0, 0, 0.12);
+        border-radius: 0.35rem;
+        background: #fffefe;
+        color: var(--ink);
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+      }
+
+      .workspace-calendar__day-event-task:hover,
+      .workspace-calendar__day-event-task:focus-visible {
+        border-color: rgba(89, 0, 0, 0.4);
+        background: var(--white);
+      }
+
+      .workspace-calendar__day-event-task span:last-child {
+        flex: 0 0 auto;
+        color: var(--green);
+        font-size: 0.78rem;
+        font-weight: 800;
+      }
+
+      .workspace-calendar__day-event-edit {
+        min-height: 0;
+        margin: 0.1rem;
+        padding: 0.3rem 0.5rem;
+        border-color: var(--green);
+        background: var(--green);
+        color: var(--white);
+        font-size: 0.76rem;
+      }
+
+      .workspace-calendar__day-event-edit:hover,
+      .workspace-calendar__day-event-edit:focus-visible {
+        border-color: var(--wine);
+        background: var(--wine);
+        color: var(--white);
+      }
       .workspace-calendar__empty { margin: 0; padding: 1.25rem 0.25rem; }
+
+      @media (max-width: 560px) {
+        .workspace-calendar__day-event summary {
+          grid-template-columns: auto 1fr auto;
+        }
+
+        .workspace-calendar__day-event-summary-copy {
+          grid-column: 2;
+        }
+
+        .workspace-calendar__day-event-edit {
+          grid-column: 3;
+          grid-row: 1 / span 2;
+        }
+      }
+
+      @media (min-width: 561px) {
+        .workspace-calendar__day-event-summary-copy {
+          display: flex;
+          align-items: baseline;
+          gap: 0.5rem;
+        }
+      }
 
       .workspace-stack {
         display: grid;
@@ -4434,6 +4535,10 @@
       }
 
       #workspaceStatus:empty {
+        display: none;
+      }
+
+      #calendarStatus:empty {
         display: none;
       }
 
