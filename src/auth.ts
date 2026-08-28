@@ -2,6 +2,7 @@ import {
   ADMIN_HEADERS,
   ADMIN_SHEET,
   GOOGLE_CLIENT_ID_PROPERTY_KEY,
+  GUESTS_SHEET,
   PLANNER_USERS_SHEET,
   SPREADSHEET_ID_PROPERTY_KEY
 } from "./constants";
@@ -146,8 +147,14 @@ function readPlannerAccessEmails() {
 
   // New full-planner invitations are explicit records, not a side effect of
   // sharing the underlying spreadsheet with someone.
+  const guestEmailsById = new Map(
+    readRows(GUESTS_SHEET).map((row) => [
+      String(row["Guest Id"] || "").trim(),
+      String(row["Google Account Email"] || row.Email || "").trim().toLowerCase()
+    ])
+  );
   readRows(PLANNER_USERS_SHEET).forEach((row) => {
-    const email = String(row.Email || "").trim().toLowerCase();
+    const email = String(row.Email || guestEmailsById.get(String(row.GuestId || "").trim()) || "").trim().toLowerCase();
     const accessLevel = String(row.AccessLevel || "").trim().toLowerCase();
     const active = String(row.Active || "TRUE").trim().toLowerCase() !== "false";
     if (email && active && accessLevel === "full_planner") emails.add(email);
@@ -173,7 +180,10 @@ function getViewerName(email: string) {
   if (admin?.Name) return String(admin.Name).trim();
   const workspaceUser = readRows(PLANNER_USERS_SHEET)
     .find((row) => String(row.Email || "").trim().toLowerCase() === email);
-  return String(workspaceUser?.Name || "").trim();
+  if (workspaceUser?.Name) return String(workspaceUser.Name).trim();
+  const guestId = String(workspaceUser?.GuestId || "").trim();
+  const guest = readRows(GUESTS_SHEET).find((row) => String(row["Guest Id"] || "").trim() === guestId);
+  return String(guest?.["Wedding Guest"] || guest?.["Guest Name"] || guest?.Name || "").trim();
 }
 
 export function getViewerProfile() {

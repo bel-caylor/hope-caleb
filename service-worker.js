@@ -1,4 +1,4 @@
-const CACHE_NAME = "hope-caleb-dashboard-v4";
+const CACHE_NAME = "hope-caleb-dashboard-v5";
 const APP_SHELL = [
   "/dashboard.html",
   "/Dashboard.html",
@@ -39,7 +39,13 @@ self.addEventListener("fetch", (event) => {
           cacheResponse(event, event.request, response);
           return response;
         })
-        .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/dashboard.html")))
+        .catch(async () => {
+          const cached = await caches.match(event.request) || await caches.match("/dashboard.html");
+          return cached || new Response("The dashboard is temporarily unavailable. Please reconnect and refresh.", {
+            status: 503,
+            headers: { "Content-Type": "text/plain; charset=utf-8" }
+          });
+        })
     );
     return;
   }
@@ -53,7 +59,10 @@ self.addEventListener("fetch", (event) => {
           cacheResponse(event, event.request, response);
           return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(async () => (await caches.match(event.request)) || new Response("This page is temporarily unavailable.", {
+          status: 503,
+          headers: { "Content-Type": "text/plain; charset=utf-8" }
+        }))
     );
     return;
   }

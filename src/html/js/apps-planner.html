@@ -8384,6 +8384,25 @@
         setStatus(guestsStatusEl, `Loaded ${cachedGuests.length} rows from Guests.`, "success");
       }
     } catch (error) {
+      if (/Your Google session needs a quick refresh/i.test(String(error?.message || ""))) {
+        clearStoredAuthToken();
+        viewerProfile = {
+          signedIn: false,
+          email: "",
+          name: "",
+          userId: "",
+          isAdmin: false,
+          hasWorkspaceAccess: false,
+          accessLevel: ""
+        };
+        plannerDataReady = false;
+        plannerContentEl.hidden = true;
+        renderRoute();
+        renderGoogleSignIn();
+        plannerReconnectGoogleButton.hidden = false;
+        setStatus(plannerLoginStatusEl, "Your Google session expired. Select Reconnect Google to sign in again.", "pending");
+        return;
+      }
       if (plannerLoadingMessageEl) {
         plannerLoadingMessageEl.textContent = "We couldn’t load your dashboard. Please refresh and try again.";
       }
