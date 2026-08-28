@@ -251,6 +251,39 @@ function mapEvent(row: Record<string, unknown>) {
   };
 }
 
+/**
+ * Event invitations are stored as either the current JSON group/individual
+ * selection or an older comma-separated list of names. Keep both formats
+ * readable so access does not depend on a front-end migration.
+ */
+function parseEventInvitees(value: unknown) {
+  const raw = String(value || "").trim();
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") {
+      const selection = parsed as { groups?: unknown; individuals?: unknown };
+      return {
+        groups: Array.isArray(selection.groups) ? selection.groups.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean) : [],
+        individuals: Array.isArray(selection.individuals) ? selection.individuals.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean) : []
+      };
+    }
+  } catch (_) {
+    // Older events saved names as plain text; treat those as individuals.
+  }
+  return { groups: [], individuals: raw.split(/[\n,;]+/).map((item) => item.trim().toLowerCase()).filter(Boolean) };
+}
+
+function eventIncludesWeddingPartyViewer(event: ReturnType<typeof mapEvent>, viewer: ReturnType<typeof getWorkspaceViewer>, guest?: GuestContact) {
+  if (event.assignedUserIds.includes(viewer.userId)) return true;
+
+  const { groups, individuals } = parseEventInvitees(event.invitees);
+  const viewerNames = [guest?.name, viewer.name]
+    .map((name) => String(name || "").trim().toLowerCase())
+    .filter(Boolean);
+  const viewerGroups = (guest?.types || []).map((type) => type.trim().toLowerCase()).filter(Boolean);
+  return viewerNames.some((name) => individuals.includes(name)) || viewerGroups.some((group) => groups.includes(group));
+}
+
 function mapTask(row: Record<string, unknown>) {
   return {
     id: String(row.Id || "").trim(),
@@ -455,14 +488,14 @@ export function importLegacyPeopleToWorkspaceUsers() {
 function getWorkspaceViewer() {
   const profile = getViewerProfile();
   if (!profile.signedIn) throw new Error("Please sign in with Google first.");
-  if (profile.isAdmin) return { ...profile, accessLevel: "full_planner" as WorkspaceAccessLevel, userId: "" };
+  if (profile.isAdmin) return { ...profile, accessLevel: "full_planner" as WorkspaceAccessLevel, userId: "", guestId: "" };
   ensureWorkspaceSheets();
   const guestsById = new Map(listGuestContacts().map((guest) => [guest.id, guest]));
   const user = readRows(PLANNER_USERS_SHEET)
     .map((row) => mapUser(row, guestsById.get(String(row.GuestId || "").trim())))
     .find((item) => item.active && item.email === profile.email);
   if (!user) throw new Error("This email has not been invited to the planner yet.");
-  return { ...profile, name: user.name || profile.name, accessLevel: user.accessLevel, userId: user.id };
+  return { ...profile, name: user.name || profile.name, accessLevel: user.accessLevel, userId: user.id, guestId: user.guestId };
 }
 
 function requireWorkspaceManager() {
@@ -475,7 +508,7 @@ export function getWorkspaceProfile() {
   try {
     return getWorkspaceViewer();
   } catch (_) {
-    return { signedIn: false, email: "", name: "", accessLevel: "", userId: "" };
+    return { signedIn: false, email: "", name: "", accessLevel: "", userId: "", guestId: "" };
   }
 }
 
@@ -503,7 +536,8 @@ export function listWorkspaceEvents() {
   const viewer = getWorkspaceViewer();
   const events = readRows(PLANNER_V2_EVENTS_SHEET).map(mapEvent).filter((event) => event.title);
   if (viewer.accessLevel === "full_planner" || viewer.accessLevel === "contributor") return events;
-  return events.filter((event) => event.audience === "wedding_party" || event.assignedUserIds.includes(viewer.userId));
+  const guest = listGuestContacts().find((item) => item.id === String(viewer.guestId || "").trim());
+  return events.filter((event) => eventIncludesWeddingPartyViewer(event, viewer, guest));
 }
 
 export function saveWorkspaceEvent(input: SaveWorkspaceEventInput) {
