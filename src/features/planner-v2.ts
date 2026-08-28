@@ -58,6 +58,8 @@ type SaveWorkspaceTaskInput = {
   completedAt?: string;
 };
 
+const DEFAULT_TASK_DUE_AT = "2027-01-08";
+
 type SaveWorkspaceAssetInput = {
   id?: string;
   title?: string;
@@ -144,7 +146,7 @@ function mapEvent(row: Record<string, unknown>) {
 function mapTask(row: Record<string, unknown>) {
   return {
     id: String(row.Id || "").trim(),
-    title: toTitleCase(row.Title),
+    title: String(row.Title || "").trim(),
     eventId: String(row.EventId || "").trim(),
     listId: String(row.ListId || "").trim(),
     assignedUserId: String(row.AssignedUserId || "").trim(),
@@ -487,6 +489,9 @@ export function saveWorkspaceTask(input: SaveWorkspaceTaskInput) {
   const assignedUserId = Object.prototype.hasOwnProperty.call(input, "assignedUserId")
     ? String(input.assignedUserId || "").trim()
     : String(existing?.assignedUserId || "").trim();
+  const dueAt = Object.prototype.hasOwnProperty.call(input, "dueAt")
+    ? String(input.dueAt || "").trim()
+    : String(existing?.dueAt || "").trim();
   const requestedSortOrder = Number(input.sortOrder);
   const sortOrder = Number.isFinite(requestedSortOrder) && requestedSortOrder > 0
     ? requestedSortOrder
@@ -496,11 +501,11 @@ export function saveWorkspaceTask(input: SaveWorkspaceTaskInput) {
       .reduce((highest, task) => Math.max(highest, Number(task.sortOrder || 0)), 0) + 1;
   const saved = {
     Id: id,
-    Title: toTitleCase(input.title || existing?.title),
+    Title: String(input.title || existing?.title || "").trim(),
     EventId: eventId,
     ListId: listId,
     AssignedUserId: assignedUserId,
-    DueAt: String(input.dueAt || existing?.dueAt || "").trim(),
+    DueAt: dueAt || (!existing ? DEFAULT_TASK_DUE_AT : ""),
     Status: status,
     Priority: String(input.priority || existing?.priority || "Medium").trim(),
     Notes: String(input.notes || existing?.notes || "").trim(),
@@ -508,6 +513,39 @@ export function saveWorkspaceTask(input: SaveWorkspaceTaskInput) {
     CreatedAt: existing?.createdAt || now,
     UpdatedAt: now,
     CompletedAt: status.toLowerCase() === "done" ? String(input.completedAt || existing?.completedAt || now).trim() : ""
+  };
+  upsertRow(PLANNER_V2_TASKS_SHEET, PLANNER_V2_TASK_HEADERS, id, saved);
+  return mapTask(saved);
+}
+
+/** Update only a task's completion state so assignees cannot alter its other details. */
+export function setWorkspaceTaskCompleted(input: { id?: string; completed?: boolean | string }) {
+  const viewer = getWorkspaceViewer();
+  initializePlannerWorkspace();
+  const id = String(input.id || "").trim();
+  if (!id) throw new Error("Missing task id.");
+
+  const existing = readRows(PLANNER_V2_TASKS_SHEET).map(mapTask).find((task) => task.id === id);
+  if (!existing) throw new Error("Task not found.");
+  const canComplete = viewer.accessLevel === "full_planner" || existing.assignedUserId === viewer.userId;
+  if (!canComplete) throw new Error("Only a full planner or the assigned person can complete this task.");
+
+  const completed = normalizeBoolean(input.completed, false);
+  const now = new Date().toISOString();
+  const saved = {
+    Id: existing.id,
+    Title: existing.title,
+    EventId: existing.eventId,
+    ListId: existing.listId,
+    AssignedUserId: existing.assignedUserId,
+    DueAt: existing.dueAt,
+    Status: completed ? "Done" : "Not Started",
+    Priority: existing.priority,
+    Notes: existing.notes,
+    SortOrder: existing.sortOrder,
+    CreatedAt: existing.createdAt || now,
+    UpdatedAt: now,
+    CompletedAt: completed ? now : ""
   };
   upsertRow(PLANNER_V2_TASKS_SHEET, PLANNER_V2_TASK_HEADERS, id, saved);
   return mapTask(saved);

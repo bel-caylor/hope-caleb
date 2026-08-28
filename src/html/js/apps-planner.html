@@ -177,6 +177,11 @@
   const BED_SAVE_DEBOUNCE_MS = 500;
   const bedSaveTimers = new Map();
   const bedSaveChains = new Map();
+  // Completion clicks can happen faster than an Apps Script write completes.
+  // Keep one save pipeline per task so an older "checked" response cannot
+  // repaint a newer "unchecked" choice.
+  const workspaceTaskCompletionVersions = new Map();
+  const workspaceTaskCompletionSaveChains = new Map();
   let selectedGuestTypes = [];
   let selectedEventDate = "";
   let selectedEventAssignedTo = [];
@@ -634,6 +639,13 @@
       const suffix = hours >= 12 ? "PM" : "AM";
       const normalizedHour = hours % 12 || 12;
       return `${normalizedHour}:${minutes} ${suffix}`;
+    }
+
+    // Older event records can store a date and time together (for example,
+    // "Fri, Jan 8, 7:00 AM"). Keep only the time wherever this formatter is used.
+    const twelveHourMatch = raw.match(/(?:^|[\s,])(\d{1,2}:\d{2}\s*[AP]M)$/i);
+    if (twelveHourMatch) {
+      return twelveHourMatch[1].replace(/\s+/u, " ").toUpperCase();
     }
 
     const parsed = new Date(raw);
@@ -1825,9 +1837,12 @@
     eventsListEl.innerHTML = `
       <div class="event-accordion">
         ${filteredEvents.map((event) => {
-          const schedule = formatEventSchedule(event);
           const dateLabel = formatEventDateShort(event.date);
           const shotCount = cachedShots.filter((shot) => String(shot.eventId || "").trim() === String(event.id || "").trim()).length;
+          const completedTaskCount = cachedTodos.filter((todo) => (
+            String(todo.eventId || "").trim() === String(event.id || "").trim()
+            && Boolean(todo.isComplete)
+          )).length;
           return `
             <details class="guest-card ${event.main ? "event-card--main" : ""}">
               <summary>
@@ -1861,14 +1876,13 @@
                     </button>
                   </span>
                 </span>
-                ${dateLabel ? `<span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(dateLabel)}</span>` : ""}
+                <span class="event-accordion__summary-end accordion-summary__meta--end">
+                  ${dateLabel ? `<span class="accordion-summary__meta">${escapeHtml(dateLabel)}</span>` : ""}
+                  <span class="event-accordion__task-count" aria-label="${completedTaskCount} completed task${completedTaskCount === 1 ? "" : "s"}">${completedTaskCount}</span>
+                </span>
               </summary>
               <div class="guest-card__body">
                 <div class="guest-card__grid">
-                  <div class="guest-card__field">
-                    <span>Date & Time</span>
-                    <strong>${escapeHtml(schedule || "No schedule yet")}</strong>
-                  </div>
                   <div class="guest-card__field">
                     <span>Assigned To</span>
                     <strong>${escapeHtml(event.assignedTo || "No audience yet")}</strong>
@@ -2193,6 +2207,17 @@
     return overlap >= nextWords.length
       ? currentValue
       : `${currentValue} ${nextWords.slice(overlap).join(" ")}`.trim();
+  }
+
+  function normalizeVoiceTextForInput(input, value) {
+    let normalizedValue = String(value || "");
+    if (input?.hasAttribute("data-voice-no-period")) {
+      normalizedValue = normalizedValue.replace(/[.!?…]+\s*$/u, "");
+    }
+    if (input?.hasAttribute("data-voice-no-auto-capitalization")) {
+      normalizedValue = normalizedValue.replace(/^(\s*)(\p{Lu})/u, (_match, leadingSpace, firstLetter) => `${leadingSpace}${firstLetter.toLocaleLowerCase()}`);
+    }
+    return normalizedValue;
   }
 
   function isNewFinalSpeechResult(recognition, index, transcript) {
@@ -4121,13 +4146,13 @@
             <details class="guest-card ${statusClass}">
               <summary>
                 <span class="accordion-summary__main">
-                  <span class="accordion-toggle" aria-hidden="true"></span>
                   <span class="event-accordion__title-main">
-                    <span class="accordion-title">${escapeHtml(todo.title || "Untitled task")}${selectedTodoAssignedTo.length ? "" : ` — ${escapeHtml(assignee)}`}</span>
+                    <span class="accordion-title">${renderWorkspaceTaskCompletionCheckbox(todo)}${escapeHtml(todo.title || "Untitled task")}${selectedTodoAssignedTo.length ? "" : ` <span class="todo-task-assignee">— ${escapeHtml(assignee)}</span>`}</span>
                     ${todo.eventId ? `<button class="button button--icon todo-parent-edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}" aria-label="Edit ${escapeHtml(todo.title || "task")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>` : ""}
                   </span>
                 </span>
                 <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(dueLabel)}</span>
+                <span class="accordion-toggle" aria-hidden="true"></span>
               </summary>
               <div class="guest-card__body">
                 <div class="guest-card__grid ${hasChecklist ? "todo-task-grid--with-checklist" : ""}">
@@ -4187,13 +4212,13 @@
       <details class="guest-card ${statusClass}">
         <summary>
           <span class="accordion-summary__main">
-            <span class="accordion-toggle" aria-hidden="true"></span>
             <span class="event-accordion__title-main">
-              <span class="accordion-title"><span class="todo-task-title">${escapeHtml(todo.title || "Untitled task")}</span><span class="todo-task-parent"> — ${escapeHtml(parentTitle)}</span></span>
+              <span class="accordion-title">${renderWorkspaceTaskCompletionCheckbox(todo)}<span class="todo-task-title">${escapeHtml(todo.title || "Untitled task")}</span><span class="todo-task-parent"> — ${escapeHtml(parentTitle)}</span></span>
               ${todo.eventId ? `<button class="button button--icon todo-parent-edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}" aria-label="Edit ${escapeHtml(todo.title || "task")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>` : ""}
             </span>
           </span>
           ${selectedTodoAssignedTo.length ? "" : `<span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(assignee)}</span>`}
+          <span class="accordion-toggle" aria-hidden="true"></span>
         </summary>
         <div class="guest-card__body">
           <div class="guest-card__grid ${hasChecklist ? "todo-task-grid--with-checklist" : ""}">
@@ -5578,6 +5603,13 @@
     return String(cachedWorkspaceUsers.find((user) => String(user.email || "").trim().toLowerCase() === profileEmail)?.id || "").trim();
   }
 
+  function renderWorkspaceTaskCompletionCheckbox(task) {
+    const completed = String(task.status || "").trim().toLowerCase() === "done";
+    const viewerUserId = getCurrentWorkspaceViewerUserId();
+    const canToggle = Boolean(viewerProfile.isAdmin) || (Boolean(viewerUserId) && String(task.assignedUserId || "").trim() === viewerUserId);
+    return `<input class="todo-task-complete" type="checkbox" data-workspace-todo-complete="${escapeHtml(String(task.id || ""))}" aria-label="Mark ${escapeHtml(task.title || "task")} ${completed ? "incomplete" : "complete"}" ${completed ? "checked" : ""} ${canToggle ? "" : "disabled"}>`;
+  }
+
   function isLegacyTaskAssignedToViewer(task) {
     const viewerNames = [
       String(viewerProfile.name || "").trim(),
@@ -5989,6 +6021,7 @@
           ${group.events.map(({ event, date }, index) => {
       const eventId = String(event.id || "");
       const tasks = cachedWorkspaceTasks.filter((task) => String(task.eventId || "") === eventId);
+      const completedTasks = tasks.filter((task) => ["done", "complete", "completed"].includes(String(task.status || "").trim().toLowerCase()));
       const incompleteTasks = tasks.filter((task) => !["done", "complete", "completed"].includes(String(task.status || "").trim().toLowerCase()));
       const invitationSelection = parseWorkspaceInvitationSelection(event.invitees);
       const selectedGroups = new Set(invitationSelection.groups.map((group) => group.toLowerCase()));
@@ -6009,14 +6042,14 @@
               <span class="workspace-event-directory__summary-copy">
                 <strong>${escapeHtml(event.title || "Untitled event")}</strong>
                 <time class="meta workspace-event-directory__time" datetime="${escapeHtml(String(event.startsAt || ""))}">${escapeHtml(formatWorkspaceEventTime(event))}</time>
+                <button class="button button--icon button--light workspace-event-directory__edit" type="button" data-open-workspace-event="${escapeHtml(event.id)}" aria-label="Edit ${escapeHtml(event.title || "event")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>
               </span>
             </span>
-            <button class="button button--icon button--light workspace-event-directory__edit" type="button" data-open-workspace-event="${escapeHtml(event.id)}" aria-label="Edit ${escapeHtml(event.title || "event")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>
+            ${tasks.length ? `<span class="workspace-event-directory__task-count" aria-label="${completedTasks.length} of ${tasks.length} tasks complete">${completedTasks.length} of ${tasks.length}</span>` : ""}
           </summary>
           <div class="workspace-event-directory__details">
             <div class="workspace-event-directory__details-grid">
               ${event.notes ? `<div class="workspace-event-directory__notes"><strong>${escapeHtml(event.notes)}</strong></div>` : ""}
-              <div><strong>${escapeHtml(formatWorkspaceEventSchedule(event))}</strong></div>
               <div><strong>${escapeHtml(event.location || "Location not set")}</strong></div>
               ${incompleteTasks.length ? `<div class="workspace-event-directory__tasks"><ul>${incompleteTasks.map((task) => `<li>${escapeHtml(task.title || "Untitled task")}</li>`).join("")}</ul></div>` : ""}
               ${inviteeNames.length ? `<div class="workspace-event-directory__invitees"><strong>${escapeHtml(inviteeNames.join(", "))}</strong></div>` : ""}
@@ -6390,7 +6423,7 @@
         recognition.__baseValue,
         mergeVoiceTranscriptIntoNotes(recognition.__transcript, interimTranscript)
       );
-      input.value = input.dataset.voiceNoPeriod === "true" ? voiceValue.replace(/\.+$/u, "") : voiceValue;
+      input.value = normalizeVoiceTextForInput(input, voiceValue);
       input.dispatchEvent(new Event("input", { bubbles: true }));
     };
     recognition.onerror = (errorEvent) => {
@@ -6769,6 +6802,7 @@
       return `<strong>${escapeHtml(list.title || "Untitled list")}</strong>${items.length ? `<div class="workspace-checklist__items">${items.map((item, index) => `<label class="workspace-checklist__item ${completedItems.has(index) ? "is-complete" : ""}"><input type="checkbox" data-workspace-list-item data-workspace-list-id="${escapeHtml(list.id)}" data-workspace-list-item-index="${index}" ${completedItems.has(index) ? "checked" : ""}><span>${escapeHtml(item)}</span></label>`).join("")}</div>` : '<span class="meta">No items yet.</span>'}`;
     };
     const canManageEvent = Boolean(viewerProfile.isAdmin);
+    const viewerUserId = getCurrentWorkspaceViewerUserId();
     const saveWorkspaceListItems = (list, items, completedItems) => {
       const previousList = { ...list };
       const optimisticList = {
@@ -6838,12 +6872,17 @@
       return Number.isNaN(parsed.getTime()) ? date : parsed.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
     };
     const inlineTaskFields = (task) => canManageEvent ? `
-      <td data-label="Assigned to"><select data-update-workspace-task-field="assignedUserId" data-workspace-task-id="${escapeHtml(task.id)}" aria-label="Assigned to for ${escapeHtml(task.title || "task")}">${assigneeOptions(task.assignedUserId)}</select></td>
-      <td data-label="Due"><input type="date" value="${escapeHtml(String(task.dueAt || "").slice(0, 10))}" data-update-workspace-task-field="dueAt" data-workspace-task-id="${escapeHtml(task.id)}" aria-label="Due date for ${escapeHtml(task.title || "task")}"></td>
+      <td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserId))}</td>
+      <td data-label="Due"><input type="date" value="${escapeHtml(normalizeWorkspaceTaskDueDate(task.dueAt))}" data-update-workspace-task-field="dueAt" data-workspace-task-id="${escapeHtml(task.id)}" aria-label="Due date for ${escapeHtml(task.title || "task")}"></td>
     ` : `
       <td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserId))}</td>
       <td data-label="Due">${escapeHtml(formatTaskDueDate(task.dueAt))}</td>
     `;
+    const taskCompletionCell = (task) => {
+      const completed = String(task.status || "").trim().toLowerCase() === "done";
+      const canToggle = canManageEvent || (Boolean(viewerUserId) && String(task.assignedUserId || "").trim() === viewerUserId);
+      return `<td class="workspace-task-table__complete" data-label="Done"><input type="checkbox" data-workspace-task-complete="${escapeHtml(task.id)}" aria-label="Mark ${escapeHtml(task.title || "task")} ${completed ? "incomplete" : "complete"}" ${completed ? "checked" : ""} ${canToggle ? "" : "disabled"}></td>`;
+    };
     const associatedListCell = (task) => associatedListForTask(task)
       ? `<td class="workspace-task-associated-list" data-label="Associated list">${renderTaskList(task.listId)}</td>`
       : "";
@@ -6915,20 +6954,21 @@
         </form>
       </section>` : ""}
       <div class="workspace-task-table-wrap">${tasks.length ? `<table class="workspace-task-table">
-        <thead><tr>${canManageEvent ? '<th class="workspace-task-table__order" scope="col"><span class="sr-only">Order</span></th>' : ""}<th class="workspace-task-table__task" scope="col">Task</th><th scope="col">Assigned to</th><th scope="col">Due</th>${canManageEvent ? '<th scope="col"><span class="sr-only">Actions</span></th>' : ""}</tr></thead>
+        <thead><tr>${canManageEvent ? '<th class="workspace-task-table__order" scope="col"><span class="sr-only">Order</span></th>' : ""}<th class="workspace-task-table__task" scope="col">Task</th><th class="workspace-task-table__complete" scope="col">Done</th><th scope="col">Assigned to</th><th scope="col">Due</th>${canManageEvent ? '<th scope="col"><span class="sr-only">Actions</span></th>' : ""}</tr></thead>
         <tbody>${tasks.map((task) => canManageEvent ? `
           <tr class="workspace-event-task-edit workspace-task-accordion ${String(task.status || "").trim().toLowerCase() === "done" ? "is-complete" : ""}" data-workspace-task-id="${escapeHtml(task.id)}">
             <td class="workspace-task-table__order" data-label="Order"><button class="button button--icon button--light workspace-task-drag-handle" type="button" draggable="true" data-workspace-task-drag-handle aria-label="Drag to reorder ${escapeHtml(task.title || "task")}" title="Drag to reorder"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6h.01"></path><path d="M9 12h.01"></path><path d="M9 18h.01"></path><path d="M15 6h.01"></path><path d="M15 12h.01"></path><path d="M15 18h.01"></path></svg></button></td>
             <td data-label="Task"><span class="workspace-task-title-with-photo"><button class="workspace-task-accordion-toggle" type="button" data-workspace-task-accordion aria-expanded="false">${escapeHtml(task.title || "Untitled task")}</button>${taskPhotoButton(task)}${taskListButton(task)}</span></td>
+            ${taskCompletionCell(task)}
             ${inlineTaskFields(task)}
             ${associatedListCell(task)}
             <td class="workspace-task-table__actions" data-label="Actions"><button class="button button--icon button--light workspace-task-icon-button" type="button" data-edit-workspace-task="${escapeHtml(task.id)}" aria-label="Edit ${escapeHtml(task.title || "task")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button><button class="button button--icon button--light workspace-task-icon-button" type="button" data-delete-workspace-task="${escapeHtml(task.id)}" aria-label="Remove ${escapeHtml(task.title || "task")}" title="Remove"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg></button></td>
-          </tr>` : `<tr class="workspace-task-accordion ${String(task.status || "").trim().toLowerCase() === "done" ? "is-complete" : ""}"><td data-label="Task"><span class="workspace-task-title-with-photo"><button class="workspace-task-accordion-toggle" type="button" data-workspace-task-accordion aria-expanded="false">${escapeHtml(task.title || "Untitled task")}</button>${taskPhotoButton(task)}${taskListButton(task)}</span></td>${inlineTaskFields(task)}${associatedListCell(task)}</tr>`).join("")}</tbody>
+          </tr>` : `<tr class="workspace-task-accordion ${String(task.status || "").trim().toLowerCase() === "done" ? "is-complete" : ""}"><td data-label="Task"><span class="workspace-task-title-with-photo"><button class="workspace-task-accordion-toggle" type="button" data-workspace-task-accordion aria-expanded="false">${escapeHtml(task.title || "Untitled task")}</button>${taskPhotoButton(task)}${taskListButton(task)}</span></td>${taskCompletionCell(task)}${inlineTaskFields(task)}${associatedListCell(task)}</tr>`).join("")}</tbody>
       </table>` : '<p class="meta">No tasks yet.</p>'}</div>
       <section class="modal" id="workspaceTaskPhotosModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-photos-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskPhotosModalTitle"><button class="modal__close" type="button" data-close-workspace-task-photos-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskPhotosModalTitle">Task snapshots</h3></div></div><div class="workspace-task-photo-viewer" id="workspaceTaskPhotosModalContent"></div></div></section>
       <section class="modal" id="workspaceTaskListModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-list-modal></div><div class="modal__dialog workspace-list-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskListModalTitle"><button class="modal__close" type="button" data-close-workspace-task-list-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskListModalTitle">List</h3></div></div><div class="workspace-checklist__items" id="workspaceTaskListModalContent"></div></div></section>
       ${canManageEvent ? `<section class="modal" id="workspaceTaskModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskModalTitle"><button class="modal__close" type="button" data-close-workspace-task-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskModalTitle">Edit task</h3></div></div><form id="workspaceTaskEditForm"><input type="hidden" name="id"><input class="workspace-task-edit-title" name="title" aria-label="Task" required><label class="workspace-task-edit-field"><span>Assigned to</span><select name="assignedUserId">${assigneeOptions("")}</select></label><label class="workspace-task-edit-field"><span>Due date</span><input name="dueAt" type="date"></label><label class="workspace-task-edit-field"><span>Associated list</span><select name="listId"><option value="">No associated list</option>${lists.map((list) => `<option value="${escapeHtml(list.id)}">${escapeHtml(list.title || "Untitled list")}</option>`).join("")}</select></label><label class="workspace-task-edit-field"><span>Status</span><select name="status"><option value="Not Started">Not started</option><option value="In Progress">In progress</option><option value="Done">Done</option></select></label><label>Notes <textarea name="notes" placeholder="Helpful details, links, or next steps."></textarea></label><div class="task-photo-field"><span>Task snapshots</span><div class="toolbar task-photo-actions"><button class="button" type="button" data-capture-workspace-task-photo>Take photo</button><button class="button button--light" type="button" data-upload-workspace-task-photo>Upload photos</button></div><input name="workspaceTaskCamera" type="file" accept="image/*" capture="environment" hidden><input name="workspaceTaskPhoto" type="file" accept="image/*" multiple hidden><p class="meta">Take a photo, or select multiple photos from your library. Each is attached when you save.</p><div class="task-photo-preview" data-workspace-task-photo-preview hidden></div><div class="workspace-task-photos" data-workspace-task-photos></div></div><div class="toolbar"><button class="button" type="submit">Save task</button><button class="button button--light" type="button" data-close-workspace-task-modal>Cancel</button></div><p class="status" id="workspaceTaskEditStatus"></p></form></div></section>` : ""}
-      ${canManageEvent ? `<form id="workspaceEventTaskForm" class="workspace-quick-form"><label>Add a task <span class="workspace-voice-field"><input name="title" required placeholder="What needs to happen?">${workspaceInlineVoiceButton(`new-task-${event.id}`, "new task")}</span></label><button class="button button--light" type="submit">Add task</button></form>` : ""}
+      ${canManageEvent ? `<form id="workspaceEventTaskForm" class="workspace-quick-form"><label>Add a task <span class="workspace-voice-field"><input name="title" data-voice-no-period data-voice-no-auto-capitalization required placeholder="What needs to happen?">${workspaceInlineVoiceButton(`new-task-${event.id}`, "new task")}</span></label><button class="button button--light" type="submit">Add task</button></form>` : ""}
       </section>
       <section class="workspace-event-tab-panel" data-workspace-event-tab-panel="lists" ${activeWorkspaceEventTab === "lists" ? "" : "hidden"}>
       <h4>Lists</h4>
@@ -7200,7 +7240,7 @@
         eventId: event.id,
         listId: "",
         assignedUserId: "",
-        dueAt: "",
+        dueAt: "2027-01-08",
         notes: "",
         status: "Not Started",
         sortOrder: nextSortOrder
@@ -7377,7 +7417,7 @@
         workspaceTaskEditForm.elements.namedItem("id").value = String(task.id || "");
         workspaceTaskEditForm.elements.namedItem("title").value = String(task.title || "");
         workspaceTaskEditForm.elements.namedItem("assignedUserId").value = String(task.assignedUserId || "");
-        workspaceTaskEditForm.elements.namedItem("dueAt").value = String(task.dueAt || "").slice(0, 10);
+        workspaceTaskEditForm.elements.namedItem("dueAt").value = normalizeWorkspaceTaskDueDate(task.dueAt);
         workspaceTaskEditForm.elements.namedItem("listId").value = String(task.listId || "");
         workspaceTaskEditForm.elements.namedItem("status").value = String(task.status || "Not Started");
         workspaceTaskEditForm.elements.namedItem("notes").value = String(task.notes || "");
@@ -7525,6 +7565,13 @@
         } finally {
           field.disabled = false;
         }
+      });
+    });
+
+    workspaceEventPageContentEl.querySelectorAll("[data-workspace-task-complete]").forEach((checkbox) => {
+      checkbox.addEventListener("change", () => {
+        const taskId = String(checkbox.dataset.workspaceTaskComplete || "").trim();
+        queueWorkspaceTaskCompletionChange(taskId, checkbox.checked, renderWorkspaceEventPage);
       });
     });
 
@@ -7948,6 +7995,49 @@
       }
     }
     throw lastError || new Error("Planner request failed.");
+  }
+
+  function queueWorkspaceTaskCompletionChange(taskId, completed, rerender) {
+    const existingTask = cachedWorkspaceTasks.find((task) => String(task.id || "") === taskId);
+    if (!existingTask) return;
+
+    const previousTask = { ...existingTask };
+    const version = (workspaceTaskCompletionVersions.get(taskId) || 0) + 1;
+    workspaceTaskCompletionVersions.set(taskId, version);
+    upsertCachedWorkspaceTask({
+      ...existingTask,
+      status: completed ? "Done" : "Not Started",
+      completedAt: completed ? new Date().toISOString() : ""
+    });
+    savePlannerSessionCache();
+    rerender();
+    setStatus(workspaceStatusEl, "Task updated. Saving in the background…", "pending");
+
+    const previousSave = workspaceTaskCompletionSaveChains.get(taskId) || Promise.resolve();
+    const queuedSave = previousSave.catch(() => undefined).then(async () => {
+      try {
+        const savedTask = await backendRequest("setWorkspaceTaskCompleted", { id: taskId, completed });
+        // A later click is already reflected locally and will be saved next.
+        if (workspaceTaskCompletionVersions.get(taskId) !== version) return;
+        upsertCachedWorkspaceTask(savedTask);
+        savePlannerSessionCache();
+        rerender();
+        setStatus(workspaceStatusEl, "Task saved.", "success");
+      } catch (error) {
+        // Do not undo a newer choice if an earlier save failed.
+        if (workspaceTaskCompletionVersions.get(taskId) !== version) return;
+        upsertCachedWorkspaceTask(previousTask);
+        savePlannerSessionCache();
+        rerender();
+        setStatus(workspaceStatusEl, error.message || "Unable to update the task.", "error");
+      }
+    });
+    workspaceTaskCompletionSaveChains.set(taskId, queuedSave);
+    void queuedSave.finally(() => {
+      if (workspaceTaskCompletionSaveChains.get(taskId) === queuedSave) {
+        workspaceTaskCompletionSaveChains.delete(taskId);
+      }
+    });
   }
 
   async function refreshPlannerCollections() {
@@ -9913,6 +10003,12 @@ function sortTables(items) {
   });
 
   todosListEl.addEventListener("click", async (event) => {
+    const completionCheckbox = event.target.closest("[data-workspace-todo-complete]");
+    if (completionCheckbox) {
+      event.stopPropagation();
+      return;
+    }
+
     const taskButton = event.target.closest("[data-open-workspace-task]");
     if (taskButton) {
       event.preventDefault();
@@ -9972,6 +10068,13 @@ function sortTables(items) {
   });
 
   todosListEl.addEventListener("change", async (event) => {
+    const taskCheckbox = event.target.closest("[data-workspace-todo-complete]");
+    if (taskCheckbox) {
+      const taskId = String(taskCheckbox.dataset.workspaceTodoComplete || "").trim();
+      queueWorkspaceTaskCompletionChange(taskId, taskCheckbox.checked, renderTodos);
+      return;
+    }
+
     const checklistItem = event.target.closest("[data-workspace-todo-list-item]");
     if (checklistItem) {
       const listId = String(checklistItem.dataset.workspaceListId || "").trim();

@@ -5,12 +5,14 @@ type Env = {
   AMAZON_REGISTRY_URL?: string;
   GOOGLE_CLIENT_ID?: string;
   PLANNER_ORIGIN?: string;
+  PLANNER_ORIGINS?: string;
   SESSION_SIGNING_SECRET?: string;
   PLANNER_SESSIONS: KVNamespace;
 };
 
 const DEFAULT_APPS_SCRIPT_BASE = "";
 const DEFAULT_AMAZON_REGISTRY_URL = "";
+const LOCAL_DEVELOPMENT_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
 const SESSION_COOKIE = "hope_caleb_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 
@@ -18,7 +20,8 @@ export default {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") || "";
-    const allowedOrigin = String(env.PLANNER_ORIGIN || "https://hope-caleb.site").trim();
+    const allowedOrigin = getAllowedOrigin(origin, env);
+    if (!allowedOrigin) return jsonResponse({ ok: false, error: "This planner endpoint is not available from this site." }, defaultOrigin(env), 403);
     if (request.method === "OPTIONS") return new Response("", { headers: cors(allowedOrigin) });
     if (request.method === "GET") {
       if (url.pathname === "/session/validate") {
@@ -30,8 +33,6 @@ export default {
       if (url.pathname === "/amazon-registry") return proxyAmazonRegistry(env, allowedOrigin);
       return jsonResponse({ ok: true, service: "wedding-planner-proxy" }, allowedOrigin);
     }
-    if (origin && origin !== allowedOrigin) return jsonResponse({ ok: false, error: "This planner endpoint is not available from this site." }, allowedOrigin, 403);
-
     const appsScriptBase = normalizeAppsScriptBase(env.APPS_SCRIPT_BASE || DEFAULT_APPS_SCRIPT_BASE);
     if (!appsScriptBase) return jsonResponse({ ok: false, error: "APPS_SCRIPT_BASE is not configured in the worker." }, allowedOrigin, 500);
     let body: { method?: string; payload?: unknown; authToken?: string };
@@ -110,6 +111,17 @@ function getCookie(cookies: string, name: string) { const pair = cookies.split("
 function getSessionToken(value: string) { const match = String(value || "").match(/^session\.([0-9a-f-]{36})$/i); return match ? match[1] : ""; }
 function newSessionCookiePayload(body: string, sessionId: string, created: boolean) { if (!created) return body; try { return JSON.stringify({ ...JSON.parse(body), sessionToken: `session.${sessionId}` }); } catch { return body; } }
 function normalizeAppsScriptBase(value: string) { return String(value || "").trim().replace(/\/exec\/?$/i, "").replace(/\/+$/, ""); }
+function configuredOrigins(env: Env) {
+  return [env.PLANNER_ORIGIN, env.PLANNER_ORIGINS, "https://hope-caleb.site", ...LOCAL_DEVELOPMENT_ORIGINS]
+    .flatMap((value) => String(value || "").split(","))
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+function defaultOrigin(env: Env) { return configuredOrigins(env)[0] || "https://hope-caleb.site"; }
+function getAllowedOrigin(requestOrigin: string, env: Env) {
+  const origins = configuredOrigins(env);
+  return requestOrigin ? (origins.includes(requestOrigin) ? requestOrigin : "") : defaultOrigin(env);
+}
 function cors(origin: string) { return { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type,Authorization", "Access-Control-Allow-Credentials": "true", "Vary": "Origin" }; }
 function jsonResponse(payload: unknown, origin: string, status = 200) { return new Response(JSON.stringify(payload), { status, headers: { ...cors(origin), "Content-Type": "application/json" } }); }
 

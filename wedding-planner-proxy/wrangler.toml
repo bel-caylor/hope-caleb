@@ -9,4 +9,7 @@ id = "7de2ae61852e489d98503d614b87977d"
 
 [vars]
 PLANNER_ORIGIN = "https://hope-caleb.site"
+# Optional comma-separated production origins, in addition to the built-in
+# local development addresses (localhost and 127.0.0.1 on port 5173).
+# PLANNER_ORIGINS = "https://planner.example.com"
 GOOGLE_CLIENT_ID = "1013045170295-uqapcrbk5aie1megfqa8jk62t87b2kha.apps.googleusercontent.com"

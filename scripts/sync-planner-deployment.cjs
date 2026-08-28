@@ -39,7 +39,8 @@ function run(command, args, cwd, input) {
     cwd,
     input,
     stdio: input ? ["pipe", "inherit", "inherit"] : "inherit",
-    encoding: "utf8"
+    encoding: "utf8",
+    shell: process.platform === "win32"
   });
 
   if (result.error) {

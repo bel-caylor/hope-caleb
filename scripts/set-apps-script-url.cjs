@@ -44,32 +44,26 @@ function updateEnv(url) {
 
 function updateScriptJs(url) {
   const content = fs.readFileSync(SCRIPT_FILE, "utf8");
-  const next = content.replace(
-    /(googleScriptUrl:\s*")([^"]+)(")/,
-    `$1${url}$3`
-  );
-
-  if (next === content) {
+  const pattern = /(googleScriptUrl:\s*")([^"]+)(")/;
+  if (!pattern.test(content)) {
     console.error("Could not find `googleScriptUrl` in script.js.");
     process.exit(1);
   }
+  const next = content.replace(pattern, `$1${url}$3`);
 
-  fs.writeFileSync(SCRIPT_FILE, next);
+  if (next !== content) fs.writeFileSync(SCRIPT_FILE, next);
 }
 
 function updateSiteJs(url) {
   const content = fs.readFileSync(SITE_FILE, "utf8");
-  const next = content.replace(
-    /(scriptUrl:\s*")([^"]+)(")/,
-    `$1${url}$3`
-  );
-
-  if (next === content) {
+  const pattern = /(scriptUrl:\s*")([^"]+)(")/;
+  if (!pattern.test(content)) {
     console.error("Could not find `scriptUrl` in site.js.");
     process.exit(1);
   }
+  const next = content.replace(pattern, `$1${url}$3`);
 
-  fs.writeFileSync(SITE_FILE, next);
+  if (next !== content) fs.writeFileSync(SITE_FILE, next);
 }
 
 function replaceOrAppend(content, key, value) {

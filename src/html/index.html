@@ -41,7 +41,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("service-worker.js?v=20260827-rsvp-fix").catch((error) => {
+          navigator.serviceWorker.register("service-worker.js?v=20260828-calendar-accordion").catch((error) => {
             console.warn("Dashboard offline support could not be enabled.", error);
           });
         });
@@ -3105,6 +3105,20 @@
         text-align: right;
       }
 
+      .event-accordion__summary-end {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.75rem;
+      }
+
+      .event-accordion__task-count {
+        color: rgba(86, 29, 40, 0.9);
+        font-size: 0.9rem;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+
       .guest-summary-actions {
         display: inline-flex;
         align-items: center;
@@ -4186,7 +4200,7 @@
 
         .todo-accordion--by-date .accordion-summary__main,
         .todo-accordion--by-date .event-accordion__title-main {
-          width: 100%;
+          width: auto;
         }
 
         .todo-accordion--by-date .event-accordion__title-main {
@@ -4571,6 +4585,9 @@
 
       @media (max-width: 650px) {
         .planner-users-form { grid-template-columns: 1fr; }
+
+        .event-accordion__task-count,
+        .workspace-event-directory__task-count { display: none; }
       }
 
       .workspace-capture,
@@ -4806,12 +4823,20 @@
         flex: 0 0 auto;
         min-width: 2.35rem;
         min-height: 2.35rem;
-        margin-left: auto;
         padding: 0.4rem;
       }
 
       .workspace-event-directory__time {
         white-space: nowrap;
+      }
+
+      .workspace-event-directory__task-count {
+        flex: 0 0 auto;
+        margin-left: auto;
+        color: rgba(86, 29, 40, 0.9);
+        font-size: 0.9rem;
+        font-weight: 500;
+        text-align: right;
       }
 
       .workspace-event-directory__location::before {
@@ -5045,7 +5070,38 @@
       }
 
       .workspace-task-table th.workspace-task-table__task {
-        width: 43%;
+        width: 38%;
+      }
+
+      .workspace-task-table__complete {
+        width: 4.2rem;
+        text-align: center !important;
+      }
+
+      .workspace-task-table__complete input {
+        width: 1.15rem;
+        height: 1.15rem;
+        cursor: pointer;
+      }
+
+      .workspace-task-table__complete input:disabled {
+        cursor: not-allowed;
+      }
+
+      .todo-task-complete {
+        width: 1.1rem;
+        height: 1.1rem;
+        margin: 0 0.45rem 0 0;
+        vertical-align: -0.1em;
+        cursor: pointer;
+      }
+
+      .todo-task-complete:disabled {
+        cursor: not-allowed;
+      }
+
+      .todo-task-assignee {
+        font-weight: 400;
       }
 
       .workspace-task-table input,
@@ -5222,6 +5278,11 @@
 
         .workspace-task-table td[data-label="Task"]::before {
           display: none;
+        }
+
+        .workspace-task-table td.workspace-task-table__complete {
+          grid-template-columns: minmax(7rem, 0.45fr) minmax(0, 1fr);
+          text-align: left !important;
         }
 
         .workspace-task-table td.workspace-task-associated-list {

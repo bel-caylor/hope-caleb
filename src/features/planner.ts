@@ -1176,6 +1176,10 @@ export function saveTodo(input: SaveTodoInput) {
   const id = String(input.id || "").trim() || createId("todo");
   const now = new Date().toISOString();
   const existing = listTodos().find((todo) => todo.id === id);
+  const hasDueDate = Object.prototype.hasOwnProperty.call(input, "dueDate");
+  const dueDate = hasDueDate
+    ? String(input.dueDate || "").trim()
+    : String(existing?.dueDate || "").trim();
   const isComplete = normalizeBoolean(input.isComplete) || String(input.status || "").trim().toLowerCase() === "done";
   const completedAt = isComplete
     ? String(input.completedAt || existing?.completedAt || now).trim()
@@ -1188,7 +1192,7 @@ export function saveTodo(input: SaveTodoInput) {
     Notes: String(input.notes || "").trim(),
     AssignedTo: String(input.assignedTo || "").trim(),
     StartDate: String(input.startDate || "").trim(),
-    DueDate: String(input.dueDate || "").trim(),
+    DueDate: dueDate || (!existing ? "2027-01-08" : ""),
     Priority: String(input.priority || "Medium").trim(),
     Status: String(input.status || (isComplete ? "Done" : "Not Started")).trim(),
     IsComplete: isComplete ? "TRUE" : "FALSE",
