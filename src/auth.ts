@@ -23,8 +23,25 @@ type VerifiedUser = {
   expires: number;
 };
 
+type SessionAssertion = VerifiedUser & { sessionId: string };
+const SESSION_VALIDATOR_URL = "https://hope-caleb-wedding-planner-proxy.belinda-caylor.workers.dev/session/validate";
+
 export function getGoogleClientId() {
   return String(PropertiesService.getScriptProperties().getProperty(GOOGLE_CLIENT_ID_PROPERTY_KEY) || "").trim();
+}
+
+function verifyWorkerSessionAssertion(token: string): SessionAssertion | null {
+  try {
+    if (!String(token || "").startsWith("hcs1.")) return null;
+    const response = UrlFetchApp.fetch(`${SESSION_VALIDATOR_URL}?token=${encodeURIComponent(token)}`, { muteHttpExceptions: true });
+    if (response.getResponseCode() !== 200) return null;
+    const payload = JSON.parse(response.getContentText() || "{}") as { ok?: boolean; email?: string; sub?: string; expires?: number; sessionId?: string };
+    const expires = Number(payload.expires || 0);
+    const email = String(payload.email || "").trim().toLowerCase();
+    const sub = String(payload.sub || "").trim();
+    const sessionId = String(payload.sessionId || "").trim();
+    return payload.ok && email && sub && sessionId && expires > Date.now() ? { email, sub, sessionId, expires } : null;
+  } catch (_) { return null; }
 }
 
 function getSpreadsheetId() {
@@ -161,7 +178,7 @@ export function getViewerProfile() {
     };
   }
 
-  const verified = verifyGoogleIdToken(token);
+  const verified = verifyWorkerSessionAssertion(token) || verifyGoogleIdToken(token);
   if (!verified) {
     return {
       signedIn: false,

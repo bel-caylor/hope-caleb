@@ -3,7 +3,6 @@
   const plannerGateMessageEl = document.querySelector("#plannerGateMessage");
   const plannerGoogleSignInEl = document.querySelector("#plannerGoogleSignIn");
   const plannerLoginStatusEl = document.querySelector("#plannerLoginStatus");
-  const plannerSignOutButton = document.querySelector("#plannerSignOut");
   const plannerPageTitleEl = document.querySelector("#plannerPageTitle");
   const plannerMenuToggleButton = document.querySelector("#plannerMenuToggle");
   const plannerSummaryEl = document.querySelector("#plannerSummary");
@@ -38,6 +37,7 @@
   const workspaceCaptureCardEl = document.querySelector("#workspaceCaptureCard");
   const workspaceManualToolsEl = document.querySelector("#workspaceManualTools");
   const plannerSyncStatusEl = document.querySelector("#plannerSyncStatus");
+  const plannerReconnectGoogleButton = document.querySelector("#plannerReconnectGoogle");
   const plannerVersionInfoEl = document.querySelector("#plannerVersionInfo");
   const rsvpListEl = document.querySelector("#rsvpList");
   const personModal = document.querySelector("#personModal");
@@ -112,6 +112,8 @@
   const routeLinks = Array.from(document.querySelectorAll("[data-route-link]"));
   const routedViews = Array.from(document.querySelectorAll("[data-view]"));
   const plannerLayoutEl = document.querySelector("#plannerLayout");
+  const plannerLoadingEl = document.querySelector("#plannerLoading");
+  const plannerLoadingMessageEl = document.querySelector("#plannerLoadingMessage");
   const plannerContentEl = document.querySelector("#plannerContent");
   const plannerLockedEl = document.querySelector("#plannerLocked");
   const plannerUnlockedEl = document.querySelector("#plannerUnlocked");
@@ -119,16 +121,22 @@
   const plannerPanels = Array.from(document.querySelectorAll("[data-planner-panel]"));
   const plannerSidebarMediaQuery = window.matchMedia("(max-width: 860px)");
   const EventWorkspaceSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  const VOICE_INPUT_LISTENING_MS = 3000;
   let pendingTodoPhoto = null;
 
   const STORAGE_KEYS = {
     authToken: "hope-caleb-dashboard-auth-token",
+    sessionToken: "hope-caleb-dashboard-session-token",
     workspaceEventId: "hope-caleb-workspace-event-id",
     workspaceEventTab: "hope-caleb-workspace-event-tab",
     workspaceHubView: "hope-caleb-workspace-hub-view",
     workspaceCalendarView: "hope-caleb-workspace-calendar-view",
     workspaceCalendarDate: "hope-caleb-workspace-calendar-date",
     workspaceCalendarMonth: "hope-caleb-workspace-calendar-month",
+    activePlannerPanel: "hope-caleb-active-planner-panel",
+    eventDetailId: "hope-caleb-event-detail-id",
+    eventDetailTab: "hope-caleb-event-detail-tab",
+    plannerScrollPosition: "hope-caleb-planner-scroll-position",
     plannerDataCache: "hope-caleb-planner-data-cache-v1"
   };
 
@@ -148,7 +156,13 @@
   let cachedWorkspaceAssets = [];
   let cachedWorkspaceInvitees = { groups: [], guests: [] };
   let workspaceDraftState = null;
-  let selectedWorkspaceEventId = "";
+  let workspaceStickyHeaderObserver = null;
+  // Keep the original form state while invitee changes re-render the details panel.
+  // This lets the fixed save control reflect unsaved changes accurately.
+  const workspaceEventDetailsBaselines = new Map();
+  // Live Server performs a full browser refresh. Keep the nested page choices
+  // alongside the main sidebar page so a refresh returns to the same place.
+  let selectedWorkspaceEventId = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceEventId) || "").trim();
   let activeWorkspaceEventTab = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceEventTab) || "details").trim() || "details";
   let activeWorkspaceHubView = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceHubView) || "create").trim() || "create";
   let activeWorkspaceCalendarView = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarView) || "month").trim() || "month";
@@ -156,6 +170,7 @@
   let workspaceCalendarListDateFilter = "";
   let workspaceCalendarMonth = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarMonth) || "").trim();
   let plannerCacheHydrated = false;
+  let plannerDataReady = false;
   let workspaceCaptureRecognition = null;
   let workspaceDraftRefineRecognition = null;
   const workspaceInlineVoiceRecognitions = new Map();
@@ -167,8 +182,8 @@
   let selectedEventAssignedTo = [];
   let selectedTodoAssignedTo = [];
   let todoGroupBy = "due";
-  let selectedEventDetailId = "";
-  let activeEventDetailTab = "overview";
+  let selectedEventDetailId = String(window.sessionStorage.getItem(STORAGE_KEYS.eventDetailId) || "").trim();
+  let activeEventDetailTab = String(window.sessionStorage.getItem(STORAGE_KEYS.eventDetailTab) || "overview").trim() || "overview";
   const openEventDetailAccordionSections = new Set();
   const eventAiPlans = new Map();
   const eventAiDrafts = new Map();
@@ -182,11 +197,14 @@
   let rsvpFeedConnected = false;
   let plannerCountdownTimer = null;
   let currentView = getRequestedView();
-  let activePlannerPanel = "home";
+  let activePlannerPanel = String(window.localStorage.getItem(STORAGE_KEYS.activePlannerPanel) || "home").trim() || "home";
+  let pendingPlannerScrollPosition = Number(window.localStorage.getItem(STORAGE_KEYS.plannerScrollPosition) || 0) || 0;
+  let plannerScrollSaveTimer = null;
   let plannerSidebarOpen = false;
   let activeTableDrag = null;
   let backendBuildVersion = "";
   let googleSignInReady = false;
+  let googleCredentialPromptPending = false;
   let viewerProfile = {
     signedIn: false,
     email: "",
@@ -425,11 +443,14 @@
 
     const showPlanner = currentView === "planner";
     const hasAccess = canUsePlanner();
-    plannerMenuToggleButton.hidden = !showPlanner || !hasAccess;
-    plannerPageTitleEl.hidden = !showPlanner || !hasAccess;
+    const showPlannerNavigation = showPlanner && hasAccess && plannerDataReady;
+    plannerMenuToggleButton.hidden = !showPlannerNavigation;
+    plannerPageTitleEl.hidden = !showPlannerNavigation;
     plannerLockedEl.hidden = !showPlanner || hasAccess;
-    plannerUnlockedEl.hidden = !showPlanner || !hasAccess;
-    plannerContentEl.hidden = !showPlanner || !hasAccess;
+    plannerUnlockedEl.hidden = !showPlannerNavigation;
+    plannerLoadingEl.hidden = !showPlanner || !hasAccess || plannerDataReady;
+    plannerLoadingEl.setAttribute("aria-busy", String(!plannerDataReady));
+    plannerContentEl.hidden = !showPlannerNavigation;
     if (hasAccess && !viewerProfile.isAdmin && !["workspace", "calendar"].includes(activePlannerPanel)) {
       activePlannerPanel = "workspace";
     }
@@ -442,13 +463,52 @@
   }
 
   function getStoredAuthToken() {
-    return String(window.sessionStorage.getItem(STORAGE_KEYS.authToken) || "").trim();
+    // A standalone/PWA window can be discarded while it is in the background.
+    // sessionStorage disappears in that case, even though the person never
+    // chose to sign out. Keep the credential in origin storage too; Google
+    // still verifies its short lifetime on every backend request.
+    return String(
+      window.localStorage.getItem(STORAGE_KEYS.authToken)
+      || window.sessionStorage.getItem(STORAGE_KEYS.authToken)
+      || ""
+    ).trim();
+  }
+
+  function getStoredSessionToken() {
+    return String(window.localStorage.getItem(STORAGE_KEYS.sessionToken) || "").trim();
   }
 
   function clearStoredAuthToken() {
+    window.localStorage.removeItem(STORAGE_KEYS.authToken);
     window.sessionStorage.removeItem(STORAGE_KEYS.authToken);
+    window.localStorage.removeItem(STORAGE_KEYS.sessionToken);
     window.sessionStorage.removeItem(STORAGE_KEYS.plannerDataCache);
     plannerCacheHydrated = false;
+    plannerDataReady = false;
+  }
+
+  function clearStoredGoogleCredential() {
+    window.localStorage.removeItem(STORAGE_KEYS.authToken);
+    window.sessionStorage.removeItem(STORAGE_KEYS.authToken);
+  }
+
+  function savePlannerScrollPosition() {
+    window.localStorage.setItem(STORAGE_KEYS.plannerScrollPosition, String(Math.round(window.scrollY)));
+  }
+
+  function restorePlannerScrollPosition() {
+    if (!pendingPlannerScrollPosition || currentView !== "planner" || !canUsePlanner()) {
+      return;
+    }
+
+    const position = pendingPlannerScrollPosition;
+    pendingPlannerScrollPosition = 0;
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const maximum = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        window.scrollTo({ top: Math.min(position, maximum), behavior: "auto" });
+      });
+    });
   }
 
   function setActivePlannerPanel(panelName) {
@@ -459,6 +519,7 @@
     }
 
     activePlannerPanel = nextPanel;
+    window.localStorage.setItem(STORAGE_KEYS.activePlannerPanel, activePlannerPanel);
     if (plannerPageTitleEl) {
       const pageTitles = {
         workspace: "Add",
@@ -488,6 +549,7 @@
       panel.hidden = panel.dataset.plannerPanel !== nextPanel;
     });
     if (nextPanel === "calendar") renderWorkspace();
+    if (nextPanel === "event-detail" && plannerDataReady) renderEventDetail();
     if (nextPanel === "todos") renderTodos();
     if (nextPanel === "home") renderSummary();
     if (nextPanel === "planner-users") renderPlannerUsers();
@@ -519,8 +581,6 @@
   }
 
   function updateViewerState() {
-    plannerSignOutButton.hidden = !viewerProfile.signedIn;
-
     if (!viewerProfile.signedIn) {
       viewerStateEl.textContent = "Sign in with Google to access the dashboard.";
       plannerGateMessageEl.textContent = "Use the Google account connected to your planner invitation.";
@@ -2147,6 +2207,23 @@
     return true;
   }
 
+  function stopVoiceInputAfterListeningWindow(recognition) {
+    clearVoiceInputListeningWindow(recognition);
+    recognition.__voiceInputTimeout = window.setTimeout(() => {
+      recognition.__stoppedManually = true;
+      recognition.__codexStoppedManually = true;
+      recognition.__autoStopped = true;
+      try { recognition.stop(); } catch (_) {}
+    }, VOICE_INPUT_LISTENING_MS);
+  }
+
+  function clearVoiceInputListeningWindow(recognition) {
+    if (recognition?.__voiceInputTimeout) {
+      window.clearTimeout(recognition.__voiceInputTimeout);
+      recognition.__voiceInputTimeout = null;
+    }
+  }
+
   function stopEventWorkspaceVoiceRecognition(nextStatus, isError = false) {
     const activeRecognition = activeEventVoiceRecognition;
     if (!activeRecognition) {
@@ -2212,6 +2289,7 @@
     recognition.__codexStoppedManually = false;
 
     recognition.onstart = () => {
+      stopVoiceInputAfterListeningWindow(recognition);
       setEventAiVoiceState(normalizedEventId, {
         isListening: true,
         status: "Listening... speak naturally and tap again to stop.",
@@ -2247,6 +2325,7 @@
     };
 
     recognition.onerror = (event) => {
+      clearVoiceInputListeningWindow(recognition);
       const errorCode = String(event?.error || "").trim();
       const message = errorCode === "not-allowed"
         ? "Microphone permission was blocked."
@@ -2262,6 +2341,7 @@
     };
 
     recognition.onend = () => {
+      clearVoiceInputListeningWindow(recognition);
       const finalStatus = recognition.__finalTranscript
         ? "Dictation added to your notes."
         : "Dictation stopped.";
@@ -2269,7 +2349,7 @@
       activeEventVoiceRecognition = null;
       setEventAiVoiceState(normalizedEventId, {
         isListening: false,
-        status: wasManualStop ? "Dictation stopped." : finalStatus,
+        status: recognition.__autoStopped ? "Dictation stopped after 3 seconds." : wasManualStop ? "Dictation stopped." : finalStatus,
         error: false
       });
     };
@@ -2630,6 +2710,7 @@
   function setActiveEventDetailTab(tabId) {
     const nextTab = normalizeLookupValue(tabId) || "overview";
     activeEventDetailTab = nextTab;
+    window.sessionStorage.setItem(STORAGE_KEYS.eventDetailTab, activeEventDetailTab);
 
     if (!eventDetailShellEl) {
       return;
@@ -3048,6 +3129,12 @@
 
     const eventItem = getEventById(selectedEventDetailId);
     if (!eventItem) {
+      if (selectedEventDetailId) {
+        window.sessionStorage.removeItem(STORAGE_KEYS.eventDetailId);
+        window.sessionStorage.removeItem(STORAGE_KEYS.eventDetailTab);
+        selectedEventDetailId = "";
+        activeEventDetailTab = "overview";
+      }
       eventDetailShellEl.innerHTML = `
         <div class="event-detail-empty">
           <h4>Select an event</h4>
@@ -3464,6 +3551,9 @@
       });
     });
     eventDetailShellEl.querySelector("[data-event-detail-back]")?.addEventListener("click", () => {
+      selectedEventDetailId = "";
+      window.sessionStorage.removeItem(STORAGE_KEYS.eventDetailId);
+      window.sessionStorage.removeItem(STORAGE_KEYS.eventDetailTab);
       setActivePlannerPanel("events");
       setStatus(eventDetailStatusEl, "", "");
     });
@@ -3787,6 +3877,8 @@
 
     selectedEventDetailId = String(eventItem.id || "").trim();
     activeEventDetailTab = "overview";
+    window.sessionStorage.setItem(STORAGE_KEYS.eventDetailId, selectedEventDetailId);
+    window.sessionStorage.setItem(STORAGE_KEYS.eventDetailTab, activeEventDetailTab);
     openEventDetailAccordionSections.clear();
     setActivePlannerPanel("event-detail");
     renderEventDetail();
@@ -5897,8 +5989,15 @@
           ${group.events.map(({ event, date }, index) => {
       const eventId = String(event.id || "");
       const tasks = cachedWorkspaceTasks.filter((task) => String(task.eventId || "") === eventId);
-      const completeTasks = tasks.filter((task) => String(task.status || "").trim().toLowerCase() === "done").length;
-      const taskSummary = tasks.length ? `${completeTasks} of ${tasks.length} task${tasks.length === 1 ? "" : "s"} complete` : "No tasks yet";
+      const incompleteTasks = tasks.filter((task) => !["done", "complete", "completed"].includes(String(task.status || "").trim().toLowerCase()));
+      const invitationSelection = parseWorkspaceInvitationSelection(event.invitees);
+      const selectedGroups = new Set(invitationSelection.groups.map((group) => group.toLowerCase()));
+      const selectedIndividuals = new Set(invitationSelection.individuals.map((name) => name.toLowerCase()));
+      const invitedGuests = getWorkspaceInviteeGuestChoices().filter((guest) => {
+        const guestName = String(guest.name || "").toLowerCase();
+        return selectedIndividuals.has(guestName) || (guest.types || []).some((type) => selectedGroups.has(String(type || "").toLowerCase()));
+      });
+      const inviteeNames = invitedGuests.map((guest) => String(guest.name || "").trim()).filter(Boolean);
       const sameDateAsPrevious = index > 0 && workspaceDateKey(group.events[index - 1].date) === workspaceDateKey(date);
       return `
         <div class="workspace-event-directory__row">
@@ -5916,10 +6015,11 @@
           </summary>
           <div class="workspace-event-directory__details">
             <div class="workspace-event-directory__details-grid">
-              <div><span>When</span><strong>${escapeHtml(formatWorkspaceEventSchedule(event))}</strong></div>
-              <div><span>Location</span><strong>${escapeHtml(event.location || "Location not set")}</strong></div>
-              <div><span>Tasks</span><strong>${escapeHtml(taskSummary)}</strong></div>
-              ${event.notes ? `<div class="workspace-event-directory__notes"><span>Notes</span><strong>${escapeHtml(event.notes)}</strong></div>` : ""}
+              ${event.notes ? `<div class="workspace-event-directory__notes"><strong>${escapeHtml(event.notes)}</strong></div>` : ""}
+              <div><strong>${escapeHtml(formatWorkspaceEventSchedule(event))}</strong></div>
+              <div><strong>${escapeHtml(event.location || "Location not set")}</strong></div>
+              ${incompleteTasks.length ? `<div class="workspace-event-directory__tasks"><ul>${incompleteTasks.map((task) => `<li>${escapeHtml(task.title || "Untitled task")}</li>`).join("")}</ul></div>` : ""}
+              ${inviteeNames.length ? `<div class="workspace-event-directory__invitees"><strong>${escapeHtml(inviteeNames.join(", "))}</strong></div>` : ""}
             </div>
           </div>
           </details>
@@ -5932,14 +6032,14 @@
   }
 
   function setWorkspaceCalendarView(view) {
-    activeWorkspaceCalendarView = ["month", "day", "list"].includes(view) ? view : "month";
+    activeWorkspaceCalendarView = ["month", "list"].includes(view) ? view : "month";
     window.sessionStorage.setItem(STORAGE_KEYS.workspaceCalendarView, activeWorkspaceCalendarView);
     workspaceCalendarViewTabsEl?.querySelectorAll("[data-workspace-calendar-view]").forEach((button) => {
       const active = button.dataset.workspaceCalendarView === activeWorkspaceCalendarView;
       button.setAttribute("aria-selected", active ? "true" : "false");
       button.tabIndex = active ? 0 : -1;
     });
-    if (workspaceCalendarViewEl) workspaceCalendarViewEl.hidden = !["month", "day"].includes(activeWorkspaceCalendarView);
+    if (workspaceCalendarViewEl) workspaceCalendarViewEl.hidden = activeWorkspaceCalendarView !== "month";
     if (workspaceEventDirectoryEl) workspaceEventDirectoryEl.hidden = activeWorkspaceCalendarView !== "list" || activePlannerPanel !== "calendar";
     if (workspaceCalendarTitleEl && activeWorkspaceCalendarView === "list") {
       const filterDate = parseWorkspaceDate(workspaceCalendarListDateFilter);
@@ -5960,7 +6060,7 @@
     const fallbackAnchor = datedEvents[0]?.date || new Date();
     const anchor = selectedDate || fallbackAnchor;
     const monthStart = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-    if (workspaceCalendarTitleEl) workspaceCalendarTitleEl.textContent = activeWorkspaceCalendarView === "day" ? "Days with events" : "Calendar";
+    if (workspaceCalendarTitleEl) workspaceCalendarTitleEl.textContent = "Calendar";
 
     const renderCalendarDay = (day, outsideRange = false) => {
       const events = datedEvents.filter(({ date }) => date.getFullYear() === day.getFullYear() && date.getMonth() === day.getMonth() && date.getDate() === day.getDate());
@@ -5973,61 +6073,24 @@
         </div>
       `;
     };
-    if (activeWorkspaceCalendarView === "day") {
-      const daysWithEvents = new Map();
-      datedEvents
-        .sort((left, right) => left.date.getTime() - right.date.getTime() || String(left.event.title || "").localeCompare(String(right.event.title || "")))
-        .forEach((item) => {
-          const key = workspaceDateKey(item.date);
-          if (!daysWithEvents.has(key)) daysWithEvents.set(key, { date: item.date, events: [] });
-          daysWithEvents.get(key).events.push(item);
-        });
-      workspaceCalendarEl.classList.remove("workspace-calendar--month-list");
-      workspaceCalendarEl.classList.add("workspace-calendar--day-view");
-      workspaceCalendarEl.innerHTML = daysWithEvents.size ? [...daysWithEvents.values()].map(({ date, events }) => `
-        <section class="workspace-calendar__day-group">
-          <h4 class="workspace-calendar__day-heading"><time datetime="${escapeHtml(workspaceDateKey(date))}">${escapeHtml(formatWorkspaceDay(date))}</time></h4>
-          ${events.map(({ event, date: eventDate }) => {
-            const eventTasks = cachedWorkspaceTasks.filter((task) => String(task.eventId || "") === String(event.id || ""));
-            return `
-              <details class="workspace-calendar__day-event">
-                <summary>
-                  <span class="accordion-toggle" aria-hidden="true"></span>
-                  <span class="workspace-calendar__day-event-summary-copy"><strong>${escapeHtml(event.title || "Untitled event")}</strong><span class="workspace-calendar__day-event-summary-meta"><time datetime="${escapeHtml(String(event.startsAt || ""))}">${escapeHtml(formatWorkspaceEventTime(event))}</time></span></span>
-                  <button class="button button--icon workspace-calendar__day-event-edit" type="button" data-open-workspace-event="${escapeHtml(event.id)}" aria-label="Edit ${escapeHtml(event.title || "event")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>
-                </summary>
-                <div class="workspace-calendar__day-event-details">
-                  <div class="workspace-calendar__day-event-tasks">
-                    ${eventTasks.length ? eventTasks.map((task) => `<button class="workspace-calendar__day-event-task" type="button" data-edit-calendar-task="${escapeHtml(task.id)}" data-calendar-event-id="${escapeHtml(event.id)}" aria-label="Edit ${escapeHtml(task.title || "task")}" title="Edit ${escapeHtml(task.title || "task")}"><span>${escapeHtml(task.title || "Untitled task")}</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>`).join("") : '<p class="meta">No tasks yet.</p>'}
-                  </div>
-                  ${event.notes ? `<p><strong>Notes:</strong> ${escapeHtml(event.notes)}</p>` : ""}
-                </div>
-              </details>
-            `;
-          }).join("")}
-        </section>
-      `).join("") : `<p class="meta workspace-calendar__empty">No events are scheduled yet.</p>`;
-    } else {
-      const months = [...new Map(datedEvents.map(({ date }) => {
+    const months = [...new Map(datedEvents.map(({ date }) => {
         const start = new Date(date.getFullYear(), date.getMonth(), 1);
         return [workspaceDateKey(start), start];
       })).values()].sort((left, right) => left.getTime() - right.getTime());
-      workspaceCalendarEl.classList.remove("workspace-calendar--day-view");
-      workspaceCalendarEl.classList.remove("workspace-calendar--month-list");
-      const firstMonth = months[0] || monthStart;
-      const lastMonth = months[months.length - 1] || monthStart;
-      const gridStart = new Date(firstMonth);
-      gridStart.setDate(gridStart.getDate() - gridStart.getDay());
-      const gridEnd = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
-      gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
-      const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      const cells = weekdays.map((day) => `<span class="workspace-calendar__weekday">${day}</span>`);
-      for (const day = new Date(gridStart); day <= gridEnd; day.setDate(day.getDate() + 1)) {
-        const outsideRange = day < firstMonth || day > new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
-        cells.push(renderCalendarDay(new Date(day), outsideRange));
-      }
-      workspaceCalendarEl.innerHTML = cells.join("");
+    workspaceCalendarEl.classList.remove("workspace-calendar--month-list");
+    const firstMonth = months[0] || monthStart;
+    const lastMonth = months[months.length - 1] || monthStart;
+    const gridStart = new Date(firstMonth);
+    gridStart.setDate(gridStart.getDate() - gridStart.getDay());
+    const gridEnd = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+    gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
+    const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const cells = weekdays.map((day) => `<span class="workspace-calendar__weekday">${day}</span>`);
+    for (const day = new Date(gridStart); day <= gridEnd; day.setDate(day.getDate() + 1)) {
+      const outsideRange = day < firstMonth || day > new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+      cells.push(renderCalendarDay(new Date(day), outsideRange));
     }
+    workspaceCalendarEl.innerHTML = cells.join("");
 
     renderWorkspaceEventDirectory();
     setWorkspaceCalendarView(activeWorkspaceCalendarView);
@@ -6053,13 +6116,21 @@
     };
   }
 
+  function compareGuestsByLastName(left, right) {
+    const fullName = (guest) => String(guest?.name || "").trim();
+    const lastName = (guest) => fullName(guest).split(/\s+/).at(-1) || "";
+    return lastName(left).localeCompare(lastName(right)) || fullName(left).localeCompare(fullName(right));
+  }
+
   function renderWorkspaceEventInvitees(event) {
     const selection = parseWorkspaceInvitationSelection(event.invitees);
     const groups = Array.isArray(cachedWorkspaceInvitees.groups) ? cachedWorkspaceInvitees.groups : [];
     const guests = getWorkspaceInviteeGuestChoices();
     const selectedGroups = new Set(selection.groups.map((group) => group.toLowerCase()));
     const selectedIndividuals = new Set(selection.individuals.map((name) => name.toLowerCase()));
-    const invitedGuests = guests.filter((guest) => selectedIndividuals.has(String(guest.name || "").toLowerCase()) || (guest.types || []).some((type) => selectedGroups.has(String(type || "").toLowerCase())));
+    const invitedGuests = guests
+      .filter((guest) => selectedIndividuals.has(String(guest.name || "").toLowerCase()) || (guest.types || []).some((type) => selectedGroups.has(String(type || "").toLowerCase())))
+      .sort(compareGuestsByLastName);
 
     return `
       <div class="workspace-invitees">
@@ -6080,12 +6151,12 @@
           </label>
           <button class="button button--light" type="button" data-add-workspace-event-invitee>Add guest</button>
         </div>
-        ${invitedGuests.length ? `<details open><summary>View invited guests</summary><div class="workspace-invitees__choices">${invitedGuests.map((guest) => {
+        ${invitedGuests.length ? `<details open><summary>View invited guests</summary><ul class="workspace-invitees__guest-list">${invitedGuests.map((guest) => {
             const name = String(guest.name || "").trim();
             const includedByGroup = (guest.types || []).some((type) => selectedGroups.has(String(type || "").toLowerCase()));
             const individuallyAdded = selectedIndividuals.has(name.toLowerCase());
-            return `<span class="workspace-invitees__guest ${individuallyAdded && !includedByGroup ? "workspace-invitees__guest--removable" : ""}">${escapeHtml(name)}${individuallyAdded && !includedByGroup ? `<button type="button" class="workspace-invitees__remove" data-remove-workspace-event-invitee="${escapeHtml(name)}" aria-label="Remove ${escapeHtml(name)}">×</button>` : ""}</span>`;
-          }).join("")}</div></details>` : '<p class="meta">Select a group or add an individual guest.</p>'}
+            return `<li class="workspace-invitees__guest ${individuallyAdded && !includedByGroup ? "workspace-invitees__guest--removable" : ""}">${escapeHtml(name)}${individuallyAdded && !includedByGroup ? `<button type="button" class="workspace-invitees__remove" data-remove-workspace-event-invitee="${escapeHtml(name)}" aria-label="Remove ${escapeHtml(name)}">×</button>` : ""}</li>`;
+          }).join("")}</ul></details>` : '<p class="meta">Select a group or add an individual guest.</p>'}
       </div>
     `;
   }
@@ -6172,7 +6243,9 @@
     draft.invitees = JSON.stringify(invitationSelection);
     const selectedGroups = new Set(invitationSelection.groups.map((item) => item.toLowerCase()));
     const selectedIndividuals = new Set(invitationSelection.individuals.map((item) => item.toLowerCase()));
-    const invitedGuests = guestChoices.filter((guest) => selectedIndividuals.has(String(guest.name || "").toLowerCase()) || (guest.types || []).some((type) => selectedGroups.has(String(type || "").toLowerCase())));
+    const invitedGuests = guestChoices
+      .filter((guest) => selectedIndividuals.has(String(guest.name || "").toLowerCase()) || (guest.types || []).some((type) => selectedGroups.has(String(type || "").toLowerCase())))
+      .sort(compareGuestsByLastName);
     workspaceDraftContentEl.innerHTML = `
       <p class="eyebrow">${draft.isManual ? "Create an event" : "Review the plan"}</p>
       <h4>${escapeHtml(draft.title || "New event")}</h4>
@@ -6188,15 +6261,14 @@
           <div class="workspace-invitees__header"><h4>Who's invited?</h4><strong class="workspace-invitees__count">${invitedGuests.length} invited</strong></div>
           <div><strong>Include guest groups</strong><div class="workspace-invitees__choices workspace-invitees__choices--groups">${groupChoices.length ? groupChoices.map((group) => `<label class="workspace-invitees__choice"><input type="checkbox" data-workspace-invitee-group value="${escapeHtml(group)}" ${selectedGroups.has(String(group).toLowerCase()) ? "checked" : ""}>${escapeHtml(group)}</label>`).join("") : '<span class="meta">Group choices will load from the guest Type column.</span>'}</div></div>
           <div class="workspace-invitees__add"><label>Add an individual guest <select data-workspace-invitee-guest><option value="">Choose a guest…</option>${guestChoices.map((guest) => `<option value="${escapeHtml(guest.name)}">${escapeHtml(guest.name)}${guest.types?.length ? ` (${escapeHtml(guest.types.join(", "))})` : ""}</option>`).join("")}</select></label><button class="button button--light" type="button" data-add-workspace-invitee>Add guest</button></div>
-          ${invitedGuests.length ? `<details open><summary>View invited guests</summary><div class="workspace-invitees__choices">${invitedGuests.map((guest) => {
+          ${invitedGuests.length ? `<details open><summary>View invited guests</summary><ul class="workspace-invitees__guest-list">${invitedGuests.map((guest) => {
             const guestName = String(guest.name || "").trim();
             const guestKey = guestName.toLowerCase();
             const includedByGroup = (guest.types || []).some((type) => selectedGroups.has(String(type || "").toLowerCase()));
             const individuallyAdded = selectedIndividuals.has(guestKey);
-            return `<span class="workspace-invitees__guest ${individuallyAdded && !includedByGroup ? "workspace-invitees__guest--removable" : ""}">${escapeHtml(guestName)}${individuallyAdded && !includedByGroup ? `<button type="button" class="workspace-invitees__remove" data-remove-workspace-invitee="${escapeHtml(guestName)}" aria-label="Remove ${escapeHtml(guestName)} from this event" title="Remove ${escapeHtml(guestName)}">×</button>` : ""}</span>`;
-          }).join("")}</div></details>` : '<p class="meta">Select a group or add an individual guest.</p>'}
+            return `<li class="workspace-invitees__guest ${individuallyAdded && !includedByGroup ? "workspace-invitees__guest--removable" : ""}">${escapeHtml(guestName)}${individuallyAdded && !includedByGroup ? `<button type="button" class="workspace-invitees__remove" data-remove-workspace-invitee="${escapeHtml(guestName)}" aria-label="Remove ${escapeHtml(guestName)} from this event" title="Remove ${escapeHtml(guestName)}">×</button>` : ""}</li>`;
+          }).join("")}</ul></details>` : '<p class="meta">Select a group or add an individual guest.</p>'}
         </div>
-        <p class="meta">Inviting someone does not give them planner access.</p>
         <label>Notes <textarea name="notes" placeholder="Add any context for this event.">${escapeHtml(draft.notes || "")}</textarea></label>
         <div class="toolbar">
           <button class="button" type="submit">${draft.isManual ? "Create event" : "Create event page"}</button>
@@ -6208,7 +6280,10 @@
     workspaceDraftContentEl.querySelector("#workspaceDraftForm")?.addEventListener("submit", saveWorkspaceDraft);
     workspaceDraftContentEl.querySelectorAll("[data-title-case]").forEach((input) => {
       input.addEventListener("input", () => {
-        input.value = formatTitleCase(input.value).replace(/\.+$/u, "");
+        // Keep a just-entered space: formatTitleCase trims for saved labels, but
+        // trimming during typing makes it impossible to start the next word.
+        const trailingWhitespace = String(input.value || "").match(/\s+$/u)?.[0] || "";
+        input.value = `${formatTitleCase(input.value).replace(/\.+$/u, "")}${trailingWhitespace}`;
       });
     });
     workspaceDraftContentEl.querySelectorAll("[data-workspace-inline-mic]").forEach((button) => {
@@ -6292,6 +6367,7 @@
     recognition.__finalResultValues = new Map();
     workspaceInlineVoiceRecognitions.set(key, recognition);
     recognition.onstart = () => {
+      stopVoiceInputAfterListeningWindow(recognition);
       recognition.__baseValue = String(input.value || "").trim();
       recognition.__transcript = "";
       recognition.__finalResultValues = new Map();
@@ -6318,12 +6394,14 @@
       input.dispatchEvent(new Event("input", { bubbles: true }));
     };
     recognition.onerror = (errorEvent) => {
+      clearVoiceInputListeningWindow(recognition);
       if (["not-allowed", "service-not-allowed", "audio-capture"].includes(String(errorEvent.error || ""))) {
         recognition.__stoppedManually = true;
         setStatus(workspaceStatusEl, `Microphone access was not available. You can type the ${fallbackLabel} instead.`, "error");
       }
     };
     recognition.onend = () => {
+      clearVoiceInputListeningWindow(recognition);
       if (!recognition.__stoppedManually) {
         try {
           recognition.start();
@@ -6364,6 +6442,7 @@
     recognition.__finalResultValues = new Map();
     setRecognition(recognition);
     recognition.onstart = () => {
+      stopVoiceInputAfterListeningWindow(recognition);
       recognition.__baseValue = String(input.value || "").trim();
       recognition.__transcript = "";
       recognition.__finalResultValues = new Map();
@@ -6387,12 +6466,14 @@
       );
     };
     recognition.onerror = (errorEvent) => {
+      clearVoiceInputListeningWindow(recognition);
       if (["not-allowed", "service-not-allowed", "audio-capture"].includes(String(errorEvent.error || ""))) {
         recognition.__stoppedManually = true;
         setStatus(workspaceStatusEl, `Microphone access was not available. You can type the ${fallbackLabel} instead.`, "error");
       }
     };
     recognition.onend = () => {
+      clearVoiceInputListeningWindow(recognition);
       if (!recognition.__stoppedManually) {
         try {
           recognition.start();
@@ -6457,6 +6538,7 @@
     recognition.__finalResultValues = new Map();
     workspaceDraftRefineRecognition = recognition;
     recognition.onstart = () => {
+      stopVoiceInputAfterListeningWindow(recognition);
       recognition.__baseValue = String(input.value || "").trim();
       recognition.__transcript = "";
       recognition.__finalResultValues = new Map();
@@ -6480,12 +6562,14 @@
       );
     };
     recognition.onerror = (errorEvent) => {
+      clearVoiceInputListeningWindow(recognition);
       if (["not-allowed", "service-not-allowed", "audio-capture"].includes(String(errorEvent.error || ""))) {
         recognition.__stoppedManually = true;
         setStatus(workspaceStatusEl, "Microphone access was not available. You can type the request instead.", "error");
       }
     };
     recognition.onend = () => {
+      clearVoiceInputListeningWindow(recognition);
       if (!recognition.__stoppedManually) {
         try {
           recognition.start();
@@ -6567,10 +6651,9 @@
       return;
     }
 
-    const selectedDate = parseWorkspaceDate(selectedWorkspaceCalendarDate);
     workspaceDraftState = {
       title: "",
-      startsAt: selectedDate ? `${workspaceDateKey(selectedDate)}T12:00` : "",
+      startsAt: "2027-01-08T16:00",
       location: "",
       audience: "wedding_party",
       invitees: "",
@@ -6667,6 +6750,8 @@
       }
       setWorkspaceHubView(activeWorkspaceHubView);
       workspaceEventPageEl.hidden = true;
+      workspaceEventPageEl.classList.remove("workspace-event-page--has-save-bar");
+      workspaceStatusEl?.classList.remove("workspace-status--above-save-bar");
       return;
     }
     const isPlanningProject = !String(event.startsAt || "").trim();
@@ -6675,6 +6760,7 @@
       .sort((left, right) => Number(left.sortOrder || 0) - Number(right.sortOrder || 0));
     const lists = cachedWorkspaceLists.filter((list) => String(list.eventId || "") === event.id);
     const taskAssets = (taskId) => cachedWorkspaceAssets.filter((asset) => String(asset.taskId || "") === String(taskId || ""));
+    const associatedListForTask = (task) => lists.find((list) => String(list.id || "") === String(task.listId || ""));
     const renderTaskList = (listId) => {
       const list = lists.find((item) => String(item.id || "") === String(listId || ""));
       if (!list) return '<span class="meta">No list associated.</span>';
@@ -6751,6 +6837,16 @@
       const parsed = new Date(`${date}T12:00:00`);
       return Number.isNaN(parsed.getTime()) ? date : parsed.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
     };
+    const inlineTaskFields = (task) => canManageEvent ? `
+      <td data-label="Assigned to"><select data-update-workspace-task-field="assignedUserId" data-workspace-task-id="${escapeHtml(task.id)}" aria-label="Assigned to for ${escapeHtml(task.title || "task")}">${assigneeOptions(task.assignedUserId)}</select></td>
+      <td data-label="Due"><input type="date" value="${escapeHtml(String(task.dueAt || "").slice(0, 10))}" data-update-workspace-task-field="dueAt" data-workspace-task-id="${escapeHtml(task.id)}" aria-label="Due date for ${escapeHtml(task.title || "task")}"></td>
+    ` : `
+      <td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserId))}</td>
+      <td data-label="Due">${escapeHtml(formatTaskDueDate(task.dueAt))}</td>
+    `;
+    const associatedListCell = (task) => associatedListForTask(task)
+      ? `<td class="workspace-task-associated-list" data-label="Associated list">${renderTaskList(task.listId)}</td>`
+      : "";
     const taskPhotoButton = (task) => taskAssets(task.id).some((asset) => isSafeImageUrl(asset.assetUrl))
       ? `<button class="button button--icon button--light workspace-task-photo-button" type="button" data-view-workspace-task-photos="${escapeHtml(task.id)}" aria-label="View photos for ${escapeHtml(task.title || "task")}" title="View task photos"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="15" rx="2"></rect><path d="M8 5l1.5-2h5L16 5"></path><circle cx="12" cy="12.5" r="3.2"></circle></svg></button>`
       : "";
@@ -6786,23 +6882,24 @@
     });
     workspaceInlineVoiceRecognitions.clear();
     workspaceEventPageContentEl.innerHTML = `
-      <div class="workspace-event-title-row">
-        <h3>${escapeHtml(formatTitleCase(event.title || "Untitled event"))}</h3>
-        ${canManageEvent ? `<span class="workspace-event-title-actions"><button class="button button--icon button--light" type="button" data-edit-workspace-event-title aria-label="Edit event title" title="Edit title"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button><button class="button button--icon button--light workspace-event-delete-button" type="button" data-delete-workspace-event aria-label="Delete ${escapeHtml(event.title || "event")}" title="Delete event"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg></button></span>` : ""}
-      </div>
-      <div class="workspace-event-tabs" role="tablist" aria-label="${isPlanningProject ? "Planning project" : "Event"} workspace sections">
-        <button class="workspace-event-tab ${activeWorkspaceEventTab === "details" ? "is-active" : ""}" type="button" role="tab" aria-selected="${activeWorkspaceEventTab === "details"}" data-workspace-event-tab="details">${isPlanningProject ? "Project details" : "Event details"}</button>
-        <button class="workspace-event-tab ${activeWorkspaceEventTab === "tasks" ? "is-active" : ""}" type="button" role="tab" aria-selected="${activeWorkspaceEventTab === "tasks"}" data-workspace-event-tab="tasks">Tasks</button>
-        <button class="workspace-event-tab ${activeWorkspaceEventTab === "lists" ? "is-active" : ""}" type="button" role="tab" aria-selected="${activeWorkspaceEventTab === "lists"}" data-workspace-event-tab="lists">Event lists</button>
+      <div class="workspace-event-sticky-header">
+        <div class="workspace-event-title-row">
+          <h3>${escapeHtml(formatTitleCase(event.title || "Untitled event"))}</h3>
+          ${canManageEvent ? `<span class="workspace-event-title-actions"><button class="button button--icon button--light" type="button" data-edit-workspace-event-title aria-label="Edit event title" title="Edit title"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button><button class="button button--icon button--light workspace-event-delete-button" type="button" data-delete-workspace-event aria-label="Delete ${escapeHtml(event.title || "event")}" title="Delete event"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg></button></span>` : ""}
+        </div>
+        <div class="workspace-event-tabs" role="tablist" aria-label="${isPlanningProject ? "Planning project" : "Event"} workspace sections">
+          <button class="workspace-event-tab ${activeWorkspaceEventTab === "details" ? "is-active" : ""}" type="button" role="tab" aria-selected="${activeWorkspaceEventTab === "details"}" data-workspace-event-tab="details">${isPlanningProject ? "Project details" : "Event details"}</button>
+          <button class="workspace-event-tab ${activeWorkspaceEventTab === "tasks" ? "is-active" : ""}" type="button" role="tab" aria-selected="${activeWorkspaceEventTab === "tasks"}" data-workspace-event-tab="tasks">Tasks</button>
+          <button class="workspace-event-tab ${activeWorkspaceEventTab === "lists" ? "is-active" : ""}" type="button" role="tab" aria-selected="${activeWorkspaceEventTab === "lists"}" data-workspace-event-tab="lists">Lists</button>
+        </div>
       </div>
       <section class="workspace-event-tab-panel" data-workspace-event-tab-panel="details" ${activeWorkspaceEventTab === "details" ? "" : "hidden"}>
         <form id="workspaceEventEditForm">
-          ${isPlanningProject ? `<label>Project name <input name="title" value="${escapeHtml(event.title || "")}" required></label>` : `<div class="workspace-event-details-fields"><label>Date <input name="eventDate" type="date" value="${escapeHtml(eventDateTime.date)}"></label><label>Time <input name="eventTime" type="time" value="${escapeHtml(eventDateTime.time)}"></label><label>Location <input name="location" value="${escapeHtml(event.location || "")}" placeholder="Where will this happen?"></label></div>`}
+          ${isPlanningProject ? `<label>Project name <input name="title" value="${escapeHtml(event.title || "")}" required></label>` : `<div class="workspace-event-details-fields"><label><span>Date</span><input name="eventDate" type="date" value="${escapeHtml(eventDateTime.date)}"></label><label><span>Time</span><input name="eventTime" type="time" value="${escapeHtml(eventDateTime.time)}"></label><label><span>Location</span><input name="location" value="${escapeHtml(event.location || "")}" placeholder="Where will this happen?"></label></div>`}
+          <label class="workspace-event-details-notes"><span>Notes</span><textarea name="notes" placeholder="Plans, decisions, or helpful context.">${escapeHtml(event.notes || "")}</textarea></label>
           <section class="workspace-invitees-card">
             ${renderWorkspaceEventInvitees(event)}
-            <p class="meta">Inviting someone does not give them planner access.</p>
           </section>
-          <label>Notes <textarea name="notes" placeholder="Plans, decisions, or helpful context.">${escapeHtml(event.notes || "")}</textarea></label>
           <button class="button button--light" type="submit">Save ${isPlanningProject ? "project" : "event"} details</button>
         </form>
       </section>
@@ -6823,11 +6920,10 @@
           <tr class="workspace-event-task-edit workspace-task-accordion ${String(task.status || "").trim().toLowerCase() === "done" ? "is-complete" : ""}" data-workspace-task-id="${escapeHtml(task.id)}">
             <td class="workspace-task-table__order" data-label="Order"><button class="button button--icon button--light workspace-task-drag-handle" type="button" draggable="true" data-workspace-task-drag-handle aria-label="Drag to reorder ${escapeHtml(task.title || "task")}" title="Drag to reorder"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6h.01"></path><path d="M9 12h.01"></path><path d="M9 18h.01"></path><path d="M15 6h.01"></path><path d="M15 12h.01"></path><path d="M15 18h.01"></path></svg></button></td>
             <td data-label="Task"><span class="workspace-task-title-with-photo"><button class="workspace-task-accordion-toggle" type="button" data-workspace-task-accordion aria-expanded="false">${escapeHtml(task.title || "Untitled task")}</button>${taskPhotoButton(task)}${taskListButton(task)}</span></td>
-            <td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserId))}</td>
-            <td data-label="Due">${escapeHtml(formatTaskDueDate(task.dueAt))}</td>
-            <td class="workspace-task-associated-list" data-label="Associated list">${renderTaskList(task.listId)}</td>
+            ${inlineTaskFields(task)}
+            ${associatedListCell(task)}
             <td class="workspace-task-table__actions" data-label="Actions"><button class="button button--icon button--light workspace-task-icon-button" type="button" data-edit-workspace-task="${escapeHtml(task.id)}" aria-label="Edit ${escapeHtml(task.title || "task")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button><button class="button button--icon button--light workspace-task-icon-button" type="button" data-delete-workspace-task="${escapeHtml(task.id)}" aria-label="Remove ${escapeHtml(task.title || "task")}" title="Remove"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg></button></td>
-          </tr>` : `<tr class="workspace-task-accordion ${String(task.status || "").trim().toLowerCase() === "done" ? "is-complete" : ""}"><td data-label="Task"><span class="workspace-task-title-with-photo"><button class="workspace-task-accordion-toggle" type="button" data-workspace-task-accordion aria-expanded="false">${escapeHtml(task.title || "Untitled task")}</button>${taskPhotoButton(task)}${taskListButton(task)}</span></td><td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserId))}</td><td data-label="Due">${escapeHtml(formatTaskDueDate(task.dueAt))}</td><td class="workspace-task-associated-list" data-label="Associated list">${renderTaskList(task.listId)}</td></tr>`).join("")}</tbody>
+          </tr>` : `<tr class="workspace-task-accordion ${String(task.status || "").trim().toLowerCase() === "done" ? "is-complete" : ""}"><td data-label="Task"><span class="workspace-task-title-with-photo"><button class="workspace-task-accordion-toggle" type="button" data-workspace-task-accordion aria-expanded="false">${escapeHtml(task.title || "Untitled task")}</button>${taskPhotoButton(task)}${taskListButton(task)}</span></td>${inlineTaskFields(task)}${associatedListCell(task)}</tr>`).join("")}</tbody>
       </table>` : '<p class="meta">No tasks yet.</p>'}</div>
       <section class="modal" id="workspaceTaskPhotosModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-photos-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskPhotosModalTitle"><button class="modal__close" type="button" data-close-workspace-task-photos-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskPhotosModalTitle">Task snapshots</h3></div></div><div class="workspace-task-photo-viewer" id="workspaceTaskPhotosModalContent"></div></div></section>
       <section class="modal" id="workspaceTaskListModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-list-modal></div><div class="modal__dialog workspace-list-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskListModalTitle"><button class="modal__close" type="button" data-close-workspace-task-list-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskListModalTitle">List</h3></div></div><div class="workspace-checklist__items" id="workspaceTaskListModalContent"></div></div></section>
@@ -6843,7 +6939,48 @@
       }).join("") : '<p class="meta">No lists yet.</p>'}</div>
       <form id="workspaceEventListForm" class="workspace-quick-form"><label>New list <input name="title" required placeholder="Breakfast shopping list"></label><label>Items <textarea name="items" required placeholder="Coffee&#10;Fruit&#10;Pastries"></textarea></label><button class="button button--light" type="submit">Add list</button></form>
       </section>
+      ${canManageEvent ? `<div class="workspace-save-bar" id="workspaceSaveBar" role="region" aria-label="Save changes"><button class="button workspace-save-bar__button" id="workspaceSaveBarButton" type="submit" form="workspaceEventEditForm">Save event details</button></div>` : ""}
     `;
+    workspaceStickyHeaderObserver?.disconnect();
+    const stickyHeader = workspaceEventPageContentEl.querySelector(".workspace-event-sticky-header");
+    const syncStickyHeaderHeight = () => {
+      if (!stickyHeader) return;
+      workspaceEventPageEl.style.setProperty("--workspace-event-sticky-header-height", `${stickyHeader.getBoundingClientRect().height}px`);
+    };
+    syncStickyHeaderHeight();
+    if (stickyHeader && "ResizeObserver" in window) {
+      workspaceStickyHeaderObserver = new ResizeObserver(syncStickyHeaderHeight);
+      workspaceStickyHeaderObserver.observe(stickyHeader);
+    }
+    const detailsForm = workspaceEventPageContentEl.querySelector("#workspaceEventEditForm");
+    const formSignature = (form) => new URLSearchParams(new FormData(form)).toString();
+    const detailsBaseline = workspaceEventDetailsBaselines.get(event.id) || {
+      event: { ...event },
+      signature: detailsForm ? formSignature(detailsForm) : ""
+    };
+    workspaceEventDetailsBaselines.set(event.id, detailsBaseline);
+    const isDetailsDirty = () => Boolean(detailsForm) && formSignature(detailsForm) !== detailsBaseline.signature;
+    const updateWorkspaceSaveBar = () => {
+      const bar = workspaceEventPageContentEl.querySelector("#workspaceSaveBar");
+      const button = workspaceEventPageContentEl.querySelector("#workspaceSaveBarButton");
+      if (!bar || !button) return;
+      const actions = {
+        details: {
+          form: "workspaceEventEditForm",
+          label: `Save ${isPlanningProject ? "project" : "event"} details`
+        },
+        tasks: { form: "workspaceEventTaskForm", label: "Add task" },
+        lists: { form: "workspaceEventListForm", label: "Add list" }
+      };
+      const action = actions[activeWorkspaceEventTab] || actions.details;
+      const form = workspaceEventPageContentEl.querySelector(`#${action.form}`);
+      bar.hidden = !form || (activeWorkspaceEventTab === "details" && !isDetailsDirty());
+      button.setAttribute("form", action.form);
+      button.textContent = action.label;
+      workspaceEventPageEl.classList.toggle("workspace-event-page--has-save-bar", !bar.hidden);
+      workspaceStatusEl?.classList.toggle("workspace-status--above-save-bar", !bar.hidden);
+    };
+    updateWorkspaceSaveBar();
     workspaceEventPageContentEl.querySelector("[data-edit-workspace-event-title]")?.addEventListener("click", () => {
       const title = window.prompt("Event title", event.title || "");
       if (title === null) return;
@@ -6908,7 +7045,7 @@
       formEvent.preventDefault();
       const form = formEvent.currentTarget;
       const data = Object.fromEntries(new FormData(form).entries());
-      const previousEvent = { ...event };
+      const previousEvent = { ...(workspaceEventDetailsBaselines.get(event.id)?.event || event) };
       const optimisticEvent = {
         ...event,
         title: String(data.title || event.title || "").trim(),
@@ -6920,6 +7057,7 @@
       Object.assign(event, optimisticEvent);
       upsertCachedWorkspaceEvent(optimisticEvent);
       savePlannerSessionCache();
+      workspaceEventDetailsBaselines.delete(event.id);
       renderWorkspaceEventPage();
       setStatus(workspaceStatusEl, `${isPlanningProject ? "Project" : "Event"} updated. Saving in the background…`, "pending");
 
@@ -6951,8 +7089,11 @@
         workspaceEventPageContentEl.querySelectorAll("[data-workspace-event-tab-panel]").forEach((panel) => {
           panel.hidden = panel.dataset.workspaceEventTabPanel !== activeWorkspaceEventTab;
         });
+        updateWorkspaceSaveBar();
       });
     });
+    detailsForm?.addEventListener("input", updateWorkspaceSaveBar);
+    detailsForm?.addEventListener("change", updateWorkspaceSaveBar);
     const saveEventDetailsDraft = () => {
       const form = workspaceEventPageContentEl.querySelector("#workspaceEventEditForm");
       if (!form) return;
@@ -6968,6 +7109,7 @@
       const selection = parseWorkspaceInvitationSelection(hidden?.value);
       selection.groups = Array.from(form?.querySelectorAll("[data-workspace-event-invitee-group]:checked") || []).map((item) => String(item.value || "").trim()).filter(Boolean);
       if (hidden) hidden.value = JSON.stringify(selection);
+      updateWorkspaceSaveBar();
     }));
     workspaceEventPageContentEl.querySelector("[data-add-workspace-event-invitee]")?.addEventListener("click", () => {
       saveEventDetailsDraft();
@@ -7356,6 +7498,36 @@
       }
     });
 
+    workspaceEventPageContentEl.querySelectorAll("[data-update-workspace-task-field]").forEach((field) => {
+      field.addEventListener("change", async () => {
+        const taskId = String(field.dataset.workspaceTaskId || "").trim();
+        const property = String(field.dataset.updateWorkspaceTaskField || "").trim();
+        const existingTask = cachedWorkspaceTasks.find((task) => String(task.id || "") === taskId);
+        if (!existingTask || !["assignedUserId", "dueAt"].includes(property)) return;
+
+        const previousTask = { ...existingTask };
+        const optimisticTask = { ...existingTask, [property]: String(field.value || ""), eventId: event.id };
+        field.disabled = true;
+        upsertCachedWorkspaceTask(optimisticTask);
+        savePlannerSessionCache();
+        setStatus(workspaceStatusEl, "Saving task…", "pending");
+
+        try {
+          const savedTask = await backendRequest("saveWorkspaceTask", optimisticTask);
+          upsertCachedWorkspaceTask(savedTask);
+          savePlannerSessionCache();
+          setStatus(workspaceStatusEl, "Task updated.", "success");
+        } catch (error) {
+          upsertCachedWorkspaceTask(previousTask);
+          savePlannerSessionCache();
+          renderWorkspaceEventPage();
+          setStatus(workspaceStatusEl, error.message || "Unable to update task.", "error");
+        } finally {
+          field.disabled = false;
+        }
+      });
+    });
+
     workspaceEventPageContentEl.querySelectorAll("[data-workspace-task-accordion]").forEach((button) => {
       button.addEventListener("click", () => {
         if (!window.matchMedia("(max-width: 860px)").matches) return;
@@ -7508,6 +7680,18 @@
     });
   }
 
+  function openWorkspaceEvent(eventId, tab = "details") {
+    selectedWorkspaceEventId = String(eventId || "").trim();
+    if (!selectedWorkspaceEventId) return;
+
+    activeWorkspaceEventTab = tab;
+    window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
+    window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+    setActivePlannerPanel("workspace");
+    renderWorkspaceEventPage();
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+  }
+
   function upsertCachedWorkspaceTask(savedTask) {
     const id = String(savedTask?.id || "").trim();
     if (!id) return;
@@ -7597,7 +7781,10 @@
       return;
     }
 
+    window.localStorage.setItem(STORAGE_KEYS.authToken, credential);
     window.sessionStorage.setItem(STORAGE_KEYS.authToken, credential);
+    googleCredentialPromptPending = false;
+    plannerReconnectGoogleButton.hidden = true;
     const cacheShown = showCachedPlannerWhileVerifying(getGoogleCredentialEmail(credential));
     setStatus(plannerLoginStatusEl, "Checking Google account access...", "pending");
 
@@ -7613,6 +7800,7 @@
       }
 
       setStatus(plannerLoginStatusEl, "Dashboard access granted.", "success");
+      clearStoredGoogleCredential();
       await maybeLoadPlannerData();
       await refreshPlannerVersionInfo();
     } catch (error) {
@@ -7653,7 +7841,13 @@
     if (!googleSignInReady) {
       window.google.accounts.id.initialize({
         client_id: clientId,
-        callback: handleGoogleCredentialResponse
+        callback: handleGoogleCredentialResponse,
+        // Google always keeps the user in control of this flow. For a
+        // returning planner with one approved Google account, this supplies a
+        // fresh ID token after the previous one expires instead of making the
+        // dashboard look as though they deliberately signed out.
+        auto_select: true,
+        cancel_on_tap_outside: false
       });
       googleSignInReady = true;
     }
@@ -7668,9 +7862,30 @@
     });
   }
 
+  function requestGoogleCredentialRefresh() {
+    renderGoogleSignIn();
+    // The current dashboard can stay on screen from its local cache while an
+    // ID token has expired. Its normal sign-in control is in the hidden
+    // sidebar at that point, so expose a direct recovery action in the header.
+    plannerReconnectGoogleButton.hidden = false;
+    if (!window.google?.accounts?.id?.prompt) return;
+    if (googleCredentialPromptPending) return;
+    googleCredentialPromptPending = true;
+
+    window.google.accounts.id.prompt((notification) => {
+      googleCredentialPromptPending = false;
+      if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.() || notification.isDismissedMoment?.()) {
+        setStatus(plannerSyncStatusEl, "Google needs your attention. Select Reconnect Google, then choose the invited account.", "pending");
+      }
+      // A person can suppress One Tap or have multiple Google accounts. The
+      // regular button remains visible in that case, with saved planner data
+      // left in place rather than treating this as a logout.
+    });
+  }
+
   async function backendRequest(method, payload) {
     const rpcUrl = getRpcUrl();
-    const authToken = getStoredAuthToken();
+    const authToken = getStoredSessionToken() || getStoredAuthToken();
 
     if (!rpcUrl) {
       throw new Error("Planner backend URL is not configured yet.");
@@ -7690,6 +7905,7 @@
         const requestTimeout = window.setTimeout(() => controller.abort(), requestTimeoutMs);
         const response = await fetch(rpcUrl, {
           method: "POST",
+          credentials: "include",
           headers: {
             "Content-Type": "text/plain;charset=utf-8"
           },
@@ -7702,18 +7918,13 @@
         });
         window.clearTimeout(requestTimeout);
         const result = await response.json();
+        if (result?.sessionToken) window.localStorage.setItem(STORAGE_KEYS.sessionToken, String(result.sessionToken));
         if (result?.ok) return result.data;
 
         const message = String(result?.error || "Planner request failed.");
         if (/Please sign in with Google first\./i.test(message)) {
-          clearStoredAuthToken();
-          viewerProfile = {
-            signedIn: false,
-            email: "",
-            isAdmin: false
-          };
-          renderRoute();
-          throw new Error("Please sign in with a Google account that has access to the planner sheet.");
+          requestGoogleCredentialRefresh();
+          throw new Error("Your Google session needs a quick refresh. Your saved dashboard is still available while Google reconnects you.");
         }
         if (retryableRead && attempt < attempts - 1 && /Apps Script upstream returned (404|502|503|504)|Apps Script upstream did not return JSON/i.test(message)) {
           lastError = new Error(message);
@@ -7790,7 +8001,7 @@
       },
       {
         key: "eventLists",
-        label: "Event lists",
+        label: "Lists",
         run: () => backendRequest("listEventLists", {}).catch((error) => {
           const message = String(error?.message || "");
           if (/Unknown RPC method:\s*listEventLists/i.test(message)) {
@@ -7831,15 +8042,7 @@
 
   async function refreshViewer() {
     const authToken = getStoredAuthToken();
-    if (!authToken) {
-      viewerProfile = {
-        signedIn: false,
-        email: "",
-        isAdmin: false
-      };
-      renderRoute();
-      return false;
-    }
+    const previousProfile = { ...viewerProfile };
 
     // This endpoint verifies the Google credential and determines workspace
     // access together. Keeping it to one request avoids making people wait for
@@ -7869,13 +8072,17 @@
       accessLevel: String(workspaceProfile?.accessLevel || "").trim()
     };
 
-    if (!viewerProfile.signedIn) {
-      clearStoredAuthToken();
+    if (!viewerProfile.signedIn && (previousProfile.isAdmin || previousProfile.hasWorkspaceAccess)) {
+      // This is normally an expired ID token, not a user-driven sign-out.
+      // Retain the previously restored profile/cache and ask GIS for a fresh
+      // token, so an intermittent refresh does not collapse the dashboard.
       viewerProfile = {
-        signedIn: false,
-        email: "",
-        isAdmin: false
+        ...previousProfile,
+        signedIn: true
       };
+      requestGoogleCredentialRefresh();
+    } else if (!viewerProfile.signedIn) {
+      clearStoredAuthToken();
     }
 
     renderRoute();
@@ -7958,8 +8165,11 @@
       if (!canUsePlanner() || !restorePlannerSessionCache()) return false;
       renderRoute();
       renderRestoredPlannerCache();
+      plannerDataReady = true;
+      renderRoute();
       plannerContentEl.hidden = false;
       setStatus(plannerSyncStatusEl, "Showing saved planner data while checking account access…", "pending");
+      restorePlannerScrollPosition();
       return true;
     } catch (_) {
       return false;
@@ -8015,10 +8225,17 @@
       return;
     }
 
+    if (!plannerDataReady && plannerLoadingMessageEl) {
+      plannerLoadingMessageEl.textContent = "Loading your dashboard…";
+    }
+
     if (restorePlannerSessionCache()) {
       renderRestoredPlannerCache();
+      plannerDataReady = true;
+      renderRoute();
       plannerContentEl.hidden = false;
       setStatus(plannerSyncStatusEl, "Showing saved planner data while checking for updates…", "pending");
+      restorePlannerScrollPosition();
     }
 
     try {
@@ -8046,12 +8263,18 @@
         setStatus(guestsStatusEl, `Loaded ${cachedGuests.length} rows from Guests.`, "success");
       }
     } catch (error) {
+      if (plannerLoadingMessageEl) {
+        plannerLoadingMessageEl.textContent = "We couldn’t load your dashboard. Please refresh and try again.";
+      }
       setStatus(plannerSyncStatusEl, error.message || "Unable to load planner data.", "error");
       return;
     }
     if (!rsvpFeedConnected) await refreshRsvps();
     savePlannerSessionCache();
+    plannerDataReady = true;
+    renderRoute();
     plannerContentEl.hidden = false;
+    restorePlannerScrollPosition();
   }
 
   function requirePlannerAccess() {
@@ -8798,23 +9021,18 @@ function sortTables(items) {
     }
   }
 
-  plannerSignOutButton.addEventListener("click", () => {
-    clearStoredAuthToken();
-    if (window.google?.accounts?.id?.disableAutoSelect) {
-      window.google.accounts.id.disableAutoSelect();
-    }
-    openPlannerSidebar();
-    viewerProfile = {
-      signedIn: false,
-      email: "",
-      isAdmin: false
-    };
-    renderRoute();
-    setStatus(plannerLoginStatusEl, "Signed out of the dashboard.", "success");
-  });
-
   plannerMenuToggleButton.addEventListener("click", () => {
     togglePlannerSidebar();
+  });
+
+  plannerReconnectGoogleButton?.addEventListener("click", () => {
+    setStatus(plannerSyncStatusEl, "Opening Google sign-in…", "pending");
+    // A previous One Tap attempt can remain pending after a browser restores
+    // the page. Cancel that passive attempt so this intentional click starts
+    // a new credential request.
+    window.google?.accounts?.id?.cancel?.();
+    googleCredentialPromptPending = false;
+    requestGoogleCredentialRefresh();
   });
 
   personForm.addEventListener("submit", async (event) => {
@@ -10195,39 +10413,18 @@ function sortTables(items) {
   });
 
   workspaceCalendarEl?.addEventListener("click", (event) => {
-    const taskButton = event.target.closest("[data-edit-calendar-task]");
-    if (taskButton) {
-      selectedWorkspaceEventId = String(taskButton.dataset.calendarEventId || "").trim();
-      activeWorkspaceEventTab = "tasks";
-      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
-      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
-      setActivePlannerPanel("workspace");
-      renderWorkspaceEventPage();
-      workspaceEventPageContentEl?.querySelector(`[data-edit-workspace-task="${CSS.escape(String(taskButton.dataset.editCalendarTask || ""))}"]`)?.click();
-      return;
-    }
     const button = event.target.closest("[data-open-workspace-event]");
     if (button) {
-      selectedWorkspaceEventId = String(button.dataset.openWorkspaceEvent || "").trim();
-      activeWorkspaceEventTab = "details";
-      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
-      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
-      setActivePlannerPanel("workspace");
-      renderWorkspaceEventPage();
+      openWorkspaceEvent(button.dataset.openWorkspaceEvent);
       return;
     }
     const dateButton = event.target.closest("[data-workspace-calendar-date]");
     if (!dateButton) return;
     selectedWorkspaceCalendarDate = String(dateButton.dataset.workspaceCalendarDate || "").trim();
     window.sessionStorage.setItem(STORAGE_KEYS.workspaceCalendarDate, selectedWorkspaceCalendarDate);
-    if (window.matchMedia("(max-width: 760px)").matches) {
-      workspaceCalendarListDateFilter = selectedWorkspaceCalendarDate;
-      setWorkspaceCalendarView("list");
-      renderWorkspaceEventDirectory();
-      return;
-    }
-    setWorkspaceCalendarView("day");
-    renderWorkspace();
+    workspaceCalendarListDateFilter = selectedWorkspaceCalendarDate;
+    setWorkspaceCalendarView("list");
+    renderWorkspaceEventDirectory();
   });
 
   workspaceCalendarViewTabsEl?.addEventListener("click", (event) => {
@@ -10260,12 +10457,7 @@ function sortTables(items) {
   workspaceEventDirectoryListEl?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-open-workspace-event]");
     if (!button) return;
-    selectedWorkspaceEventId = String(button.dataset.openWorkspaceEvent || "").trim();
-    activeWorkspaceEventTab = "details";
-    window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
-    window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
-    setActivePlannerPanel("workspace");
-    renderWorkspaceEventPage();
+    openWorkspaceEvent(button.dataset.openWorkspaceEvent);
   });
 
   workspaceCaptureForm?.addEventListener("submit", async (event) => {
@@ -10277,23 +10469,53 @@ function sortTables(items) {
     try {
       requirePlannerAccess();
       if (isProject) {
-        if (planButton) {
-          planButton.disabled = true;
-          planButton.textContent = "Creating project…";
-          planButton.classList.add("workspace-action-button--pending");
-          planButton.setAttribute("aria-busy", "true");
-        }
-        const savedProject = await backendRequest("saveWorkspaceEvent", { title, startsAt: "" });
+        // A project does not need any generated content. Show it immediately
+        // and persist it in the background, rather than waiting for the save
+        // plus a full six-collection Google Sheets refresh.
+        const now = new Date().toISOString();
+        const optimisticProject = {
+          id: createClientId("workspace_event"),
+          title,
+          startsAt: "",
+          endsAt: "",
+          location: "",
+          audience: "private",
+          assignedUserIds: [],
+          invitees: "",
+          notes: "",
+          createdAt: now,
+          updatedAt: now
+        };
+        upsertCachedWorkspaceEvent(optimisticProject);
+        savePlannerSessionCache();
         workspaceCaptureForm.reset();
-        await refreshWorkspaceCollections();
-        selectedWorkspaceEventId = String(savedProject?.id || "").trim();
+        selectedWorkspaceEventId = optimisticProject.id;
         activeWorkspaceEventTab = "tasks";
-        if (selectedWorkspaceEventId) {
-          window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
-          window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
-          renderWorkspaceEventPage();
-        }
-        setStatus(workspaceStatusEl, `Created “${title}”. Add its smaller tasks below.`, "success");
+        window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
+        window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+        renderWorkspaceEventPage();
+        setStatus(workspaceStatusEl, `Created “${title}”. Saving in the background…`, "pending");
+
+        void (async () => {
+          try {
+            const savedProject = await backendRequest("saveWorkspaceEvent", optimisticProject);
+            upsertCachedWorkspaceEvent(savedProject);
+            savePlannerSessionCache();
+            renderWorkspaceEventPage();
+            setStatus(workspaceStatusEl, `Created “${title}”. Add its smaller tasks below.`, "success");
+          } catch (error) {
+            cachedWorkspaceEvents = cachedWorkspaceEvents.filter((item) => String(item.id || "") !== optimisticProject.id);
+            savePlannerSessionCache();
+            if (selectedWorkspaceEventId === optimisticProject.id) {
+              selectedWorkspaceEventId = "";
+              activeWorkspaceEventTab = "details";
+              window.sessionStorage.removeItem(STORAGE_KEYS.workspaceEventId);
+              window.sessionStorage.removeItem(STORAGE_KEYS.workspaceEventTab);
+              renderWorkspaceEventPage();
+            }
+            setStatus(workspaceStatusEl, error.message || "Unable to save this project.", "error");
+          }
+        })();
       } else {
         setWorkspacePlanButton(planButton, true);
         await makeWorkspaceDraft(title);
@@ -10301,11 +10523,6 @@ function sortTables(items) {
     } catch (error) {
       setStatus(workspaceStatusEl, error.message || (isProject ? "Unable to create the planning project." : "Unable to make a plan from that yet."), "error");
     } finally {
-      if (isProject && planButton) {
-        planButton.disabled = false;
-        planButton.classList.remove("workspace-action-button--pending");
-        planButton.removeAttribute("aria-busy");
-      }
       setWorkspacePlanButton(planButton, false);
       syncWorkspaceCreationType();
     }
@@ -10337,6 +10554,7 @@ function sortTables(items) {
     recognition.__finalResultValues = new Map();
     workspaceCaptureRecognition = recognition;
     recognition.onstart = () => {
+      stopVoiceInputAfterListeningWindow(recognition);
       recognition.__baseValue = String(workspaceCapturePromptEl?.value || "").trim();
       recognition.__transcript = "";
       recognition.__finalResultValues = new Map();
@@ -10362,6 +10580,7 @@ function sortTables(items) {
       }
     };
     recognition.onerror = (errorEvent) => {
+      clearVoiceInputListeningWindow(recognition);
       const error = String(errorEvent.error || "");
       if (["not-allowed", "service-not-allowed", "audio-capture"].includes(error)) {
         recognition.__stoppedManually = true;
@@ -10369,6 +10588,7 @@ function sortTables(items) {
       }
     };
     recognition.onend = () => {
+      clearVoiceInputListeningWindow(recognition);
       if (!recognition.__stoppedManually) {
         try {
           recognition.start();
@@ -10508,6 +10728,20 @@ function sortTables(items) {
     }
 
     closePlannerSidebar();
+  });
+
+  if ("scrollRestoration" in window.history) {
+    window.history.scrollRestoration = "manual";
+  }
+
+  window.addEventListener("scroll", () => {
+    if (currentView !== "planner" || !canUsePlanner()) return;
+    window.clearTimeout(plannerScrollSaveTimer);
+    plannerScrollSaveTimer = window.setTimeout(savePlannerScrollPosition, 150);
+  }, { passive: true });
+
+  window.addEventListener("pagehide", () => {
+    if (currentView === "planner" && canUsePlanner()) savePlannerScrollPosition();
   });
 
   window.addEventListener("popstate", () => {

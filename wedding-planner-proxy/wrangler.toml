@@ -1,3 +1,12 @@
 name = "hope-caleb-wedding-planner-proxy"
 main = "src/index.ts"
 compatibility_date = "2026-06-03"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "PLANNER_SESSIONS"
+id = "7de2ae61852e489d98503d614b87977d"
+
+[vars]
+PLANNER_ORIGIN = "https://hope-caleb.site"
+GOOGLE_CLIENT_ID = "1013045170295-uqapcrbk5aie1megfqa8jk62t87b2kha.apps.googleusercontent.com"
