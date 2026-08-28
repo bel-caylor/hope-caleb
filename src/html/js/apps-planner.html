@@ -45,6 +45,7 @@
   const eventIncludedPeopleModal = document.querySelector("#eventIncludedPeopleModal");
   const eventPromptModal = document.querySelector("#eventPromptModal");
   const openEventModalButton = document.querySelector("#openEventModal");
+  const openCalendarEventModalButton = document.querySelector("#openCalendarEventModal");
   const shotModal = document.querySelector("#shotModal");
   const openShotModalButton = document.querySelector("#openShotModal");
   const bedModal = document.querySelector("#bedModal");
@@ -79,7 +80,6 @@
   const eventAssignedToFilterEl = document.querySelector("#eventAssignedToFilter");
   const eventAssignedToFilterSummaryEl = document.querySelector("#eventAssignedToFilterSummary");
   const todoAssignedToFilterEl = document.querySelector("#todoAssignedToFilter");
-  const todoAssignedToFilterSummaryEl = document.querySelector("#todoAssignedToFilterSummary");
   const todoGroupToggleButtons = Array.from(document.querySelectorAll("[data-todo-group-by]"));
   const eventDetailShellEl = document.querySelector("#eventDetailShell");
   const eventIncludedPeopleModalSummaryEl = document.querySelector("#eventIncludedPeopleModalSummary");
@@ -116,7 +116,6 @@
   const plannerUnlockedEl = document.querySelector("#plannerUnlocked");
   const plannerSectionButtons = Array.from(document.querySelectorAll("[data-planner-section]"));
   const plannerPanels = Array.from(document.querySelectorAll("[data-planner-panel]"));
-  const legacyPlannerDetailsEl = document.querySelector("#legacyPlannerDetails");
   const plannerSidebarMediaQuery = window.matchMedia("(max-width: 860px)");
   const EventWorkspaceSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
   let pendingTodoPhoto = null;
@@ -153,6 +152,7 @@
   let activeWorkspaceHubView = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceHubView) || "create").trim() || "create";
   let activeWorkspaceCalendarView = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarView) || "month").trim() || "month";
   let selectedWorkspaceCalendarDate = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarDate) || "").trim();
+  let workspaceCalendarListDateFilter = "";
   let workspaceCalendarMonth = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarMonth) || "").trim();
   let plannerCacheHydrated = false;
   let workspaceCaptureRecognition = null;
@@ -165,7 +165,7 @@
   let selectedEventDate = "";
   let selectedEventAssignedTo = [];
   let selectedTodoAssignedTo = [];
-  let todoGroupBy = "event";
+  let todoGroupBy = "due";
   let selectedEventDetailId = "";
   let activeEventDetailTab = "overview";
   const openEventDetailAccordionSections = new Set();
@@ -189,6 +189,7 @@
   let viewerProfile = {
     signedIn: false,
     email: "",
+    userId: "",
     isAdmin: false,
     hasWorkspaceAccess: false,
     accessLevel: ""
@@ -434,9 +435,6 @@
     plannerSectionButtons.forEach((button) => {
       button.hidden = !viewerProfile.isAdmin && !["workspace", "calendar"].includes(button.dataset.plannerSection);
     });
-    if (legacyPlannerDetailsEl) {
-      legacyPlannerDetailsEl.hidden = !viewerProfile.isAdmin;
-    }
     setActivePlannerPanel(activePlannerPanel);
     syncPlannerSidebar();
     updateViewerState();
@@ -469,7 +467,7 @@
         guests: "Guests",
         tables: "Tables",
         people: "People & Vendors",
-        "planner-users": "Contacts & Messaging",
+        "planner-users": "Users",
         beds: "Beds",
         events: "Timeline",
         "event-detail": "Event Details",
@@ -479,10 +477,6 @@
       plannerPageTitleEl.textContent = pageTitles[nextPanel] || "Wedding Planner";
     }
     const navPanel = nextPanel === "event-detail" ? "events" : nextPanel;
-    if (legacyPlannerDetailsEl) {
-      legacyPlannerDetailsEl.open = ["events", "shots"].includes(navPanel);
-    }
-
     plannerSectionButtons.forEach((button) => {
       const isActive = button.dataset.plannerSection === navPanel;
       button.classList.toggle("is-active", isActive);
@@ -695,27 +689,18 @@
       .sort((left, right) => left.startsAt.getTime() - right.startsAt.getTime())[0]?.event || null;
   }
 
-  function getCountdownParts(targetDate) {
+  function getCountdownDays(targetDate) {
     if (!(targetDate instanceof Date) || Number.isNaN(targetDate.getTime())) {
       return null;
     }
 
     const diffMs = targetDate.getTime() - Date.now();
     if (diffMs <= 0) {
-      return { days: "0", hours: "00", minutes: "00", seconds: "00", isPast: true };
+      return { days: "0", isPast: true };
     }
 
-    const totalSeconds = Math.floor(diffMs / 1000);
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
     return {
-      days: String(days),
-      hours: String(hours).padStart(2, "0"),
-      minutes: String(minutes).padStart(2, "0"),
-      seconds: String(seconds).padStart(2, "0"),
+      days: String(Math.ceil(diffMs / 86400000)),
       isPast: false
     };
   }
@@ -727,20 +712,14 @@
     }
 
     const dayEl = countdownRoot.querySelector("[data-countdown-days]");
-    const hourEl = countdownRoot.querySelector("[data-countdown-hours]");
-    const minuteEl = countdownRoot.querySelector("[data-countdown-minutes]");
-    const secondEl = countdownRoot.querySelector("[data-countdown-seconds]");
     const summaryEl = countdownRoot.querySelector("[data-countdown-summary]");
-    const parts = getCountdownParts(targetDate);
+    const parts = getCountdownDays(targetDate);
 
-    if (!dayEl || !hourEl || !minuteEl || !secondEl || !summaryEl || !parts) {
+    if (!dayEl || !summaryEl || !parts) {
       return;
     }
 
     dayEl.textContent = parts.days;
-    hourEl.textContent = parts.hours;
-    minuteEl.textContent = parts.minutes;
-    secondEl.textContent = parts.seconds;
     summaryEl.textContent = parts.isPast
       ? `${eventTitle} is happening now or has already started.`
       : `${parts.days} days until ${eventTitle.toLowerCase()}.`;
@@ -759,7 +738,7 @@
     updatePlannerCountdown(targetDate, eventTitle);
     plannerCountdownTimer = window.setInterval(() => {
       updatePlannerCountdown(targetDate, eventTitle);
-    }, 1000);
+    }, 60000);
   }
 
   function fillForm(form, values) {
@@ -1436,7 +1415,6 @@
     todoForm.reset();
     todoForm.elements.namedItem("id").value = "";
     todoForm.elements.namedItem("eventId").value = "";
-    todoForm.elements.namedItem("priority").value = "Medium";
     todoForm.elements.namedItem("status").value = "Not Started";
     todoForm.elements.namedItem("isComplete").value = "false";
     pendingTodoPhoto = null;
@@ -1755,7 +1733,9 @@
         <p>${escapeHtml([person.role, person.groupName].filter(Boolean).join(" | ") || "No role or group yet")}</p>
         <p class="meta">${escapeHtml(person.phone || "No phone")} | ${escapeHtml(person.consentStatus || "consent unknown")}</p>
         <div class="toolbar">
-          <button type="button" data-edit-person="${escapeHtml(person.id)}">Edit</button>
+          <button class="button button--icon button--light" type="button" data-edit-person="${escapeHtml(person.id)}" aria-label="Edit ${escapeHtml(person.name || "person")}" title="Edit">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg>
+          </button>
         </div>
       </article>
     `).join("");
@@ -1785,9 +1765,7 @@
       <div class="event-accordion">
         ${filteredEvents.map((event) => {
           const schedule = formatEventSchedule(event);
-          const timeLabel = formatEventTimeRange(event.startsAt, event.endsAt);
-          const dateLabel = formatEventDate(event.date);
-          const summaryMeta = [dateLabel, timeLabel, event.location].filter(Boolean).join(" · ");
+          const dateLabel = formatEventDateShort(event.date);
           const shotCount = cachedShots.filter((shot) => String(shot.eventId || "").trim() === String(event.id || "").trim()).length;
           return `
             <details class="guest-card ${event.main ? "event-card--main" : ""}">
@@ -1796,7 +1774,6 @@
                   <span class="accordion-toggle" aria-hidden="true"></span>
                   <span class="event-accordion__title-main">
                     <span class="accordion-title">${escapeHtml(event.title || "Untitled event")}</span>
-                    ${summaryMeta ? `<span class="event-accordion__summary-meta">${escapeHtml(summaryMeta)}</span>` : ""}
                     <button
                       class="button button--icon button--light event-card__edit event-accordion__title-edit"
                       type="button"
@@ -1823,6 +1800,7 @@
                     </button>
                   </span>
                 </span>
+                ${dateLabel ? `<span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(dateLabel)}</span>` : ""}
               </summary>
               <div class="guest-card__body">
                 <div class="guest-card__grid">
@@ -3404,7 +3382,7 @@
         </div>
         <div class="event-detail-actions">
           <button class="button button--light" type="button" data-event-detail-back>Back to Timeline</button>
-          <button class="button button--light" type="button" data-event-workspace-edit="${escapeHtml(String(eventItem.id || ""))}">Edit Event</button>
+          <button class="button button--icon button--light" type="button" data-event-workspace-edit="${escapeHtml(String(eventItem.id || ""))}" aria-label="Edit event" title="Edit event"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>
           <button class="button" type="button" data-event-workspace-add-shot="${escapeHtml(String(eventItem.id || ""))}">Add Shot</button>
         </div>
       </div>
@@ -3989,19 +3967,34 @@
         <section class="todo-due-date-month">
           <h3 class="todo-due-date-month__heading">${escapeHtml(group.title)}</h3>
           <div class="event-accordion todo-accordion todo-accordion--by-date">
-            ${group.tasks.map(({ todo, dueDate, parsedDate, hasDueDate }) => `
+            ${group.tasks.map(({ todo, dueDate, parsedDate, hasDueDate }, index) => {
+              const sameDateAsPrevious = hasDueDate && group.tasks[index - 1]?.dueDate === dueDate;
+              return `
               <div class="todo-due-date-row ${hasDueDate ? "" : "todo-due-date-row--no-date"}">
-                <time class="todo-due-date-row__date" ${hasDueDate ? `datetime="${escapeHtml(dueDate)}" aria-label="${escapeHtml(parsedDate.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }))}"` : ""}>${hasDueDate ? parsedDate.getDate() : "—"}</time>
+                <time class="todo-due-date-row__date" ${hasDueDate ? `datetime="${escapeHtml(dueDate)}" aria-label="${escapeHtml(parsedDate.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }))}"` : ""}>${hasDueDate ? (sameDateAsPrevious ? "" : parsedDate.getDate()) : "—"}</time>
                 ${renderTodoByDateAccordion(todo)}
               </div>
-            `).join("")}
+            `;
+            }).join("")}
           </div>
         </section>
       `).join("")}</div>`;
       return;
     }
 
-    const lists = filteredTodos.reduce((groups, todo) => {
+    const parentType = todoGroupBy === "project" ? "project" : "event";
+    const parentTasks = filteredTodos.filter((todo) => {
+      const parent = getWorkspaceTaskParent(todo.eventId);
+      const isProject = Boolean(parent && !String(parent.startsAt || "").trim());
+      return parentType === "project" ? isProject : !isProject;
+    });
+
+    if (!parentTasks.length) {
+      todosListEl.innerHTML = `<p class="meta">No ${parentType === "project" ? "project" : "event"} tasks match the selected assignee.</p>`;
+      return;
+    }
+
+    const lists = parentTasks.reduce((groups, todo) => {
       const parent = getWorkspaceTaskParent(todo.eventId);
       const groupId = parent?.id || "unassigned";
       if (!groups.has(groupId)) groups.set(groupId, { id: parent?.id || "", title: parent?.title || "Tasks without a parent", isProject: parent ? !String(parent.startsAt || "").trim() : false, tasks: [] });
@@ -4014,7 +4007,7 @@
         ${Array.from(lists.values()).map((group) => `
           <section class="todo-list-group">
             <div class="event-detail-section__header">
-              <h4>${escapeHtml(group.title)}${group.id ? ` <button class="button todo-parent-edit" type="button" data-open-workspace-project="${escapeHtml(group.id)}">Edit</button>` : ""}</h4>
+              <h4>${escapeHtml(group.title)}${group.id ? ` <button class="button button--icon todo-parent-edit" type="button" data-open-workspace-project="${escapeHtml(group.id)}" aria-label="Edit ${escapeHtml(group.title)}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>` : ""}</h4>
               <span class="meta">${group.isProject ? "Planning project · " : ""}${group.tasks.length} task${group.tasks.length === 1 ? "" : "s"}</span>
             </div>
             ${group.tasks.map((todo) => {
@@ -4037,8 +4030,8 @@
                 <span class="accordion-summary__main">
                   <span class="accordion-toggle" aria-hidden="true"></span>
                   <span class="event-accordion__title-main">
-                    <span class="accordion-title">${escapeHtml(todo.title || "Untitled task")} — ${escapeHtml(assignee)}</span>
-                    ${todo.eventId ? `<button class="button todo-parent-edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}">Edit</button>` : ""}
+                    <span class="accordion-title">${escapeHtml(todo.title || "Untitled task")}${selectedTodoAssignedTo.length ? "" : ` — ${escapeHtml(assignee)}`}</span>
+                    ${todo.eventId ? `<button class="button button--icon todo-parent-edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}" aria-label="Edit ${escapeHtml(todo.title || "task")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>` : ""}
                   </span>
                 </span>
                 <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(dueLabel)}</span>
@@ -4047,9 +4040,9 @@
                 <div class="guest-card__grid ${hasChecklist ? "todo-task-grid--with-checklist" : ""}">
                   ${hasChecklist ? `
                     <div class="guest-card__field todo-task-checklist">
-                      <span class="todo-task-checklist__heading"><span class="todo-task-checklist__title">${escapeHtml(checklist.title || "Checklist")}</span>${todo.eventId ? `<button class="button todo-parent-edit todo-task-checklist__edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}">Edit</button>` : ""}</span>
+                      <span class="todo-task-checklist__heading"><span class="todo-task-checklist__title">${escapeHtml(checklist.title || "Checklist")}</span>${todo.eventId ? `<button class="button button--icon todo-parent-edit todo-task-checklist__edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}" aria-label="Edit ${escapeHtml(todo.title || "task")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>` : ""}</span>
                       <div class="workspace-checklist__items">
-                        ${checklistItems.map((item, index) => `<span class="workspace-checklist__item ${completedChecklistItems.has(index) ? "is-complete" : ""}"><input type="checkbox" disabled ${completedChecklistItems.has(index) ? "checked" : ""}><span>${escapeHtml(item)}</span></span>`).join("")}
+                        ${checklistItems.map((item, index) => `<label class="workspace-checklist__item ${completedChecklistItems.has(index) ? "is-complete" : ""}"><input type="checkbox" data-workspace-todo-list-item data-workspace-list-id="${escapeHtml(checklist.id)}" data-workspace-list-item-index="${index}" ${completedChecklistItems.has(index) ? "checked" : ""}><span>${escapeHtml(item)}</span></label>`).join("")}
                       </div>
                     </div>
                   ` : ""}
@@ -4058,10 +4051,6 @@
                     <select data-workspace-todo-assignee data-workspace-todo-id="${escapeHtml(todo.id)}">
                       ${renderTodoAssigneeOptions(todo.assignedUserId)}
                     </select>
-                  </div>
-                  <div class="guest-card__field">
-                    <span>Priority</span>
-                    <strong>${escapeHtml(todo.priority || "Medium")}</strong>
                   </div>
                   <div class="guest-card__field">
                     <span>Status</span>
@@ -4107,19 +4096,19 @@
           <span class="accordion-summary__main">
             <span class="accordion-toggle" aria-hidden="true"></span>
             <span class="event-accordion__title-main">
-              <span class="accordion-title">${escapeHtml(parentTitle)} — ${escapeHtml(todo.title || "Untitled task")}</span>
-              ${todo.eventId ? `<button class="button todo-parent-edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}">Edit</button>` : ""}
+              <span class="accordion-title"><span class="todo-task-title">${escapeHtml(todo.title || "Untitled task")}</span><span class="todo-task-parent"> — ${escapeHtml(parentTitle)}</span></span>
+              ${todo.eventId ? `<button class="button button--icon todo-parent-edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}" aria-label="Edit ${escapeHtml(todo.title || "task")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>` : ""}
             </span>
           </span>
-          <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(assignee)}</span>
+          ${selectedTodoAssignedTo.length ? "" : `<span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(assignee)}</span>`}
         </summary>
         <div class="guest-card__body">
           <div class="guest-card__grid ${hasChecklist ? "todo-task-grid--with-checklist" : ""}">
             ${hasChecklist ? `
               <div class="guest-card__field todo-task-checklist">
-              <span class="todo-task-checklist__heading"><span class="todo-task-checklist__title">${escapeHtml(checklist.title || "Checklist")}</span>${todo.eventId ? `<button class="button todo-parent-edit todo-task-checklist__edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}">Edit</button>` : ""}</span>
+              <span class="todo-task-checklist__heading"><span class="todo-task-checklist__title">${escapeHtml(checklist.title || "Checklist")}</span>${todo.eventId ? `<button class="button button--icon todo-parent-edit todo-task-checklist__edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}" aria-label="Edit ${escapeHtml(todo.title || "task")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>` : ""}</span>
                 <div class="workspace-checklist__items">
-                  ${checklistItems.map((item, index) => `<span class="workspace-checklist__item ${completedChecklistItems.has(index) ? "is-complete" : ""}"><input type="checkbox" disabled ${completedChecklistItems.has(index) ? "checked" : ""}><span>${escapeHtml(item)}</span></span>`).join("")}
+                  ${checklistItems.map((item, index) => `<label class="workspace-checklist__item ${completedChecklistItems.has(index) ? "is-complete" : ""}"><input type="checkbox" data-workspace-todo-list-item data-workspace-list-id="${escapeHtml(checklist.id)}" data-workspace-list-item-index="${index}" ${completedChecklistItems.has(index) ? "checked" : ""}><span>${escapeHtml(item)}</span></label>`).join("")}
                 </div>
               </div>
             ` : ""}
@@ -4131,7 +4120,6 @@
               <span>Due date</span>
               <input type="date" value="${escapeHtml(getWorkspaceTaskDueDateValue(todo).slice(0, 10))}" data-workspace-todo-due data-workspace-todo-id="${escapeHtml(todo.id)}">
             </div>
-            <div class="guest-card__field"><span>Priority</span><strong>${escapeHtml(todo.priority || "Medium")}</strong></div>
             <div class="guest-card__field">
               <span>Status</span>
               <select data-workspace-todo-status data-workspace-todo-id="${escapeHtml(todo.id)}">${renderTodoStatusOptions(todo.status)}</select>
@@ -4156,7 +4144,7 @@
         <p class="meta">Thursday: ${escapeHtml(bed.thursday || "Unassigned")} | Friday: ${escapeHtml(bed.friday || "Unassigned")}</p>
         ${bed.notes ? `<p class="meta">${escapeHtml(bed.notes)}</p>` : ""}
         <div class="toolbar">
-          <button type="button" data-edit-bed="${escapeHtml(bed.id)}">Edit</button>
+          <button class="button button--icon button--light" type="button" data-edit-bed="${escapeHtml(bed.id)}" aria-label="Edit ${escapeHtml(`${bed.lodging} ${bed.room}`)}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>
         </div>
       </article>
     `).join("");
@@ -4401,6 +4389,18 @@
       const extras = Number.parseInt(rsvp.plusOneCount || "0", 10) + Number.parseInt(rsvp.childrenCount || "0", 10);
       return members.length ? weddingCount + (Number.isNaN(extras) ? 0 : extras) : String(rsvp.guests || "").trim();
     };
+    const totalAttendingGuests = latestSubmissions.reduce((total, { latest }) => {
+      const guestCount = Number.parseInt(getSubmissionGuestCount(latest), 10);
+      return total + (Number.isNaN(guestCount) ? 0 : guestCount);
+    }, 0);
+    const totalGuestsAttending = cachedGuests.filter((guest) => getRsvpGroup(getGuestRsvpLabel(guest)) === "yes").length;
+    const getEventAttendingCount = (field) => latestSubmissions.reduce((total, { latest }) => {
+      if (getRsvpGroup(latest[field]) !== "yes") return total;
+      const guestCount = Number.parseInt(getSubmissionGuestCount(latest), 10);
+      return total + (Number.isNaN(guestCount) ? 0 : guestCount);
+    }, 0);
+    const rehearsalDinnerAttending = getEventAttendingCount("rehearsalRsvp");
+    const openHouseAttending = getEventAttendingCount("openHouseRsvp");
     const getSubmissionChanges = (current, previous) => {
       const fields = [
         ["Wedding", current.weddingRsvpSummary || current.attending, previous.weddingRsvpSummary || previous.attending],
@@ -4445,14 +4445,14 @@
       ].filter(([, value]) => String(value || "").trim());
       const memberResponses = renderMemberResponses(rsvp.groupMembers);
       return `
-        <details class="guest-card guest-card--${getSubmissionTone(rsvp)} rsvp-submission-card"${records.length ? " open" : ""}>
+        <details class="guest-card guest-card--${getSubmissionTone(rsvp)} rsvp-submission-card">
           <summary>
             <span class="accordion-summary__main">
               <span class="accordion-toggle" aria-hidden="true"></span>
               <span class="accordion-title">${escapeHtml(rsvp.name || rsvp.group || "Guest")}</span>
               <span class="rsvp-submission-count">${guestCount ? `${escapeHtml(guestCount)} guest${guestCount === 1 || guestCount === "1" ? "" : "s"} attending` : "RSVP recorded"}</span>
             </span>
-            ${viewerProfile.isAdmin && records.length ? `<button class="button button--light rsvp-submission-edit-button" type="button" data-edit-rsvp-response="${escapeHtml(group)}">Edit response</button>` : ""}
+            ${viewerProfile.isAdmin && records.length ? `<button class="button button--icon button--light rsvp-submission-edit-button" type="button" data-edit-rsvp-response="${escapeHtml(group)}" aria-label="Edit response for ${escapeHtml(rsvp.name || rsvp.group || "guest")}" title="Edit response"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>` : ""}
           </summary>
           <div class="guest-card__body rsvp-submission-card__body">
             <div class="guest-card__grid">
@@ -4471,8 +4471,15 @@
 
     rsvpListEl.innerHTML = `
       <div class="rsvp-section-header">
-        <h3>Group RSVPs</h3>
-        <span>RSVP count · ${latestSubmissions.length}</span>
+        <div class="rsvp-section-heading">
+          <h3>Group RSVPs</h3>
+          <span>Online RSVP count · ${totalAttendingGuests}</span>
+        </div>
+        <div class="rsvp-section-counts">
+          <span>Total attending · ${totalGuestsAttending}</span>
+          <span>Rehearsal dinner count · ${rehearsalDinnerAttending}</span>
+          <span>Open house count · ${openHouseAttending}</span>
+        </div>
       </div>
       ${submissionMarkup}
       ${viewerProfile.isAdmin ? `<section class="modal" id="rsvpEditModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-rsvp-edit-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="rsvpEditModalTitle"><button class="modal__close" type="button" data-close-rsvp-edit-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="rsvpEditModalTitle">Edit RSVP response</h3><p class="meta">Saving records a corrected response and keeps the previous submission in its history.</p></div></div><form id="rsvpEditForm"><input name="group" type="hidden"><input name="contactName" type="hidden"><label>Contact email <input name="email" type="email"></label><fieldset class="type-options"><legend>Wedding party</legend><div class="rsvp-edit-members" data-rsvp-edit-members></div></fieldset><div class="split"><label>Rehearsal dinner <select name="rehearsalRsvp"><option value="">No response</option><option value="attending">Attending</option><option value="not-attending">Not attending</option></select></label><label>Open house <select name="openHouseRsvp"><option value="">No response</option><option value="attending">Attending</option><option value="not-attending">Not attending</option></select></label></div><div class="split"><label>Plus ones <input name="plusOneCount" type="number" min="0" step="1"></label><label>Plus-one name <input name="plusOneName"></label></div><div class="split"><label>Children <input name="childrenCount" type="number" min="0" step="1"></label><label>Children note <input name="childrenNote"></label></div><label>Note <textarea name="comment"></textarea></label><div class="toolbar"><button class="button" type="submit">Save corrected response</button><button class="button button--light" type="button" data-close-rsvp-edit-modal>Cancel</button></div><p class="status" id="rsvpEditStatus"></p></form></div></section>` : ""}
@@ -4500,6 +4507,7 @@
     const visibleGuests = cachedGuests
       .map((row) => sanitizeGuestRow(row, columns))
       .filter(Boolean);
+    const attendingGuestCount = visibleGuests.filter((guest) => guest.statusTone === "attending").length;
 
     const guestTypes = collectGuestTypes(visibleGuests);
     renderGuestTypeFilter(guestTypes);
@@ -4511,12 +4519,16 @@
 
     if (!filteredGuests.length) {
       guestsListEl.innerHTML = selectedGuestTypes.length
-        ? `<p class="meta">No guest rows match the selected ${selectedGuestTypes.length === 1 ? "type" : "types"}.</p>`
-        : '<p class="meta">No guest rows found yet in the `Guests` sheet.</p>';
+        ? `<div class="rsvp-section-header"><h3>Guests</h3><span>Attending RSVP count · ${attendingGuestCount}</span></div><p class="meta">No guest rows match the selected ${selectedGuestTypes.length === 1 ? "type" : "types"}.</p>`
+        : `<div class="rsvp-section-header"><h3>Guests</h3><span>Attending RSVP count · ${attendingGuestCount}</span></div><p class="meta">No guest rows found yet in the \`Guests\` sheet.</p>`;
       return;
     }
 
     guestsListEl.innerHTML = `
+      <div class="rsvp-section-header">
+        <h3>Guests</h3>
+        <span>Attending RSVP count · ${attendingGuestCount}</span>
+      </div>
       <div class="guest-accordion">
         ${filteredGuests.map((guest) => {
           return `
@@ -5063,37 +5075,15 @@
 
     const normalizedAssignees = Array.isArray(assignees) ? assignees : [];
     const assigneeLookup = new Set(normalizedAssignees.map((assignee) => assignee.id));
-    selectedTodoAssignedTo = selectedTodoAssignedTo.filter((assignee) => assigneeLookup.has(String(assignee || "")));
-    updateTodoAssignedToFilterSummary();
-
-    if (!normalizedAssignees.length) {
-      todoAssignedToFilterEl.innerHTML = '<span class="planner-filter-checklist--empty">All assignees</span>';
-      return;
-    }
-
-    const selectedLookup = new Set(selectedTodoAssignedTo);
-    todoAssignedToFilterEl.innerHTML = normalizedAssignees.map((assignee) => `
-      <label class="planner-filter-checklist__option">
-        <input type="checkbox" value="${escapeHtml(assignee.id)}" data-todo-assigned-to-filter ${selectedLookup.has(assignee.id) ? "checked" : ""}>
-        <span>${escapeHtml(assignee.label)}</span>
-      </label>
-    `).join("");
-  }
-
-  function updateTodoAssignedToFilterSummary() {
-    if (!todoAssignedToFilterSummaryEl) return;
-    if (!selectedTodoAssignedTo.length) {
-      todoAssignedToFilterSummaryEl.textContent = "All assignees";
-      todoAssignedToFilterSummaryEl.title = "All assignees";
-      return;
-    }
-
-    const selectedLabels = selectedTodoAssignedTo.map(getWorkspaceTaskAssigneeLabel);
-    const summaryText = selectedLabels.length <= 2
-      ? selectedLabels.join(", ")
-      : `${selectedTodoAssignedTo.length} selected`;
-    todoAssignedToFilterSummaryEl.textContent = summaryText;
-    todoAssignedToFilterSummaryEl.title = selectedLabels.join(", ");
+    selectedTodoAssignedTo = selectedTodoAssignedTo
+      .filter((assignee) => assigneeLookup.has(String(assignee || "")))
+      .slice(0, 1);
+    todoAssignedToFilterEl.innerHTML = `
+      <option value="">All assignees</option>
+      ${normalizedAssignees.map((assignee) => `<option value="${escapeHtml(assignee.id)}">${escapeHtml(assignee.label)}</option>`).join("")}
+    `;
+    todoAssignedToFilterEl.value = selectedTodoAssignedTo[0] || "";
+    todoAssignedToFilterEl.disabled = normalizedAssignees.length === 0;
   }
 
   function syncTodoGroupToggle() {
@@ -5169,7 +5159,7 @@
     const date = String(dueAt || "").slice(0, 10);
     if (!date) return "No due date";
     const parsed = new Date(`${date}T12:00:00`);
-    return Number.isNaN(parsed.getTime()) ? date : parsed.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+    return Number.isNaN(parsed.getTime()) ? date : parsed.toLocaleDateString([], { month: "short", day: "numeric" });
   }
 
   function getGuestTypeOptions() {
@@ -5487,33 +5477,84 @@
     return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: "base" });
   }
 
+  function getCurrentWorkspaceViewerUserId() {
+    const profileUserId = String(viewerProfile.userId || "").trim();
+    if (profileUserId) return profileUserId;
+
+    const profileEmail = String(viewerProfile.email || "").trim().toLowerCase();
+    return String(cachedWorkspaceUsers.find((user) => String(user.email || "").trim().toLowerCase() === profileEmail)?.id || "").trim();
+  }
+
+  function isLegacyTaskAssignedToViewer(task) {
+    const viewerNames = [
+      String(viewerProfile.name || "").trim(),
+      getWorkspaceTaskAssigneeLabel(getCurrentWorkspaceViewerUserId())
+    ].map((name) => name.toLowerCase()).filter((name) => name && name !== "unassigned");
+    const assignees = String(task?.assignedTo || "")
+      .split(/[;,\n]/)
+      .map((name) => name.trim().toLowerCase())
+      .filter(Boolean);
+    return viewerNames.some((viewerName) => assignees.includes(viewerName));
+  }
+
   function renderSummary() {
+    const viewerUserId = getCurrentWorkspaceViewerUserId();
     const workspaceOpenTasks = cachedWorkspaceTasks
       .filter((task) => String(task.status || "").trim().toLowerCase() !== "done")
+      .filter((task) => Boolean(viewerUserId) && String(task.assignedUserId || "").trim() === viewerUserId)
       .sort((left, right) => {
         const leftDue = String(left.dueAt || "9999-12-31");
         const rightDue = String(right.dueAt || "9999-12-31");
         return leftDue.localeCompare(rightDue) || String(left.title || "").localeCompare(String(right.title || ""));
       });
-    const legacyOpenTasks = cachedTodos.filter((task) => !task.isComplete);
-    const openTasks = workspaceOpenTasks.length ? workspaceOpenTasks : legacyOpenTasks;
+    const legacyOpenTasks = cachedTodos.filter((task) => !task.isComplete && isLegacyTaskAssignedToViewer(task));
+    // Once the Workspace contains tasks, it is the source of truth. In
+    // particular, do not fall back to legacy unassigned tasks when this
+    // signed-in person has no Workspace tasks of their own.
+    const openTasks = cachedWorkspaceTasks.length ? workspaceOpenTasks : legacyOpenTasks;
     const taskCountLabel = `${openTasks.length} open task${openTasks.length === 1 ? "" : "s"}`;
     const tasksMarkup = openTasks.length ? `
-      <div class="planner-home-task-list">
+      <div class="planner-home-task-list event-accordion todo-accordion">
         ${openTasks.slice(0, 6).map((task) => {
           const isWorkspaceTask = workspaceOpenTasks.includes(task);
           const event = isWorkspaceTask
             ? cachedWorkspaceEvents.find((item) => String(item.id || "") === String(task.eventId || ""))
             : cachedEvents.find((item) => String(item.id || "") === String(task.eventId || ""));
-          const assignee = isWorkspaceTask ? getWorkspaceTaskAssigneeLabel(task.assignedUserId) : String(task.assignedTo || "").trim();
-          const context = [event?.title, assignee && assignee !== "Unassigned" ? assignee : ""].filter(Boolean).join(" · ") || "No owner or event yet";
+          const context = event?.title || "No event or project yet";
           const dueDate = isWorkspaceTask ? String(task.dueAt || "") : String(task.dueDate || "");
-          const dueLabel = isWorkspaceTask ? formatWorkspaceTaskDueDate(dueDate) : (formatEventDate(dueDate) || "No due date");
+          const dueLabel = isWorkspaceTask ? formatWorkspaceTaskDueDate(dueDate) : (formatEventDateShort(dueDate) || "No due date");
+          const status = isWorkspaceTask ? String(task.status || "Not Started") : (task.isComplete ? "Done" : "Not Started");
+          const isProject = isWorkspaceTask && !String(event?.startsAt || "").trim();
+          const parentLabel = isProject ? "project" : "event";
+          const normalizedStatus = status.trim().toLowerCase();
+          const statusClass = ["done", "complete", "completed"].includes(normalizedStatus)
+            ? "todo-accordion__item--complete"
+            : normalizedStatus === "in progress"
+              ? "todo-accordion__item--in-progress"
+              : "todo-accordion__item--not-started";
           return `
-            <button class="planner-home-task" type="button" data-home-open-panel="todos">
-              <span><strong>${escapeHtml(task.title || "Untitled task")}</strong><span>${escapeHtml(context)}</span></span>
-              <time>${escapeHtml(dueLabel)}</time>
-            </button>
+            <details class="guest-card ${statusClass}">
+              <summary>
+                <span class="accordion-summary__main">
+                  <span class="accordion-toggle" aria-hidden="true"></span>
+                  <span class="event-accordion__title-main">
+                    <span class="accordion-title">${escapeHtml(task.title || "Untitled task")}</span>
+                    <span class="meta">${escapeHtml(context)}</span>
+                  </span>
+                </span>
+                <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(dueLabel)}</span>
+              </summary>
+              <div class="guest-card__body">
+                <div class="guest-card__grid">
+                  <div class="guest-card__field"><span>Status</span><select data-home-task-status data-home-task-id="${escapeHtml(task.id)}" data-home-task-source="${isWorkspaceTask ? "workspace" : "legacy"}" aria-label="Change status for ${escapeHtml(task.title || "task")}">${renderTodoStatusOptions(status)}</select></div>
+                  ${task.notes ? `<div class="guest-card__field guest-card__field--full"><span>Notes</span><strong>${escapeHtml(task.notes)}</strong></div>` : ""}
+                </div>
+                ${event ? (isWorkspaceTask
+                  ? `<button class="button button--light" type="button" data-home-open-workspace-parent="${escapeHtml(task.eventId)}" data-home-parent-is-project="${isProject ? "true" : "false"}">Open ${parentLabel}</button>`
+                  : `<button class="button button--light" type="button" data-home-open-legacy-event="${escapeHtml(task.eventId)}">Open event</button>`)
+                  : ""}
+              </div>
+            </details>
           `;
         }).join("")}
       </div>
@@ -5530,7 +5571,7 @@
       ? `${recentRsvps.length} new RSVP${recentRsvps.length === 1 ? "" : "s"} in the past week${latestRsvp ? ` · latest from ${latestRsvp.name || latestRsvp.group || "a guest"}` : ""}.`
       : "No new RSVP submissions in the past week.";
     const nextWorkspaceEvent = getNextWorkspaceEvent();
-    const weddingDate = new Date(2027, 0, 8, 16, 0, 0);
+    const weddingDate = new Date(2027, 0, 8);
     const nextEventTitle = nextWorkspaceEvent?.title ? escapeHtml(nextWorkspaceEvent.title) : "No upcoming event scheduled";
     const nextEventSchedule = nextWorkspaceEvent ? escapeHtml(formatWorkspaceEventSchedule(nextWorkspaceEvent)) : "Create an event in Add to see it here.";
     const nextEventLocation = nextWorkspaceEvent ? escapeHtml(nextWorkspaceEvent.location || "No location added yet.") : "Your Version 2 events will appear here.";
@@ -5539,18 +5580,6 @@
         <div class="planner-countdown__item">
           <strong data-countdown-days>0</strong>
           <span>Days</span>
-        </div>
-        <div class="planner-countdown__item">
-          <strong data-countdown-hours>00</strong>
-          <span>Hours</span>
-        </div>
-        <div class="planner-countdown__item">
-          <strong data-countdown-minutes>00</strong>
-          <span>Minutes</span>
-        </div>
-        <div class="planner-countdown__item">
-          <strong data-countdown-seconds>00</strong>
-          <span>Seconds</span>
         </div>
       </div>
       <p class="planner-home-card__summary" data-countdown-summary>Loading countdown...</p>
@@ -5561,12 +5590,11 @@
         <div class="planner-home-card__header">
           <div>
             <span class="planner-home-card__label">Your tasks</span>
-            <h3>What needs attention</h3>
           </div>
           <span class="planner-home-card__label">${taskCountLabel}</span>
         </div>
         ${tasksMarkup}
-        ${openTasks.length > 6 ? `<button class="button button--light planner-home-card__action" type="button" data-home-open-panel="todos">View all ${openTasks.length} tasks</button>` : ""}
+        ${openTasks.length > 6 ? `<button class="button button--light planner-home-card__action" type="button" data-home-open-panel="todos" data-home-filter-todos-for-viewer>View all ${openTasks.length} tasks</button>` : ""}
       </article>
       <article class="planner-home-card planner-home-card--rsvp">
         <span class="planner-home-card__label">RSVP activity</span>
@@ -5582,7 +5610,7 @@
       </article>
       <article class="planner-home-card planner-home-card--countdown">
         <span class="planner-home-card__label">Countdown</span>
-        <h3>Time until the wedding</h3>
+        <h3>Days until January 8</h3>
         ${countdownMarkup}
       </article>
     `;
@@ -5666,7 +5694,7 @@
       <section class="card">
         <h3>Contacts</h3>
         <div class="workspace-task-table-wrap">
-          ${users.length ? `<table class="workspace-task-table planner-users-table"><thead><tr><th>Name</th><th>Mobile</th><th>Google account</th><th>Wedding role</th><th>Access</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${users.map((user) => `<tr><td data-label="Name">${escapeHtml(user.name || "—")}</td><td data-label="Mobile">${escapeHtml(user.phone || "—")}${user.smsOptedIn ? " · Text OK" : ""}</td><td data-label="Google account">${escapeHtml(user.email || "—")}</td><td data-label="Wedding role">${escapeHtml(user.weddingRole || "—")}</td><td data-label="Access">${escapeHtml(String(user.accessLevel || "").replace(/_/g, " "))}</td><td data-label="Status">${user.active ? "Active" : "Contact only"}</td><td data-label="Actions"><button class="button button--light" type="button" data-edit-planner-user="${escapeHtml(user.id)}">Edit</button></td></tr>`).join("")}</tbody></table>` : '<p class="meta">No contacts yet. Add the first person above.</p>'}
+          ${users.length ? `<table class="workspace-task-table planner-users-table"><thead><tr><th>Name</th><th>Mobile</th><th>Google account</th><th>Wedding role</th><th>Access</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${users.map((user) => `<tr><td data-label="Name">${escapeHtml(user.name || "—")}</td><td data-label="Mobile">${escapeHtml(user.phone || "—")}${user.smsOptedIn ? " · Text OK" : ""}</td><td data-label="Google account">${escapeHtml(user.email || "—")}</td><td data-label="Wedding role">${escapeHtml(user.weddingRole || "—")}</td><td data-label="Access">${escapeHtml(String(user.accessLevel || "").replace(/_/g, " "))}</td><td data-label="Status">${user.active ? "Active" : "Contact only"}</td><td data-label="Actions"><button class="button button--icon button--light" type="button" data-edit-planner-user="${escapeHtml(user.id)}" aria-label="Edit ${escapeHtml(user.name || "contact")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button></td></tr>`).join("")}</tbody></table>` : '<p class="meta">No contacts yet. Add the first person above.</p>'}
         </div>
       </section>
     `;
@@ -5787,6 +5815,10 @@
     return value.getDate() === thanksgivingDate ? "Thanksgiving" : "";
   }
 
+  function getWorkspaceCalendarHolidayShortLabel(holiday) {
+    return holiday === "Thanksgiving" ? "Thksgvn" : holiday === "Christmas Day" ? "Xmas" : holiday;
+  }
+
   function formatWorkspaceDay(value) {
     return value.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   }
@@ -5810,6 +5842,27 @@
     });
   }
 
+  function formatWorkspaceEventTime(event) {
+    const startsAt = parseWorkspaceDate(event?.startsAt);
+    return startsAt
+      ? startsAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+      : "Time not set";
+  }
+
+  function formatWorkspaceEventDate(event) {
+    const startsAt = parseWorkspaceDate(event?.startsAt);
+    return startsAt
+      ? startsAt.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+      : "Date not set";
+  }
+
+  function formatTitleCase(value) {
+    return String(value || "").trim().replace(/\S+/g, (word) => {
+      if (word === word.toUpperCase() && /[A-Z]/.test(word)) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    });
+  }
+
   function setWorkspaceHubView(view) {
     activeWorkspaceHubView = "create";
     window.sessionStorage.setItem(STORAGE_KEYS.workspaceHubView, activeWorkspaceHubView);
@@ -5823,30 +5876,51 @@
 
   function renderWorkspaceEventDirectory() {
     if (!workspaceEventDirectoryListEl) return;
-    const events = [...cachedWorkspaceEvents].sort((left, right) => {
+    const events = cachedWorkspaceEvents.filter((event) => {
+      const startsAt = String(event.startsAt || "").trim();
+      return startsAt && (!workspaceCalendarListDateFilter || workspaceDateKey(parseWorkspaceDate(startsAt) || new Date(0)) === workspaceCalendarListDateFilter);
+    }).sort((left, right) => {
       const leftTime = parseWorkspaceDate(left.startsAt)?.getTime() || Number.MAX_SAFE_INTEGER;
       const rightTime = parseWorkspaceDate(right.startsAt)?.getTime() || Number.MAX_SAFE_INTEGER;
       return leftTime - rightTime || String(left.title || "").localeCompare(String(right.title || ""));
     });
-    workspaceEventDirectoryListEl.innerHTML = events.length ? events.map((event) => {
+    const monthGroups = events.reduce((groups, event) => {
+      const date = parseWorkspaceDate(event.startsAt);
+      if (!date) return groups;
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          title: date.toLocaleDateString(undefined, { month: "long", year: "numeric" }),
+          events: []
+        });
+      }
+      groups.get(key).events.push({ event, date });
+      return groups;
+    }, new Map());
+
+    workspaceEventDirectoryListEl.innerHTML = events.length ? Array.from(monthGroups.values()).map((group) => `
+      <section class="workspace-event-directory__month">
+        <h3 class="workspace-event-directory__month-heading">${escapeHtml(group.title)}</h3>
+        <div class="workspace-event-directory__month-events">
+          ${group.events.map(({ event, date }, index) => {
       const eventId = String(event.id || "");
       const tasks = cachedWorkspaceTasks.filter((task) => String(task.eventId || "") === eventId);
       const completeTasks = tasks.filter((task) => String(task.status || "").trim().toLowerCase() === "done").length;
       const taskSummary = tasks.length ? `${completeTasks} of ${tasks.length} task${tasks.length === 1 ? "" : "s"} complete` : "No tasks yet";
+      const sameDateAsPrevious = index > 0 && workspaceDateKey(group.events[index - 1].date) === workspaceDateKey(date);
       return `
-        <details class="workspace-event-directory__item">
+        <div class="workspace-event-directory__row">
+          <time class="workspace-event-directory__date" datetime="${escapeHtml(String(event.startsAt || ""))}" aria-label="${escapeHtml(date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }))}">${sameDateAsPrevious ? "" : date.getDate()}</time>
+          <details class="workspace-event-directory__item">
           <summary>
             <span class="accordion-summary__main">
               <span class="accordion-toggle" aria-hidden="true"></span>
               <span class="workspace-event-directory__summary-copy">
                 <strong>${escapeHtml(event.title || "Untitled event")}</strong>
-                <span class="meta workspace-event-directory__schedule">
-                  <span>${escapeHtml(formatWorkspaceEventSchedule(event))}</span>
-                  ${event.location ? `<span class="workspace-event-directory__location">${escapeHtml(event.location)}</span>` : ""}
-                </span>
+                <time class="meta workspace-event-directory__time" datetime="${escapeHtml(String(event.startsAt || ""))}">${escapeHtml(formatWorkspaceEventTime(event))}</time>
               </span>
             </span>
-            <button class="button button--light workspace-event-directory__edit" type="button" data-open-workspace-event="${escapeHtml(event.id)}">Edit event</button>
+            <button class="button button--icon button--light workspace-event-directory__edit" type="button" data-open-workspace-event="${escapeHtml(event.id)}" aria-label="Edit ${escapeHtml(event.title || "event")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>
           </summary>
           <div class="workspace-event-directory__details">
             <div class="workspace-event-directory__details-grid">
@@ -5856,9 +5930,13 @@
               ${event.notes ? `<div class="workspace-event-directory__notes"><span>Notes</span><strong>${escapeHtml(event.notes)}</strong></div>` : ""}
             </div>
           </div>
-        </details>
+          </details>
+        </div>
       `;
-    }).join("") : '<p class="meta">No events yet. Create your first one from Add.</p>';
+          }).join("")}
+        </div>
+      </section>
+    `).join("") : `<p class="meta">${workspaceCalendarListDateFilter ? `No events are scheduled for ${escapeHtml(formatWorkspaceDay(parseWorkspaceDate(workspaceCalendarListDateFilter) || new Date()))}.` : "No events yet. Create your first one from Add."}</p>`;
   }
 
   function setWorkspaceCalendarView(view) {
@@ -5871,6 +5949,10 @@
     });
     if (workspaceCalendarViewEl) workspaceCalendarViewEl.hidden = !["month", "day"].includes(activeWorkspaceCalendarView);
     if (workspaceEventDirectoryEl) workspaceEventDirectoryEl.hidden = activeWorkspaceCalendarView !== "list" || activePlannerPanel !== "calendar";
+    if (workspaceCalendarTitleEl && activeWorkspaceCalendarView === "list") {
+      const filterDate = parseWorkspaceDate(workspaceCalendarListDateFilter);
+      workspaceCalendarTitleEl.textContent = filterDate ? `Events on ${formatWorkspaceDay(filterDate)}` : "Calendar";
+    }
   }
 
   function renderWorkspace() {
@@ -5892,9 +5974,9 @@
       const events = datedEvents.filter(({ date }) => date.getFullYear() === day.getFullYear() && date.getMonth() === day.getMonth() && date.getDate() === day.getDate());
       const holiday = getWorkspaceCalendarHoliday(day);
       return `
-        <div class="workspace-calendar__day ${outsideRange ? "workspace-calendar__day--outside" : ""} ${holiday ? "workspace-calendar__day--holiday" : ""}">
-          <button class="workspace-calendar__date" type="button" data-workspace-calendar-date="${workspaceDateKey(day)}" aria-label="View ${escapeHtml(formatWorkspaceDay(day))}">${day.getDate()}${day.getDate() === 1 ? `<span class="workspace-calendar__month-label">${escapeHtml(day.toLocaleDateString(undefined, { month: "long" }))}</span>` : ""}</button>
-          ${holiday ? `<span class="workspace-calendar__holiday">${escapeHtml(holiday)}</span>` : ""}
+        <div class="workspace-calendar__day ${outsideRange ? "workspace-calendar__day--outside" : ""} ${holiday ? "workspace-calendar__day--holiday" : ""}" data-workspace-calendar-date="${workspaceDateKey(day)}">
+          <button class="workspace-calendar__date" type="button" data-workspace-calendar-date="${workspaceDateKey(day)}" aria-label="View ${escapeHtml(formatWorkspaceDay(day))}">${day.getDate()}${day.getDate() === 1 ? `<span class="workspace-calendar__month-label"><span class="workspace-calendar__month-label-full">${escapeHtml(day.toLocaleDateString(undefined, { month: "long" }))}</span><span class="workspace-calendar__month-label-short" aria-hidden="true">${escapeHtml(day.toLocaleDateString(undefined, { month: "short" }))}</span></span>` : ""}</button>
+          ${holiday ? `<span class="workspace-calendar__holiday"><span class="workspace-calendar__holiday-full">${escapeHtml(holiday)}</span><span class="workspace-calendar__holiday-short" aria-hidden="true">${escapeHtml(getWorkspaceCalendarHolidayShortLabel(holiday))}</span></span>` : ""}
           ${events.map(({ event }) => `<button class="workspace-calendar__event" type="button" data-open-workspace-event="${escapeHtml(event.id)}" title="Open ${escapeHtml(event.title || "Untitled event")}">${escapeHtml(event.title || "Untitled event")}</button>`).join("")}
         </div>
       `;
@@ -5919,12 +6001,12 @@
               <details class="workspace-calendar__day-event">
                 <summary>
                   <span class="accordion-toggle" aria-hidden="true"></span>
-                  <span class="workspace-calendar__day-event-summary-copy"><strong>${escapeHtml(event.title || "Untitled event")}</strong><span class="workspace-calendar__day-event-summary-meta"><time datetime="${escapeHtml(String(event.startsAt || ""))}">${escapeHtml(formatWorkspaceEventSchedule(event))}</time>${event.location ? `<span class="workspace-calendar__day-event-summary-location">${escapeHtml(event.location)}</span>` : ""}</span></span>
-                  <button class="button workspace-calendar__day-event-edit" type="button" data-open-workspace-event="${escapeHtml(event.id)}">Edit event</button>
+                  <span class="workspace-calendar__day-event-summary-copy"><strong>${escapeHtml(event.title || "Untitled event")}</strong><span class="workspace-calendar__day-event-summary-meta"><time datetime="${escapeHtml(String(event.startsAt || ""))}">${escapeHtml(formatWorkspaceEventTime(event))}</time></span></span>
+                  <button class="button button--icon workspace-calendar__day-event-edit" type="button" data-open-workspace-event="${escapeHtml(event.id)}" aria-label="Edit ${escapeHtml(event.title || "event")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>
                 </summary>
                 <div class="workspace-calendar__day-event-details">
                   <div class="workspace-calendar__day-event-tasks">
-                    ${eventTasks.length ? eventTasks.map((task) => `<button class="workspace-calendar__day-event-task" type="button" data-edit-calendar-task="${escapeHtml(task.id)}" data-calendar-event-id="${escapeHtml(event.id)}"><span>${escapeHtml(task.title || "Untitled task")}</span><span>Edit task</span></button>`).join("") : '<p class="meta">No tasks yet.</p>'}
+                    ${eventTasks.length ? eventTasks.map((task) => `<button class="workspace-calendar__day-event-task" type="button" data-edit-calendar-task="${escapeHtml(task.id)}" data-calendar-event-id="${escapeHtml(event.id)}" aria-label="Edit ${escapeHtml(task.title || "task")}" title="Edit ${escapeHtml(task.title || "task")}"><span>${escapeHtml(task.title || "Untitled task")}</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>`).join("") : '<p class="meta">No tasks yet.</p>'}
                   </div>
                   ${event.notes ? `<p><strong>Notes:</strong> ${escapeHtml(event.notes)}</p>` : ""}
                 </div>
@@ -6643,7 +6725,7 @@
     });
     workspaceInlineVoiceRecognitions.clear();
     workspaceEventPageContentEl.innerHTML = `
-      <h3>${escapeHtml(event.title || "Untitled event")}</h3>
+      <h3>${escapeHtml(formatTitleCase(event.title || "Untitled event"))}</h3>
       <div class="workspace-event-tabs" role="tablist" aria-label="${isPlanningProject ? "Planning project" : "Event"} workspace sections">
         <button class="workspace-event-tab ${activeWorkspaceEventTab === "details" ? "is-active" : ""}" type="button" role="tab" aria-selected="${activeWorkspaceEventTab === "details"}" data-workspace-event-tab="details">${isPlanningProject ? "Project details" : "Event details"}</button>
         <button class="workspace-event-tab ${activeWorkspaceEventTab === "tasks" ? "is-active" : ""}" type="button" role="tab" aria-selected="${activeWorkspaceEventTab === "tasks"}" data-workspace-event-tab="tasks">Tasks</button>
@@ -6651,8 +6733,7 @@
       </div>
       <section class="workspace-event-tab-panel" data-workspace-event-tab-panel="details" ${activeWorkspaceEventTab === "details" ? "" : "hidden"}>
         <form id="workspaceEventEditForm">
-          <label>${isPlanningProject ? "Project name" : "Event name"} <input name="title" value="${escapeHtml(event.title || "")}" required></label>
-          ${isPlanningProject ? "" : `<div class="split"><label>Date <input name="eventDate" type="date" value="${escapeHtml(eventDateTime.date)}"></label><label>Time <input name="eventTime" type="time" value="${escapeHtml(eventDateTime.time)}"></label></div><label>Location <input name="location" value="${escapeHtml(event.location || "")}" placeholder="Where will this happen?"></label>`}
+          ${isPlanningProject ? `<label>Project name <input name="title" value="${escapeHtml(event.title || "")}" required></label>` : `<div class="workspace-event-details-fields"><label>Date <input name="eventDate" type="date" value="${escapeHtml(eventDateTime.date)}"></label><label>Time <input name="eventTime" type="time" value="${escapeHtml(eventDateTime.time)}"></label><label>Location <input name="location" value="${escapeHtml(event.location || "")}" placeholder="Where will this happen?"></label></div>`}
           <section class="workspace-invitees-card">
             ${renderWorkspaceEventInvitees(event)}
             <p class="meta">Inviting someone does not give them planner access.</p>
@@ -6686,7 +6767,7 @@
       </table>` : '<p class="meta">No tasks yet.</p>'}</div>
       <section class="modal" id="workspaceTaskPhotosModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-photos-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskPhotosModalTitle"><button class="modal__close" type="button" data-close-workspace-task-photos-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskPhotosModalTitle">Task snapshots</h3></div></div><div class="workspace-task-photo-viewer" id="workspaceTaskPhotosModalContent"></div></div></section>
       <section class="modal" id="workspaceTaskListModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-list-modal></div><div class="modal__dialog workspace-list-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskListModalTitle"><button class="modal__close" type="button" data-close-workspace-task-list-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskListModalTitle">List</h3></div></div><div class="workspace-checklist__items" id="workspaceTaskListModalContent"></div></div></section>
-      ${canManageEvent ? `<section class="modal" id="workspaceTaskModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskModalTitle"><button class="modal__close" type="button" data-close-workspace-task-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskModalTitle">Edit task</h3><p class="meta">Update task details without losing the table view.</p></div></div><form id="workspaceTaskEditForm"><input type="hidden" name="id"><label>Task <input name="title" required></label><div class="split"><label>Assigned to <select name="assignedUserId">${assigneeOptions("")}</select></label><label>Due date <input name="dueAt" type="date"></label></div><label>Associated list <select name="listId"><option value="">No associated list</option>${lists.map((list) => `<option value="${escapeHtml(list.id)}">${escapeHtml(list.title || "Untitled list")}</option>`).join("")}</select></label><label>Status <select name="status"><option value="Not Started">Not started</option><option value="In Progress">In progress</option><option value="Done">Done</option></select></label><label>Notes <textarea name="notes" placeholder="Helpful details, links, or next steps."></textarea></label><div class="task-photo-field"><span>Task snapshots</span><div class="toolbar task-photo-actions"><button class="button" type="button" data-capture-workspace-task-photo>Take photo</button><button class="button button--light" type="button" data-upload-workspace-task-photo>Upload photos</button></div><input name="workspaceTaskCamera" type="file" accept="image/*" capture="environment" hidden><input name="workspaceTaskPhoto" type="file" accept="image/*" multiple hidden><p class="meta">Take a photo, or select multiple photos from your library. Each is attached when you save.</p><div class="task-photo-preview" data-workspace-task-photo-preview hidden></div><div class="workspace-task-photos" data-workspace-task-photos></div></div><div class="toolbar"><button class="button" type="submit">Save task</button><button class="button button--light" type="button" data-close-workspace-task-modal>Cancel</button></div><p class="status" id="workspaceTaskEditStatus"></p></form></div></section>` : ""}
+      ${canManageEvent ? `<section class="modal" id="workspaceTaskModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskModalTitle"><button class="modal__close" type="button" data-close-workspace-task-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskModalTitle">Edit task</h3></div></div><form id="workspaceTaskEditForm"><input type="hidden" name="id"><input class="workspace-task-edit-title" name="title" aria-label="Task" required><label class="workspace-task-edit-field"><span>Assigned to</span><select name="assignedUserId">${assigneeOptions("")}</select></label><label class="workspace-task-edit-field"><span>Due date</span><input name="dueAt" type="date"></label><label class="workspace-task-edit-field"><span>Associated list</span><select name="listId"><option value="">No associated list</option>${lists.map((list) => `<option value="${escapeHtml(list.id)}">${escapeHtml(list.title || "Untitled list")}</option>`).join("")}</select></label><label class="workspace-task-edit-field"><span>Status</span><select name="status"><option value="Not Started">Not started</option><option value="In Progress">In progress</option><option value="Done">Done</option></select></label><label>Notes <textarea name="notes" placeholder="Helpful details, links, or next steps."></textarea></label><div class="task-photo-field"><span>Task snapshots</span><div class="toolbar task-photo-actions"><button class="button" type="button" data-capture-workspace-task-photo>Take photo</button><button class="button button--light" type="button" data-upload-workspace-task-photo>Upload photos</button></div><input name="workspaceTaskCamera" type="file" accept="image/*" capture="environment" hidden><input name="workspaceTaskPhoto" type="file" accept="image/*" multiple hidden><p class="meta">Take a photo, or select multiple photos from your library. Each is attached when you save.</p><div class="task-photo-preview" data-workspace-task-photo-preview hidden></div><div class="workspace-task-photos" data-workspace-task-photos></div></div><div class="toolbar"><button class="button" type="submit">Save task</button><button class="button button--light" type="button" data-close-workspace-task-modal>Cancel</button></div><p class="status" id="workspaceTaskEditStatus"></p></form></div></section>` : ""}
       ${canManageEvent ? `<form id="workspaceEventTaskForm" class="workspace-quick-form"><label>Add a task <span class="workspace-voice-field"><input name="title" required placeholder="What needs to happen?">${workspaceInlineVoiceButton(`new-task-${event.id}`, "new task")}</span></label><button class="button button--light" type="submit">Add task</button></form>` : ""}
       </section>
       <section class="workspace-event-tab-panel" data-workspace-event-tab-panel="lists" ${activeWorkspaceEventTab === "lists" ? "" : "hidden"}>
@@ -7656,6 +7737,7 @@
       signedIn: Boolean(workspaceProfile?.signedIn),
       email: String(workspaceProfile?.email || "").trim(),
       name: String(workspaceProfile?.name || "").trim(),
+      userId: String(workspaceProfile?.userId || "").trim(),
       isAdmin: Boolean(workspaceProfile?.isAdmin) || String(workspaceProfile?.accessLevel || "") === "full_planner",
       hasWorkspaceAccess: supportsWorkspaceAccess
         ? Boolean(workspaceProfile?.signedIn)
@@ -8834,7 +8916,6 @@ function sortTables(items) {
         assignedTo: String(data.assignedTo || "").trim(),
         startDate: String(data.startDate || "").trim(),
         dueDate: String(data.dueDate || "").trim(),
-        priority: String(data.priority || "Medium").trim(),
         status: String(data.status || "Not Started").trim(),
         isComplete: String(data.isComplete || "false") === "true",
         completedAt: existingTodo?.completedAt || "",
@@ -8855,7 +8936,6 @@ function sortTables(items) {
         assignedTo: String(data.assignedTo || "").trim(),
         startDate: String(data.startDate || "").trim(),
         dueDate: String(data.dueDate || "").trim(),
-        priority: String(data.priority || "Medium").trim(),
         status: String(data.status || "Not Started").trim(),
         isComplete: String(data.isComplete || "false") === "true",
         imageUrl,
@@ -9074,18 +9154,15 @@ function sortTables(items) {
   });
 
   todoAssignedToFilterEl?.addEventListener("change", (event) => {
-    const checkbox = event.target.closest("[data-todo-assigned-to-filter]");
-    if (!checkbox) return;
-    selectedTodoAssignedTo = Array.from(todoAssignedToFilterEl.querySelectorAll("[data-todo-assigned-to-filter]:checked"))
-      .map((input) => String(input.value || "").trim())
-      .filter(Boolean);
-    updateTodoAssignedToFilterSummary();
+    const selectedAssignee = String(event.target.value || "").trim();
+    selectedTodoAssignedTo = selectedAssignee ? [selectedAssignee] : [];
     renderTodos();
   });
 
   todoGroupToggleButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      todoGroupBy = button.dataset.todoGroupBy === "due" ? "due" : "event";
+      const groupBy = String(button.dataset.todoGroupBy || "due");
+      todoGroupBy = ["due", "event", "project"].includes(groupBy) ? groupBy : "due";
       syncTodoGroupToggle();
       renderTodos();
     });
@@ -9108,6 +9185,10 @@ function sortTables(items) {
 
   openEventModalButton.addEventListener("click", () => {
     setActivePlannerPanel("events");
+    openEventModal("Add Event");
+  });
+
+  openCalendarEventModalButton?.addEventListener("click", () => {
     openEventModal("Add Event");
   });
 
@@ -9549,6 +9630,37 @@ function sortTables(items) {
   });
 
   todosListEl.addEventListener("change", async (event) => {
+    const checklistItem = event.target.closest("[data-workspace-todo-list-item]");
+    if (checklistItem) {
+      const listId = String(checklistItem.dataset.workspaceListId || "").trim();
+      const itemIndex = Number(checklistItem.dataset.workspaceListItemIndex);
+      const previousList = cachedWorkspaceLists.find((item) => String(item.id || "") === listId);
+      if (!previousList || !Number.isInteger(itemIndex)) return;
+
+      const completed = checklistItem.checked;
+      const completedItems = new Set(Array.isArray(previousList.completedItems) ? previousList.completedItems.map(Number) : []);
+      if (completed) completedItems.add(itemIndex);
+      else completedItems.delete(itemIndex);
+
+      try {
+        requirePlannerAccess();
+        upsertCachedWorkspaceList({ ...previousList, completedItems: [...completedItems].sort((left, right) => left - right) });
+        savePlannerSessionCache();
+        renderTodos();
+        const savedList = await backendRequest("setWorkspaceListItemCompleted", { id: listId, itemIndex, completed });
+        upsertCachedWorkspaceList(savedList);
+        savePlannerSessionCache();
+        renderTodos();
+        setStatus(workspaceStatusEl, "List updated.", "success");
+      } catch (error) {
+        upsertCachedWorkspaceList(previousList);
+        savePlannerSessionCache();
+        renderTodos();
+        setStatus(workspaceStatusEl, error.message || "Unable to update the list item.", "error");
+      }
+      return;
+    }
+
     const control = event.target.closest("[data-workspace-todo-assignee], [data-workspace-todo-status], [data-workspace-todo-due]");
     if (!control) return;
     const todo = cachedWorkspaceTasks.find((item) => String(item.id || "") === String(control.dataset.workspaceTodoId || ""));
@@ -10001,6 +10113,12 @@ function sortTables(items) {
     if (!dateButton) return;
     selectedWorkspaceCalendarDate = String(dateButton.dataset.workspaceCalendarDate || "").trim();
     window.sessionStorage.setItem(STORAGE_KEYS.workspaceCalendarDate, selectedWorkspaceCalendarDate);
+    if (window.matchMedia("(max-width: 760px)").matches) {
+      workspaceCalendarListDateFilter = selectedWorkspaceCalendarDate;
+      setWorkspaceCalendarView("list");
+      renderWorkspaceEventDirectory();
+      return;
+    }
     setWorkspaceCalendarView("day");
     renderWorkspace();
   });
@@ -10008,8 +10126,10 @@ function sortTables(items) {
   workspaceCalendarViewTabsEl?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-workspace-calendar-view]");
     if (!button) return;
+    workspaceCalendarListDateFilter = "";
     setWorkspaceCalendarView(button.dataset.workspaceCalendarView);
     if (activeWorkspaceCalendarView !== "list") renderWorkspace();
+    else renderWorkspaceEventDirectory();
   });
 
   workspaceCalendarNavigationEl?.addEventListener("click", (event) => {
@@ -10183,11 +10303,79 @@ function sortTables(items) {
   });
 
   plannerSummaryEl?.addEventListener("click", (event) => {
+    const workspaceParentButton = event.target.closest("[data-home-open-workspace-parent]");
+    if (workspaceParentButton) {
+      selectedWorkspaceEventId = String(workspaceParentButton.dataset.homeOpenWorkspaceParent || "").trim();
+      if (!selectedWorkspaceEventId) return;
+      activeWorkspaceEventTab = workspaceParentButton.dataset.homeParentIsProject === "true" ? "tasks" : "details";
+      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
+      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+      setActivePlannerPanel("workspace");
+      renderWorkspaceEventPage();
+      if (plannerSidebarMediaQuery.matches) closePlannerSidebar();
+      return;
+    }
+
+    const legacyEventButton = event.target.closest("[data-home-open-legacy-event]");
+    if (legacyEventButton) {
+      openEventWorkspace(legacyEventButton.dataset.homeOpenLegacyEvent);
+      if (plannerSidebarMediaQuery.matches) closePlannerSidebar();
+      return;
+    }
+
     const button = event.target.closest("[data-home-open-panel]");
     if (!button) return;
+    if (button.hasAttribute("data-home-filter-todos-for-viewer")) {
+      const viewerUserId = getCurrentWorkspaceViewerUserId();
+      selectedTodoAssignedTo = viewerUserId ? [viewerUserId] : [];
+    }
     setActivePlannerPanel(button.dataset.homeOpenPanel);
     if (plannerSidebarMediaQuery.matches) {
       closePlannerSidebar();
+    }
+  });
+
+  plannerSummaryEl?.addEventListener("change", async (event) => {
+    const control = event.target.closest("[data-home-task-status]");
+    if (!control) return;
+    const taskId = String(control.dataset.homeTaskId || "").trim();
+    const nextStatus = String(control.value || "Not Started");
+    if (!taskId) return;
+
+    if (control.dataset.homeTaskSource === "legacy") {
+      const legacyTask = cachedTodos.find((task) => String(task.id || "") === taskId);
+      if (!legacyTask) return;
+      const isComplete = nextStatus.trim().toLowerCase() === "done";
+      await updateEventTodoField(taskId, {
+        status: nextStatus,
+        isComplete,
+        completedAt: isComplete ? (legacyTask.completedAt || new Date().toISOString()) : ""
+      });
+      return;
+    }
+
+    const workspaceTask = cachedWorkspaceTasks.find((task) => String(task.id || "") === taskId);
+    if (!workspaceTask) return;
+    const previousTask = { ...workspaceTask };
+
+    try {
+      requirePlannerAccess();
+      upsertCachedWorkspaceTask({ ...workspaceTask, status: nextStatus });
+      savePlannerSessionCache();
+      renderTodos();
+      renderSummary();
+      const savedTask = await backendRequest("saveWorkspaceTask", { id: workspaceTask.id, status: nextStatus });
+      upsertCachedWorkspaceTask(savedTask);
+      savePlannerSessionCache();
+      renderTodos();
+      renderSummary();
+      setStatus(workspaceStatusEl, "Task updated.", "success");
+    } catch (error) {
+      upsertCachedWorkspaceTask(previousTask);
+      savePlannerSessionCache();
+      renderTodos();
+      renderSummary();
+      setStatus(workspaceStatusEl, error.message || "Unable to update task.", "error");
     }
   });
 

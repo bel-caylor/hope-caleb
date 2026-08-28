@@ -97,6 +97,14 @@ function splitIds(value: unknown) {
   return values.map((item) => String(item || "").trim()).filter(Boolean);
 }
 
+/** Keep planner names consistent without changing intentional acronyms such as "AI" or "UTSA". */
+function toTitleCase(value: unknown) {
+  return String(value || "").trim().replace(/\S+/g, (word) => {
+    if (word === word.toUpperCase() && /[A-Z]/.test(word)) return word;
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  });
+}
+
 function iso(value: unknown) {
   const raw = String(value || "").trim();
   return raw || "";
@@ -120,7 +128,7 @@ function mapUser(row: Record<string, unknown>) {
 function mapEvent(row: Record<string, unknown>) {
   return {
     id: String(row.Id || "").trim(),
-    title: String(row.Title || "").trim(),
+    title: toTitleCase(row.Title),
     startsAt: iso(row.StartsAt),
     endsAt: iso(row.EndsAt),
     location: String(row.Location || "").trim(),
@@ -136,7 +144,7 @@ function mapEvent(row: Record<string, unknown>) {
 function mapTask(row: Record<string, unknown>) {
   return {
     id: String(row.Id || "").trim(),
-    title: String(row.Title || "").trim(),
+    title: toTitleCase(row.Title),
     eventId: String(row.EventId || "").trim(),
     listId: String(row.ListId || "").trim(),
     assignedUserId: String(row.AssignedUserId || "").trim(),
@@ -180,7 +188,7 @@ function mapList(row: Record<string, unknown>) {
   return {
     id: String(row.Id || "").trim(),
     eventId: String(row.EventId || "").trim(),
-    title: String(row.Title || "").trim(),
+    title: toTitleCase(row.Title),
     items: String(row.Items || "").trim(),
     completedItems,
     notes: String(row.Notes || "").trim(),
@@ -409,7 +417,7 @@ export function saveWorkspaceEvent(input: SaveWorkspaceEventInput) {
   const existing = readRows(PLANNER_V2_EVENTS_SHEET).map(mapEvent).find((event) => event.id === id);
   const saved = {
     Id: id,
-    Title: String(input.title || "").trim(),
+    Title: toTitleCase(input.title),
     StartsAt: String(input.startsAt || "").trim(),
     EndsAt: String(input.endsAt || "").trim(),
     Location: String(input.location || "").trim(),
@@ -466,7 +474,7 @@ export function saveWorkspaceTask(input: SaveWorkspaceTaskInput) {
       .reduce((highest, task) => Math.max(highest, Number(task.sortOrder || 0)), 0) + 1;
   const saved = {
     Id: id,
-    Title: String(input.title || existing?.title || "").trim(),
+    Title: toTitleCase(input.title || existing?.title),
     EventId: eventId,
     ListId: listId,
     AssignedUserId: assignedUserId,
@@ -511,7 +519,7 @@ export function saveWorkspaceList(input: SaveWorkspaceListInput) {
   const saved = {
     Id: id,
     EventId: String(input.eventId || existing?.eventId || "").trim(),
-    Title: String(input.title || existing?.title || "").trim(),
+    Title: toTitleCase(input.title || existing?.title),
     Items: String(input.items || existing?.items || "").trim(),
     CompletedItems: JSON.stringify([...new Set(completedItems)].sort((left, right) => left - right)),
     Notes: String(input.notes || existing?.notes || "").trim(),
