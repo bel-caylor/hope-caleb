@@ -1582,6 +1582,40 @@
     }
   }
 
+  function workspaceTaskPhotoAssets(taskId) {
+    return cachedWorkspaceAssets.filter((asset) =>
+      String(asset.taskId || "") === String(taskId || "") && isSafeImageUrl(asset.assetUrl)
+    );
+  }
+
+  function renderWorkspaceTodoSnapshots(todo) {
+    const photos = workspaceTaskPhotoAssets(todo.id);
+    if (!photos.length) return "";
+    return `
+      <div class="guest-card__field guest-card__field--full todo-task-snapshots">
+        <span>Photos</span>
+        <div class="todo-task-snapshot-list">
+          ${photos.map((asset, index) => `<img class="todo-task-snapshot" src="${escapeHtml(displayImageUrl(asset.assetUrl))}" data-workspace-asset-image="${escapeHtml(asset.id)}" alt="Photo ${index + 1} attached to ${escapeHtml(todo.title || "task")}" loading="lazy">`).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  function hydrateWorkspaceTodoSnapshots(root) {
+    const images = Array.from(root?.querySelectorAll?.("[data-workspace-asset-image]") || []);
+    void Promise.all(images.map(async (image) => {
+      const id = String(image.dataset.workspaceAssetImage || "").trim();
+      if (!id) return;
+      try {
+        const response = await backendRequest("getWorkspaceAssetImage", { id });
+        const dataUrl = String(response?.dataUrl || "").trim();
+        if (dataUrl.startsWith("data:image/")) image.src = dataUrl;
+      } catch (_) {
+        // The direct image URL remains available as a fallback.
+      }
+    }));
+  }
+
   function renderTodoPhotoPreview(imageUrl = "") {
     if (!todoPhotoPreviewEl) return;
     const previewUrl = pendingTodoPhoto?.previewUrl || String(imageUrl || "").trim();
@@ -4163,6 +4197,7 @@
           </section>
         `;
       }).join("")}</div>`;
+      hydrateWorkspaceTodoSnapshots(todosListEl);
       return;
     }
 
@@ -4248,6 +4283,7 @@
                       <strong>${escapeHtml(todo.notes)}</strong>
                     </div>
                   ` : ""}
+                  ${renderWorkspaceTodoSnapshots(todo)}
                 </div>
               </div>
             </details>
@@ -4257,6 +4293,7 @@
         `).join("")}
       </div>
     `;
+    hydrateWorkspaceTodoSnapshots(todosListEl);
   }
 
   function renderTodoByDateAccordion(todo) {
@@ -4309,6 +4346,7 @@
               <select data-workspace-todo-status data-workspace-todo-id="${escapeHtml(todo.id)}">${renderTodoStatusOptions(todo.status)}</select>
             </div>
             ${todo.notes ? `<div class="guest-card__field ${hasChecklist ? "todo-task-notes" : "guest-card__field--full"}"><span>Notes</span><strong>${escapeHtml(todo.notes)}</strong></div>` : ""}
+            ${renderWorkspaceTodoSnapshots(todo)}
           </div>
         </div>
       </details>
