@@ -5880,24 +5880,14 @@
     const monthStart = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
     if (workspaceCalendarTitleEl) workspaceCalendarTitleEl.textContent = activeWorkspaceCalendarView === "day" ? "Days with events" : "Calendar";
 
-    const renderMonthGrid = (currentMonth) => {
-      const gridStart = new Date(currentMonth);
-      gridStart.setDate(currentMonth.getDate() - currentMonth.getDay());
-      const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      const cells = weekdays.map((day) => `<span class="workspace-calendar__weekday">${day}</span>`);
-      for (let index = 0; index < 42; index += 1) {
-        const day = new Date(gridStart);
-        day.setDate(gridStart.getDate() + index);
-        const events = datedEvents.filter(({ date }) => date.getFullYear() === day.getFullYear() && date.getMonth() === day.getMonth() && date.getDate() === day.getDate());
-        const outside = day.getMonth() !== currentMonth.getMonth();
-        cells.push(`
-        <div class="workspace-calendar__day ${outside ? "workspace-calendar__day--outside" : ""}">
-          <button class="workspace-calendar__date" type="button" data-workspace-calendar-date="${workspaceDateKey(day)}" aria-label="View ${escapeHtml(formatWorkspaceDay(day))}">${day.getDate()}</button>
+    const renderCalendarDay = (day, outsideRange = false) => {
+      const events = datedEvents.filter(({ date }) => date.getFullYear() === day.getFullYear() && date.getMonth() === day.getMonth() && date.getDate() === day.getDate());
+      return `
+        <div class="workspace-calendar__day ${outsideRange ? "workspace-calendar__day--outside" : ""}">
+          <button class="workspace-calendar__date" type="button" data-workspace-calendar-date="${workspaceDateKey(day)}" aria-label="View ${escapeHtml(formatWorkspaceDay(day))}">${day.getDate()}${day.getDate() === 1 ? `<span class="workspace-calendar__month-label">${escapeHtml(formatWorkspaceMonth(day))}</span>` : ""}</button>
           ${events.map(({ event }) => `<button class="workspace-calendar__event" type="button" data-open-workspace-event="${escapeHtml(event.id)}" title="Open ${escapeHtml(event.title || "Untitled event")}">${escapeHtml(event.title || "Untitled event")}</button>`).join("")}
         </div>
-      `);
-      }
-      return cells.join("");
+      `;
     };
     if (activeWorkspaceCalendarView === "day") {
       const daysWithEvents = new Map();
@@ -5935,15 +5925,21 @@
         const start = new Date(date.getFullYear(), date.getMonth(), 1);
         return [workspaceDateKey(start), start];
       })).values()].sort((left, right) => left.getTime() - right.getTime());
-      const calendarMonths = months.length ? months : [monthStart];
       workspaceCalendarEl.classList.remove("workspace-calendar--day-view");
-      workspaceCalendarEl.classList.add("workspace-calendar--month-list");
-      workspaceCalendarEl.innerHTML = calendarMonths.map((calendarMonth) => `
-        <section class="workspace-calendar__month" aria-label="${escapeHtml(formatWorkspaceMonth(calendarMonth))}">
-          <h4>${escapeHtml(formatWorkspaceMonth(calendarMonth))}</h4>
-          <div class="workspace-calendar workspace-calendar__month-grid">${renderMonthGrid(calendarMonth)}</div>
-        </section>
-      `).join("");
+      workspaceCalendarEl.classList.remove("workspace-calendar--month-list");
+      const firstMonth = months[0] || monthStart;
+      const lastMonth = months[months.length - 1] || monthStart;
+      const gridStart = new Date(firstMonth);
+      gridStart.setDate(gridStart.getDate() - gridStart.getDay());
+      const gridEnd = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+      gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
+      const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const cells = weekdays.map((day) => `<span class="workspace-calendar__weekday">${day}</span>`);
+      for (const day = new Date(gridStart); day <= gridEnd; day.setDate(day.getDate() + 1)) {
+        const outsideRange = day < firstMonth || day > new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+        cells.push(renderCalendarDay(new Date(day), outsideRange));
+      }
+      workspaceCalendarEl.innerHTML = cells.join("");
     }
 
     renderWorkspaceEventDirectory();
