@@ -3965,11 +3965,39 @@
       const byDueDate = [...filteredTodos].sort((left, right) => {
         const leftDue = String(left.dueAt || "").trim();
         const rightDue = String(right.dueAt || "").trim();
-        if (!leftDue && rightDue) return -1;
-        if (leftDue && !rightDue) return 1;
+        if (!leftDue && rightDue) return 1;
+        if (leftDue && !rightDue) return -1;
         return leftDue.localeCompare(rightDue) || String(left.title || "").localeCompare(String(right.title || ""));
       });
-      todosListEl.innerHTML = `<div class="event-accordion todo-accordion todo-accordion--by-date">${byDueDate.map(renderTodoByDateAccordion).join("")}</div>`;
+      const monthGroups = new Map();
+      byDueDate.forEach((todo) => {
+        const dueDate = String(todo.dueAt || "").slice(0, 10);
+        const parsedDate = dueDate ? new Date(`${dueDate}T12:00:00`) : null;
+        const hasDueDate = Boolean(parsedDate && !Number.isNaN(parsedDate.getTime()));
+        const key = hasDueDate ? `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, "0")}` : "undated";
+        if (!monthGroups.has(key)) {
+          monthGroups.set(key, {
+            title: hasDueDate
+              ? parsedDate.toLocaleDateString(undefined, { month: "long", year: "numeric" })
+              : "No due date",
+            tasks: []
+          });
+        }
+        monthGroups.get(key).tasks.push({ todo, dueDate, parsedDate, hasDueDate });
+      });
+      todosListEl.innerHTML = `<div class="todo-due-date-groups">${[...monthGroups.values()].map((group) => `
+        <section class="todo-due-date-month">
+          <h3 class="todo-due-date-month__heading">${escapeHtml(group.title)}</h3>
+          <div class="event-accordion todo-accordion todo-accordion--by-date">
+            ${group.tasks.map(({ todo, dueDate, parsedDate, hasDueDate }) => `
+              <div class="todo-due-date-row ${hasDueDate ? "" : "todo-due-date-row--no-date"}">
+                <time class="todo-due-date-row__date" ${hasDueDate ? `datetime="${escapeHtml(dueDate)}" aria-label="${escapeHtml(parsedDate.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }))}"` : ""}>${hasDueDate ? parsedDate.getDate() : "—"}</time>
+                ${renderTodoByDateAccordion(todo)}
+              </div>
+            `).join("")}
+          </div>
+        </section>
+      `).join("")}</div>`;
       return;
     }
 
@@ -4424,6 +4452,7 @@
               <span class="accordion-title">${escapeHtml(rsvp.name || rsvp.group || "Guest")}</span>
               <span class="rsvp-submission-count">${guestCount ? `${escapeHtml(guestCount)} guest${guestCount === "1" ? "" : "s"} attending` : "RSVP recorded"}</span>
             </span>
+            ${viewerProfile.isAdmin && records.length ? `<button class="button button--light rsvp-submission-edit-button" type="button" data-edit-rsvp-response="${escapeHtml(group)}">Edit response</button>` : ""}
           </summary>
           <div class="guest-card__body rsvp-submission-card__body">
             <div class="guest-card__grid">
@@ -4431,7 +4460,6 @@
             </div>
             ${memberResponses ? `<section class="rsvp-submission-members"><span>Wedding party responses</span><ul>${memberResponses}</ul></section>` : ""}
             ${rsvp.comment ? `<section class="rsvp-submission-note"><span>Note</span><p>${escapeHtml(rsvp.comment)}</p></section>` : ""}
-            ${viewerProfile.isAdmin && records.length ? `<div class="toolbar rsvp-submission-actions"><button class="button button--light" type="button" data-edit-rsvp-response="${escapeHtml(group)}">Edit response</button></div>` : ""}
             ${renderSubmissionHistory(records)}
           </div>
         </details>
@@ -5269,12 +5297,12 @@
   }
 
   function getGuestEmail(row) {
-    const emailColumn = findGuestColumn(row, /^e-?mail$/i);
+    const emailColumn = Object.keys(row || {}).find((column) => ["email", "emailaddress", "googleaccountemail", "googleemail"].includes(String(column || "").toLowerCase().replace(/[^a-z0-9]/g, "")));
     return String(emailColumn ? row[emailColumn] || "" : "").trim();
   }
 
   function getGuestPhone(row) {
-    const phoneColumn = findGuestColumn(row, /^(mobile )?phone( number)?$/i);
+    const phoneColumn = Object.keys(row || {}).find((column) => ["phone", "phonenumber", "mobile", "mobilephone", "cell", "cellphone"].includes(String(column || "").toLowerCase().replace(/[^a-z0-9]/g, "")));
     return String(phoneColumn ? row[phoneColumn] || "" : "").trim();
   }
 
@@ -6019,21 +6047,25 @@
 
   function getPlannerUserGuestChoices() {
     const guestsByName = new Map();
-    const addGuest = (name, email = "", phone = "") => {
+    const addGuest = (name, email = "", phone = "", types = []) => {
       const normalizedName = String(name || "").trim();
       if (!normalizedName) return;
       const key = normalizedName.toLowerCase();
       const existing = guestsByName.get(key);
+      const normalizedTypes = Array.isArray(types)
+        ? types.map((type) => String(type || "").trim()).filter(Boolean)
+        : String(types || "").split(",").map((type) => type.trim()).filter(Boolean);
       guestsByName.set(key, {
         name: existing?.name || normalizedName,
         email: existing?.email || String(email || "").trim(),
-        phone: existing?.phone || String(phone || "").trim()
+        phone: existing?.phone || String(phone || "").trim(),
+        types: [...new Set([...(existing?.types || []), ...normalizedTypes])]
       });
     };
 
     (Array.isArray(cachedWorkspaceInvitees.guests) ? cachedWorkspaceInvitees.guests : [])
-      .forEach((guest) => addGuest(guest?.name, guest?.email, guest?.phone));
-    cachedGuests.forEach((guest) => addGuest(getGuestDisplayName(guest), getGuestEmail(guest), getGuestPhone(guest)));
+      .forEach((guest) => addGuest(guest?.name, guest?.email, guest?.phone, guest?.types));
+    cachedGuests.forEach((guest) => addGuest(getGuestDisplayName(guest), getGuestEmail(guest), getGuestPhone(guest), getGuestTypeValue(guest)));
 
     return [...guestsByName.values()].sort((left, right) => left.name.localeCompare(right.name));
   }
@@ -6497,20 +6529,35 @@
       return `<strong>${escapeHtml(list.title || "Untitled list")}</strong>${items.length ? `<div class="workspace-checklist__items">${items.map((item, index) => `<label class="workspace-checklist__item ${completedItems.has(index) ? "is-complete" : ""}"><input type="checkbox" data-workspace-list-item data-workspace-list-id="${escapeHtml(list.id)}" data-workspace-list-item-index="${index}" ${completedItems.has(index) ? "checked" : ""}><span>${escapeHtml(item)}</span></label>`).join("")}</div>` : '<span class="meta">No items yet.</span>'}`;
     };
     const canManageEvent = Boolean(viewerProfile.isAdmin);
-    const saveWorkspaceListItems = async (list, items, completedItems) => {
-      const savedList = await backendRequest("saveWorkspaceList", {
+    const saveWorkspaceListItems = (list, items, completedItems) => {
+      const previousList = { ...list };
+      const optimisticList = {
         id: String(list.id || "").trim(),
         eventId: String(list.eventId || event.id || "").trim(),
         title: String(list.title || "").trim(),
         items: items.join("\n"),
         completedItems: [...completedItems].sort((left, right) => left - right),
         notes: String(list.notes || "").trim()
-      });
-      const listIndex = cachedWorkspaceLists.findIndex((item) => String(item.id || "") === String(savedList.id || ""));
-      if (listIndex >= 0) cachedWorkspaceLists[listIndex] = savedList;
-      else cachedWorkspaceLists.push(savedList);
+      };
+      upsertCachedWorkspaceList(optimisticList);
       savePlannerSessionCache();
-      return savedList;
+      setStatus(workspaceStatusEl, "List updated. Saving in the background…", "pending");
+
+      void (async () => {
+        try {
+          const savedList = await backendRequest("saveWorkspaceList", optimisticList);
+          upsertCachedWorkspaceList(savedList);
+          savePlannerSessionCache();
+          setStatus(workspaceStatusEl, "List saved.", "success");
+        } catch (error) {
+          upsertCachedWorkspaceList(previousList);
+          savePlannerSessionCache();
+          renderWorkspaceEventPage();
+          setStatus(workspaceStatusEl, error.message || "Unable to save the list.", "error");
+        }
+      })();
+
+      return optimisticList;
     };
     const eventDateTime = splitWorkspaceDateTime(event.startsAt);
     const guestTypes = Array.isArray(cachedWorkspaceInvitees.groups)
@@ -6641,20 +6688,40 @@
       <form id="workspaceEventListForm" class="workspace-quick-form"><label>New list <input name="title" required placeholder="Breakfast shopping list"></label><label>Items <textarea name="items" required placeholder="Coffee&#10;Fruit&#10;Pastries"></textarea></label><button class="button button--light" type="submit">Add list</button></form>
       </section>
     `;
-    workspaceEventPageContentEl.querySelector("#workspaceEventEditForm")?.addEventListener("submit", async (formEvent) => {
+    workspaceEventPageContentEl.querySelector("#workspaceEventEditForm")?.addEventListener("submit", (formEvent) => {
       formEvent.preventDefault();
       const form = formEvent.currentTarget;
       const data = Object.fromEntries(new FormData(form).entries());
-      await backendRequest("saveWorkspaceEvent", {
+      const previousEvent = { ...event };
+      const optimisticEvent = {
         ...event,
         title: String(data.title || event.title || "").trim(),
         startsAt: isPlanningProject ? "" : toWorkspaceDateTime(data.eventDate, data.eventTime),
         location: isPlanningProject ? "" : String(data.location || "").trim(),
         invitees: String(new FormData(form).get("invitees") || "").trim(),
         notes: String(data.notes || "").trim()
-      });
-      await refreshWorkspaceCollections();
-      setStatus(workspaceStatusEl, `${isPlanningProject ? "Project" : "Event"} details saved.`, "success");
+      };
+      Object.assign(event, optimisticEvent);
+      upsertCachedWorkspaceEvent(optimisticEvent);
+      savePlannerSessionCache();
+      renderWorkspaceEventPage();
+      setStatus(workspaceStatusEl, `${isPlanningProject ? "Project" : "Event"} updated. Saving in the background…`, "pending");
+
+      void (async () => {
+        try {
+          const savedEvent = await backendRequest("saveWorkspaceEvent", optimisticEvent);
+          Object.assign(event, savedEvent);
+          upsertCachedWorkspaceEvent(savedEvent);
+          savePlannerSessionCache();
+          setStatus(workspaceStatusEl, `${isPlanningProject ? "Project" : "Event"} saved.`, "success");
+        } catch (error) {
+          Object.assign(event, previousEvent);
+          upsertCachedWorkspaceEvent(previousEvent);
+          savePlannerSessionCache();
+          renderWorkspaceEventPage();
+          setStatus(workspaceStatusEl, error.message || `Unable to save ${isPlanningProject ? "project" : "event"} details.`, "error");
+        }
+      })();
     });
     workspaceEventPageContentEl.querySelectorAll("[data-workspace-event-tab]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -6758,14 +6825,48 @@
         }
       }
     });
-    workspaceEventPageContentEl.querySelector("#workspaceEventTaskForm")?.addEventListener("submit", async (formEvent) => {
+    workspaceEventPageContentEl.querySelector("#workspaceEventTaskForm")?.addEventListener("submit", (formEvent) => {
       formEvent.preventDefault();
-      const data = Object.fromEntries(new FormData(formEvent.currentTarget).entries());
-      const savedTask = await backendRequest("saveWorkspaceTask", { ...data, eventId: event.id, status: "Not Started" });
-      upsertCachedWorkspaceTask(savedTask);
+      const form = formEvent.currentTarget;
+      const data = Object.fromEntries(new FormData(form).entries());
+      const title = String(data.title || "").trim();
+      if (!title) return;
+
+      const taskId = createClientId("workspace_task");
+      const nextSortOrder = cachedWorkspaceTasks
+        .filter((task) => String(task.eventId || "") === String(event.id || ""))
+        .reduce((highest, task) => Math.max(highest, Number(task.sortOrder || 0)), 0) + 1;
+      const optimisticTask = {
+        id: taskId,
+        title,
+        eventId: event.id,
+        listId: "",
+        assignedUserId: "",
+        dueAt: "",
+        notes: "",
+        status: "Not Started",
+        sortOrder: nextSortOrder
+      };
+
+      upsertCachedWorkspaceTask(optimisticTask);
       savePlannerSessionCache();
+      form.reset();
       renderWorkspaceEventPage();
-      setStatus(workspaceStatusEl, "Task added.", "success");
+      setStatus(workspaceStatusEl, "Task added. Saving in the background…", "pending");
+
+      void (async () => {
+        try {
+          const savedTask = await backendRequest("saveWorkspaceTask", optimisticTask);
+          upsertCachedWorkspaceTask(savedTask);
+          savePlannerSessionCache();
+          setStatus(workspaceStatusEl, "Task saved.", "success");
+        } catch (error) {
+          cachedWorkspaceTasks = cachedWorkspaceTasks.filter((task) => String(task.id || "") !== taskId);
+          savePlannerSessionCache();
+          renderWorkspaceEventPage();
+          setStatus(workspaceStatusEl, error.message || "Task could not be saved.", "error");
+        }
+      })();
     });
     const workspaceTaskModal = workspaceEventPageContentEl.querySelector("#workspaceTaskModal");
     const workspaceTaskEditForm = workspaceEventPageContentEl.querySelector("#workspaceTaskEditForm");
@@ -7124,30 +7225,69 @@
         setStatus(workspaceStatusEl, "Task removed.", "success");
       });
     });
-    workspaceEventPageContentEl.querySelector("#workspaceEventListForm")?.addEventListener("submit", async (formEvent) => {
+    workspaceEventPageContentEl.querySelector("#workspaceEventListForm")?.addEventListener("submit", (formEvent) => {
       formEvent.preventDefault();
-      const data = Object.fromEntries(new FormData(formEvent.currentTarget).entries());
-      await backendRequest("saveWorkspaceList", { ...data, eventId: event.id });
-      await refreshWorkspaceCollections();
-      setStatus(workspaceStatusEl, "List added.", "success");
+      const form = formEvent.currentTarget;
+      const data = Object.fromEntries(new FormData(form).entries());
+      const title = String(data.title || "").trim();
+      if (!title) return;
+      const optimisticList = {
+        id: createClientId("workspace_list"),
+        eventId: event.id,
+        title,
+        items: String(data.items || "").trim(),
+        completedItems: [],
+        notes: String(data.notes || "").trim()
+      };
+      upsertCachedWorkspaceList(optimisticList);
+      savePlannerSessionCache();
+      form.reset();
+      renderWorkspaceEventPage();
+      setStatus(workspaceStatusEl, "List added. Saving in the background…", "pending");
+
+      void (async () => {
+        try {
+          const savedList = await backendRequest("saveWorkspaceList", optimisticList);
+          upsertCachedWorkspaceList(savedList);
+          savePlannerSessionCache();
+          setStatus(workspaceStatusEl, "List saved.", "success");
+        } catch (error) {
+          cachedWorkspaceLists = cachedWorkspaceLists.filter((list) => String(list.id || "") !== optimisticList.id);
+          savePlannerSessionCache();
+          renderWorkspaceEventPage();
+          setStatus(workspaceStatusEl, error.message || "List could not be saved.", "error");
+        }
+      })();
     });
     workspaceEventPageContentEl.querySelectorAll("[data-workspace-list-item]").forEach((checkbox) => {
-      checkbox.addEventListener("change", async () => {
+      checkbox.addEventListener("change", () => {
         const listId = String(checkbox.dataset.workspaceListId || "").trim();
         const itemIndex = Number(checkbox.dataset.workspaceListItemIndex);
         const completed = checkbox.checked;
-        checkbox.disabled = true;
-        try {
-          const savedList = await backendRequest("setWorkspaceListItemCompleted", { id: listId, itemIndex, completed });
-          const listIndex = cachedWorkspaceLists.findIndex((list) => String(list.id || "") === listId);
-          if (listIndex >= 0) cachedWorkspaceLists[listIndex] = savedList;
-          savePlannerSessionCache();
-          renderWorkspaceEventPage();
-        } catch (error) {
-          checkbox.checked = !completed;
-          checkbox.disabled = false;
-          setStatus(workspaceStatusEl, error.message || "Unable to update the list item.", "error");
-        }
+        const previousList = cachedWorkspaceLists.find((list) => String(list.id || "") === listId);
+        if (!previousList || !Number.isInteger(itemIndex)) return;
+        const completedItems = new Set(Array.isArray(previousList.completedItems) ? previousList.completedItems : []);
+        if (completed) completedItems.add(itemIndex);
+        else completedItems.delete(itemIndex);
+        const optimisticList = { ...previousList, completedItems: [...completedItems].sort((left, right) => left - right) };
+        upsertCachedWorkspaceList(optimisticList);
+        savePlannerSessionCache();
+        renderWorkspaceEventPage();
+        setStatus(workspaceStatusEl, "List updated. Saving in the background…", "pending");
+
+        void (async () => {
+          try {
+            const savedList = await backendRequest("setWorkspaceListItemCompleted", { id: listId, itemIndex, completed });
+            upsertCachedWorkspaceList(savedList);
+            savePlannerSessionCache();
+            setStatus(workspaceStatusEl, "List saved.", "success");
+          } catch (error) {
+            upsertCachedWorkspaceList(previousList);
+            savePlannerSessionCache();
+            renderWorkspaceEventPage();
+            setStatus(workspaceStatusEl, error.message || "Unable to update the list item.", "error");
+          }
+        })();
       });
     });
   }
@@ -7160,6 +7300,28 @@
       cachedWorkspaceTasks[existingIndex] = savedTask;
     } else {
       cachedWorkspaceTasks.push(savedTask);
+    }
+  }
+
+  function upsertCachedWorkspaceEvent(savedEvent) {
+    const id = String(savedEvent?.id || "").trim();
+    if (!id) return;
+    const existingIndex = cachedWorkspaceEvents.findIndex((event) => String(event.id || "") === id);
+    if (existingIndex >= 0) {
+      cachedWorkspaceEvents[existingIndex] = savedEvent;
+    } else {
+      cachedWorkspaceEvents.push(savedEvent);
+    }
+  }
+
+  function upsertCachedWorkspaceList(savedList) {
+    const id = String(savedList?.id || "").trim();
+    if (!id) return;
+    const existingIndex = cachedWorkspaceLists.findIndex((list) => String(list.id || "") === id);
+    if (existingIndex >= 0) {
+      cachedWorkspaceLists[existingIndex] = savedList;
+    } else {
+      cachedWorkspaceLists.push(savedList);
     }
   }
 
@@ -8827,6 +8989,8 @@ function sortTables(items) {
     }
     const editButton = event.target.closest("[data-edit-rsvp-response]");
     if (editButton) {
+      event.preventDefault();
+      event.stopPropagation();
       try {
         openRsvpEditModal(String(editButton.dataset.editRsvpResponse || ""));
       } catch (error) {
@@ -9651,11 +9815,19 @@ function sortTables(items) {
     const form = nameSelect.closest("[data-planner-user-form]");
     const emailField = form?.elements?.namedItem("email");
     const phoneField = form?.elements?.namedItem("phone");
+    const roleField = form?.elements?.namedItem("weddingRole");
     if (!emailField) return;
     const selectedName = String(nameSelect.value || "").trim().toLowerCase();
     const guest = getPlannerUserGuestChoices().find((item) => item.name.toLowerCase() === selectedName);
     if (guest?.email) emailField.value = guest.email;
     if (guest?.phone && phoneField) phoneField.value = guest.phone;
+    const guestRole = (guest?.types || []).join(", ");
+    if (guestRole && roleField) {
+      if (!Array.from(roleField.options).some((option) => option.value === guestRole)) {
+        roleField.add(new Option(guestRole, guestRole));
+      }
+      roleField.value = guestRole;
+    }
   });
 
   plannerUsersPanelEl?.addEventListener("click", async (event) => {

@@ -230,8 +230,25 @@ export function listWorkspaceInvitees() {
       || normalizedFields.guest
       || ""
     ).trim();
-    const email = String(row.Email || normalizedFields.email || "").trim();
-    const phone = String(row.Phone || row["Phone Number"] || normalizedFields.phone || normalizedFields.phonenumber || "").trim();
+    const email = String(
+      row.Email
+      || normalizedFields.email
+      || normalizedFields.emailaddress
+      || normalizedFields.googleaccountemail
+      || normalizedFields.googleemail
+      || ""
+    ).trim();
+    const phone = String(
+      row.Phone
+      || row["Phone Number"]
+      || normalizedFields.phone
+      || normalizedFields.phonenumber
+      || normalizedFields.mobile
+      || normalizedFields.mobilephone
+      || normalizedFields.cell
+      || normalizedFields.cellphone
+      || ""
+    ).trim();
     const types = String(row.Type || "")
       .split(",")
       .map((item) => item.trim())
