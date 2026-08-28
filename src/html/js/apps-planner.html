@@ -4150,6 +4150,16 @@
   }
 
   function renderTodos() {
+    const todoFiltersEl = todosListEl?.closest("[data-planner-panel=\"todos\"]")?.querySelector(".planner-filter-row");
+    if (!viewerProfile.isAdmin) {
+      // Wedding-party members receive only their own assigned tasks, so the
+      // all-assignees filter and alternate groupings add no useful choices.
+      selectedTodoAssignedTo = [];
+      todoGroupBy = "due";
+      if (todoFiltersEl) todoFiltersEl.hidden = true;
+    } else if (todoFiltersEl) {
+      todoFiltersEl.hidden = false;
+    }
     const assignees = collectTodoAssignedToOptions(cachedWorkspaceTasks);
     renderTodoAssignedToFilter(assignees);
 
