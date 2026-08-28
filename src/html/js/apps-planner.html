@@ -5818,31 +5818,11 @@
     const users = [...cachedWorkspaceUsers]
       .sort((left, right) => String(left.name || left.email || "").localeCompare(String(right.name || right.email || "")));
     const guestChoices = getPlannerUserGuestChoices();
-    const weddingRoles = [
-      "Bride",
-      "Groom",
-      "Bride's Mother",
-      "Bride's Father",
-      "Groom's Mother",
-      "Groom's Father",
-      "Wedding Party",
-      "Food",
-      "Photographer",
-      "Pastor",
-      "Bartender"
-    ];
     const accessOptions = (selected) => [
       ["wedding_party", "Wedding party — sees only their assigned tasks and events"],
       ["contributor", "Contributor — sees the shared plan and can help manage it"],
       ["full_planner", "Full planner — can manage the shared plan and planner access"]
     ].map(([value, label]) => `<option value="${value}" ${String(selected || "wedding_party") === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("");
-    const weddingRoleOptions = (selected) => {
-      const selectedRole = String(selected || "").trim();
-      const roles = selectedRole && !weddingRoles.some((role) => role.toLowerCase() === selectedRole.toLowerCase())
-        ? [...weddingRoles, selectedRole]
-        : weddingRoles;
-      return `<option value="">Choose a role</option>${roles.map((role) => `<option value="${escapeHtml(role)}" ${role.toLowerCase() === selectedRole.toLowerCase() ? "selected" : ""}>${escapeHtml(role)}</option>`).join("")}`;
-    };
     const userForm = (user = {}) => {
       const selectedName = String(user.name || "").trim();
       const selectedGuestId = String(user.guestId || "").trim();
@@ -5856,21 +5836,16 @@
       <form class="planner-users-form" data-planner-user-form>
         <input name="id" type="hidden" value="${escapeHtml(user.id || "")}">
         <label>Guest <select name="guestId" required data-planner-user-guest>${guestOptions}</select></label>
-        <label>Google account email <input name="email" type="email" value="${escapeHtml(user.email || "")}" placeholder="name@gmail.com"></label>
-        <label>Mobile number <input name="phone" type="tel" value="${escapeHtml(user.phone || "")}" placeholder="+12105551234"></label>
-        <label>Guest type / wedding role <select name="weddingRole">${weddingRoleOptions(user.weddingRole)}</select></label>
         <label>Access level <select name="accessLevel">${accessOptions(user.accessLevel)}</select></label>
-        <label class="planner-users-form__wide planner-users-form__active"><input name="active" type="checkbox" ${user.active !== false ? "checked" : ""}> Active — this person can sign in using the email above</label>
-        <p class="meta planner-users-form__wide">Mobile number and SMS consent are stored on this guest’s record. RSVP is the usual place to collect SMS consent.</p>
-        <div class="toolbar planner-users-form__wide"><button class="button" type="submit">${user.id ? "Save changes" : "Add contact"}</button>${user.id ? '<button class="button button--light" type="button" data-cancel-planner-user-edit>Cancel</button>' : ""}</div>
+        <p class="meta planner-users-form__wide">The guest record supplies the name, Google account, mobile number, and wedding role. Adding planner access activates that guest's account.</p>
+        <div class="toolbar planner-users-form__wide"><button class="button" type="submit">${user.id ? "Save access" : "Grant access"}</button>${user.id ? '<button class="button button--light" type="button" data-cancel-planner-user-edit>Cancel</button>' : ""}</div>
       </form>`;
     };
     plannerUsersPanelEl.innerHTML = `
       <section class="card">
         <p class="eyebrow">Contacts, access & assignments</p>
-        <h3>Planner contacts</h3>
-        <p class="meta">Guests are the source of truth for names, mobile numbers, Google account emails, and SMS consent. This list only controls wedding role, planner access, and task assignment.</p>
-        <div class="toolbar"><button class="button button--light" type="button" data-sync-planner-users-to-guests>Sync existing contacts to Guests</button></div>
+        <h3>Planner access</h3>
+        <p class="meta">Choose a guest and set their access level. Their name, Google account, mobile number, and wedding role stay connected to their guest record.</p>
         <div id="plannerUserEditor">${userForm()}</div>
         <p class="status" id="plannerUsersStatus"></p>
       </section>
@@ -10424,17 +10399,17 @@ function sortTables(items) {
       const previousUsers = [...cachedWorkspaceUsers];
       const now = new Date().toISOString();
       data.id = userId;
-      data.active = Boolean(form.elements.active?.checked);
+      data.active = true;
       const selectedGuest = getPlannerUserGuestChoices().find((guest) => guest.id === String(data.guestId || "").trim());
       const existingUser = cachedWorkspaceUsers.find((user) => String(user.id || "") === userId);
       upsertCachedWorkspaceUser({
         id: userId,
         name: selectedGuest?.name || "",
-        email: String(data.email || "").trim().toLowerCase(),
+        email: String(selectedGuest?.email || "").trim().toLowerCase(),
         guestId: String(data.guestId || "").trim(),
-        phone: String(data.phone || "").trim(),
+        phone: String(selectedGuest?.phone || "").trim(),
         smsOptedIn: selectedGuest?.smsOptedIn,
-        weddingRole: String(data.weddingRole || "").trim(),
+        weddingRole: (selectedGuest?.types || []).join(", "),
         accessLevel: String(data.accessLevel || "wedding_party").trim(),
         active: data.active,
         createdAt: existingUser?.createdAt || now,
@@ -10443,13 +10418,13 @@ function sortTables(items) {
       savePlannerSessionCache();
       renderPlannerUsers();
       const statusEl = plannerUsersPanelEl.querySelector("#plannerUsersStatus");
-      setStatus(statusEl, "Contact added. Saving in the background…", "pending");
+      setStatus(statusEl, "Saving planner access…", "pending");
       void (async () => {
         try {
           const savedUser = await backendRequest("saveWorkspaceUser", data);
           upsertCachedWorkspaceUser(savedUser);
           savePlannerSessionCache();
-          setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), "Contact saved. Active contacts can also be assigned tasks and sign in.", "success");
+          setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), "Planner access saved.", "success");
         } catch (error) {
           cachedWorkspaceUsers = previousUsers;
           savePlannerSessionCache();
@@ -10459,26 +10434,6 @@ function sortTables(items) {
       })();
     } catch (error) {
       setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), error.message || "Unable to save contact.", "error");
-    }
-  });
-
-  plannerUsersPanelEl?.addEventListener("change", (event) => {
-    const nameSelect = event.target.closest("[data-planner-user-guest]");
-    if (!nameSelect) return;
-    const form = nameSelect.closest("[data-planner-user-form]");
-    const emailField = form?.elements?.namedItem("email");
-    const phoneField = form?.elements?.namedItem("phone");
-    const roleField = form?.elements?.namedItem("weddingRole");
-    if (!emailField) return;
-    const guest = getPlannerUserGuestChoices().find((item) => item.id === String(nameSelect.value || "").trim());
-    if (guest?.email) emailField.value = guest.email;
-    if (guest?.phone && phoneField) phoneField.value = guest.phone;
-    const guestRole = (guest?.types || []).join(", ");
-    if (guestRole && roleField) {
-      if (!Array.from(roleField.options).some((option) => option.value === guestRole)) {
-        roleField.add(new Option(guestRole, guestRole));
-      }
-      roleField.value = guestRole;
     }
   });
 
@@ -10507,12 +10462,8 @@ function sortTables(items) {
       if (!form) return;
       form.elements.id.value = String(user.id || "");
       form.elements.guestId.value = String(user.guestId || "");
-      form.elements.email.value = String(user.email || "");
-      form.elements.phone.value = String(user.phone || "");
-      form.elements.weddingRole.value = String(user.weddingRole || "");
       form.elements.accessLevel.value = String(user.accessLevel || "wedding_party");
-      form.elements.active.checked = user.active !== false;
-      form.querySelector("button[type=submit]").textContent = "Save changes";
+      form.querySelector("button[type=submit]").textContent = "Save access";
       const cancel = document.createElement("button");
       cancel.type = "button";
       cancel.className = "button button--light";

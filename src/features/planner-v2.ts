@@ -347,11 +347,9 @@ export function saveWorkspaceUser(input: SaveWorkspaceUserInput) {
   const id = String(input.id || "").trim() || createId("workspace_user");
   const guestId = String(input.guestId || "").trim();
   const guest = listGuestContacts(true).find((item) => item.id === guestId);
-  const name = guest?.name || String(input.name || "").trim();
-  const email = String(input.email || "").trim().toLowerCase();
-  const active = normalizeBoolean(input.active);
-  if (!guest || !name) throw new Error("Choose a guest before giving planner access.");
-  if (active && !email) throw new Error("A Google account email is required for an active planner user.");
+  if (!guest?.name) throw new Error("Choose a guest before giving planner access.");
+  const email = guest.email;
+  if (!email) throw new Error("This guest needs a Google account email before planner access can be granted.");
   const guestsById = new Map(listGuestContacts().map((item) => [item.id, item]));
   const matchingEmail = readRows(PLANNER_USERS_SHEET)
     .map((row) => mapUser(row, guestsById.get(String(row.GuestId || "").trim())))
@@ -362,16 +360,15 @@ export function saveWorkspaceUser(input: SaveWorkspaceUserInput) {
   const saved = {
     Id: id,
     GuestId: guest.id,
-    WeddingRole: String(input.weddingRole || "").trim(),
+    WeddingRole: guest.types.join(", "),
     AccessLevel: normalizeAccessLevel(input.accessLevel),
-    Active: active ? "TRUE" : "FALSE",
+    Active: "TRUE",
     CreatedAt: existing?.createdAt || now,
     UpdatedAt: now
   };
-  const savedGuest = saveGuestContact(input, guest);
   upsertRow(PLANNER_USERS_SHEET, PLANNER_USER_HEADERS, id, saved);
   invalidatePlannerAccessCache();
-  return mapUser(saved, savedGuest);
+  return mapUser(saved, guest);
 }
 
 /** Safely converts existing Planner Users rows to guest-linked access rows. */
