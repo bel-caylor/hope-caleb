@@ -16,7 +16,7 @@ import {
   PLANNER_V2_TASK_HEADERS
 } from "../constants";
 import { getViewerProfile, invalidatePlannerAccessCache, requirePlannerAccess } from "../auth";
-import { createId, deleteRowById, ensureSheet, readRows, upsertRow } from "../util/sheets";
+import { createId, deleteRowById, ensureSheet, getSheetByName, readRows, upsertRow } from "../util/sheets";
 import { listEvents, listTodos } from "./planner";
 
 type WorkspaceAccessLevel = "full_planner" | "contributor" | "wedding_party";

@@ -51,7 +51,20 @@ export default {
     }
     body.authToken = await createSessionAssertion(sessionId!, session, env);
     const serialized = JSON.stringify(body);
-    const upstream = await fetch(`${appsScriptBase}/exec`, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: serialized });
+    // Apps Script answers its /exec POST with a redirect to a short-lived
+    // script.googleusercontent.com URL. Follow it ourselves: the Worker
+    // runtime can otherwise surface Google's redirect target as a 404 even
+    // though a direct browser/API call succeeds.
+    const initialUpstream = await fetch(`${appsScriptBase}/exec`, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: serialized,
+      redirect: "manual"
+    });
+    const redirectLocation = initialUpstream.headers.get("Location");
+    const upstream = initialUpstream.status >= 300 && initialUpstream.status < 400 && redirectLocation
+      ? await fetch(new URL(redirectLocation, appsScriptBase).toString(), { method: "GET" })
+      : initialUpstream;
     const text = await upstream.text();
     const contentType = upstream.headers.get("Content-Type") || "application/json";
     if (!upstream.ok) return jsonResponse({ ok: false, error: `Apps Script upstream returned ${upstream.status}.`, upstreamStatus: upstream.status, upstreamSnippet: text.slice(0, 200) }, allowedOrigin, upstream.status);
