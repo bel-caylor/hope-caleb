@@ -3963,15 +3963,15 @@
 
     if (todoGroupBy === "due") {
       const byDueDate = [...filteredTodos].sort((left, right) => {
-        const leftDue = String(left.dueAt || "").trim();
-        const rightDue = String(right.dueAt || "").trim();
+        const leftDue = getWorkspaceTaskDueDateValue(left);
+        const rightDue = getWorkspaceTaskDueDateValue(right);
         if (!leftDue && rightDue) return 1;
         if (leftDue && !rightDue) return -1;
         return leftDue.localeCompare(rightDue) || String(left.title || "").localeCompare(String(right.title || ""));
       });
       const monthGroups = new Map();
       byDueDate.forEach((todo) => {
-        const dueDate = String(todo.dueAt || "").slice(0, 10);
+        const dueDate = getWorkspaceTaskDueDateValue(todo).slice(0, 10);
         const parsedDate = dueDate ? new Date(`${dueDate}T12:00:00`) : null;
         const hasDueDate = Boolean(parsedDate && !Number.isNaN(parsedDate.getTime()));
         const key = hasDueDate ? `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, "0")}` : "undated";
@@ -4029,7 +4029,7 @@
             : normalizedStatus === "in progress"
               ? "todo-accordion__item--in-progress"
               : "todo-accordion__item--not-started";
-          const dueLabel = formatWorkspaceTaskDueDate(todo.dueAt);
+          const dueLabel = formatWorkspaceTaskDueDate(getWorkspaceTaskDueDateValue(todo));
 
           return `
             <details class="guest-card ${statusClass}">
@@ -4047,7 +4047,7 @@
                 <div class="guest-card__grid ${hasChecklist ? "todo-task-grid--with-checklist" : ""}">
                   ${hasChecklist ? `
                     <div class="guest-card__field todo-task-checklist">
-                      <span>${escapeHtml(checklist.title || "Checklist")}</span>
+                      <span class="todo-task-checklist__heading"><span class="todo-task-checklist__title">${escapeHtml(checklist.title || "Checklist")}</span>${todo.eventId ? `<button class="button todo-parent-edit todo-task-checklist__edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}">Edit</button>` : ""}</span>
                       <div class="workspace-checklist__items">
                         ${checklistItems.map((item, index) => `<span class="workspace-checklist__item ${completedChecklistItems.has(index) ? "is-complete" : ""}"><input type="checkbox" disabled ${completedChecklistItems.has(index) ? "checked" : ""}><span>${escapeHtml(item)}</span></span>`).join("")}
                       </div>
@@ -4070,7 +4070,7 @@
                     </select>
                   </div>
                   ${todo.notes ? `
-                    <div class="guest-card__field guest-card__field--full">
+                    <div class="guest-card__field ${hasChecklist ? "todo-task-notes" : "guest-card__field--full"}">
                       <span>Notes</span>
                       <strong>${escapeHtml(todo.notes)}</strong>
                     </div>
@@ -4117,7 +4117,7 @@
           <div class="guest-card__grid ${hasChecklist ? "todo-task-grid--with-checklist" : ""}">
             ${hasChecklist ? `
               <div class="guest-card__field todo-task-checklist">
-                <span>${escapeHtml(checklist.title || "Checklist")}</span>
+              <span class="todo-task-checklist__heading"><span class="todo-task-checklist__title">${escapeHtml(checklist.title || "Checklist")}</span>${todo.eventId ? `<button class="button todo-parent-edit todo-task-checklist__edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}">Edit</button>` : ""}</span>
                 <div class="workspace-checklist__items">
                   ${checklistItems.map((item, index) => `<span class="workspace-checklist__item ${completedChecklistItems.has(index) ? "is-complete" : ""}"><input type="checkbox" disabled ${completedChecklistItems.has(index) ? "checked" : ""}><span>${escapeHtml(item)}</span></span>`).join("")}
                 </div>
@@ -4127,12 +4127,16 @@
               <span>Assigned To</span>
               <select data-workspace-todo-assignee data-workspace-todo-id="${escapeHtml(todo.id)}">${renderTodoAssigneeOptions(todo.assignedUserId)}</select>
             </div>
+            <div class="guest-card__field">
+              <span>Due date</span>
+              <input type="date" value="${escapeHtml(getWorkspaceTaskDueDateValue(todo).slice(0, 10))}" data-workspace-todo-due data-workspace-todo-id="${escapeHtml(todo.id)}">
+            </div>
             <div class="guest-card__field"><span>Priority</span><strong>${escapeHtml(todo.priority || "Medium")}</strong></div>
             <div class="guest-card__field">
               <span>Status</span>
               <select data-workspace-todo-status data-workspace-todo-id="${escapeHtml(todo.id)}">${renderTodoStatusOptions(todo.status)}</select>
             </div>
-            ${todo.notes ? `<div class="guest-card__field guest-card__field--full"><span>Notes</span><strong>${escapeHtml(todo.notes)}</strong></div>` : ""}
+            ${todo.notes ? `<div class="guest-card__field ${hasChecklist ? "todo-task-notes" : "guest-card__field--full"}"><span>Notes</span><strong>${escapeHtml(todo.notes)}</strong></div>` : ""}
           </div>
         </div>
       </details>
@@ -5169,6 +5173,10 @@
     )).join("");
   }
 
+  function getWorkspaceTaskDueDateValue(task) {
+    return String(task?.dueAt || task?.dueDate || "").trim();
+  }
+
   function formatWorkspaceTaskDueDate(dueAt) {
     const date = String(dueAt || "").slice(0, 10);
     if (!date) return "No due date";
@@ -5297,12 +5305,18 @@
   }
 
   function getGuestEmail(row) {
-    const emailColumn = Object.keys(row || {}).find((column) => ["email", "emailaddress", "googleaccountemail", "googleemail"].includes(String(column || "").toLowerCase().replace(/[^a-z0-9]/g, "")));
+    const emailColumn = Object.keys(row || {}).find((column) => {
+      const normalized = String(column || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      return normalized.includes("email") || normalized === "googleaccount";
+    });
     return String(emailColumn ? row[emailColumn] || "" : "").trim();
   }
 
   function getGuestPhone(row) {
-    const phoneColumn = Object.keys(row || {}).find((column) => ["phone", "phonenumber", "mobile", "mobilephone", "cell", "cellphone"].includes(String(column || "").toLowerCase().replace(/[^a-z0-9]/g, "")));
+    const phoneColumn = Object.keys(row || {}).find((column) => {
+      const normalized = String(column || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      return normalized.includes("phone") || normalized.includes("mobile") || normalized.includes("cell");
+    });
     return String(phoneColumn ? row[phoneColumn] || "" : "").trim();
   }
 
@@ -7300,6 +7314,17 @@
       cachedWorkspaceTasks[existingIndex] = savedTask;
     } else {
       cachedWorkspaceTasks.push(savedTask);
+    }
+  }
+
+  function upsertCachedWorkspaceUser(savedUser) {
+    const id = String(savedUser?.id || "").trim();
+    if (!id) return;
+    const existingIndex = cachedWorkspaceUsers.findIndex((user) => String(user.id || "") === id);
+    if (existingIndex >= 0) {
+      cachedWorkspaceUsers[existingIndex] = savedUser;
+    } else {
+      cachedWorkspaceUsers.push(savedUser);
     }
   }
 
@@ -9527,14 +9552,16 @@ function sortTables(items) {
   });
 
   todosListEl.addEventListener("change", async (event) => {
-    const control = event.target.closest("[data-workspace-todo-assignee], [data-workspace-todo-status]");
+    const control = event.target.closest("[data-workspace-todo-assignee], [data-workspace-todo-status], [data-workspace-todo-due]");
     if (!control) return;
     const todo = cachedWorkspaceTasks.find((item) => String(item.id || "") === String(control.dataset.workspaceTodoId || ""));
     if (!todo) return;
 
     const patch = control.matches("[data-workspace-todo-assignee]")
       ? { assignedUserId: String(control.value || "") }
-      : { status: String(control.value || "Not Started") };
+      : control.matches("[data-workspace-todo-due]")
+        ? { dueAt: String(control.value || "") }
+        : { status: String(control.value || "Not Started") };
     const previousTask = { ...todo };
 
     try {
@@ -9797,15 +9824,44 @@ function sortTables(items) {
     try {
       requirePlannerAccess();
       const data = Object.fromEntries(new FormData(form).entries());
+      const userId = String(data.id || "").trim() || createClientId("workspace_user");
+      const previousUsers = [...cachedWorkspaceUsers];
+      const now = new Date().toISOString();
+      data.id = userId;
       data.active = Boolean(form.elements.active?.checked);
-      const statusEl = plannerUsersPanelEl.querySelector("#plannerUsersStatus");
-      setStatus(statusEl, "Saving planner user…", "pending");
-      await backendRequest("saveWorkspaceUser", data);
-      await refreshWorkspaceCollections();
+      data.smsOptedIn = Boolean(form.elements.smsOptedIn?.checked);
+      const existingUser = cachedWorkspaceUsers.find((user) => String(user.id || "") === userId);
+      upsertCachedWorkspaceUser({
+        id: userId,
+        name: String(data.name || "").trim(),
+        email: String(data.email || "").trim().toLowerCase(),
+        phone: String(data.phone || "").trim(),
+        smsOptedIn: data.smsOptedIn,
+        weddingRole: String(data.weddingRole || "").trim(),
+        accessLevel: String(data.accessLevel || "wedding_party").trim(),
+        active: data.active,
+        createdAt: existingUser?.createdAt || now,
+        updatedAt: now
+      });
+      savePlannerSessionCache();
       renderPlannerUsers();
-      setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), "Contact saved. Active contacts can also be assigned tasks and sign in.", "success");
+      const statusEl = plannerUsersPanelEl.querySelector("#plannerUsersStatus");
+      setStatus(statusEl, "Contact added. Saving in the background…", "pending");
+      void (async () => {
+        try {
+          const savedUser = await backendRequest("saveWorkspaceUser", data);
+          upsertCachedWorkspaceUser(savedUser);
+          savePlannerSessionCache();
+          setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), "Contact saved. Active contacts can also be assigned tasks and sign in.", "success");
+        } catch (error) {
+          cachedWorkspaceUsers = previousUsers;
+          savePlannerSessionCache();
+          renderPlannerUsers();
+          setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), error.message || "Unable to save contact.", "error");
+        }
+      })();
     } catch (error) {
-      setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), error.message || "Unable to save planner user.", "error");
+      setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), error.message || "Unable to save contact.", "error");
     }
   });
 

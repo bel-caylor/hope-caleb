@@ -230,12 +230,15 @@ export function listWorkspaceInvitees() {
       || normalizedFields.guest
       || ""
     ).trim();
+    const emailField = Object.entries(normalizedFields).find(([key]) => key.includes("email") || key === "googleaccount");
+    const phoneField = Object.entries(normalizedFields).find(([key]) => key.includes("phone") || key.includes("mobile") || key.includes("cell"));
     const email = String(
       row.Email
       || normalizedFields.email
       || normalizedFields.emailaddress
       || normalizedFields.googleaccountemail
       || normalizedFields.googleemail
+      || emailField?.[1]
       || ""
     ).trim();
     const phone = String(
@@ -247,6 +250,7 @@ export function listWorkspaceInvitees() {
       || normalizedFields.mobilephone
       || normalizedFields.cell
       || normalizedFields.cellphone
+      || phoneField?.[1]
       || ""
     ).trim();
     const types = String(row.Type || "")

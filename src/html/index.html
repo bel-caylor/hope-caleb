@@ -1584,6 +1584,17 @@
         font-weight: 700;
       }
 
+      .todo-accordion .guest-card__field input[type="date"] {
+        width: 100%;
+        min-height: 2.25rem;
+        border: 1px solid rgba(89, 0, 0, 0.18);
+        border-radius: 5px;
+        background: #fffdfd;
+        color: var(--ink);
+        font: inherit;
+        font-weight: 700;
+      }
+
       .todo-task-grid--with-checklist {
         display: grid !important;
         grid-template-columns: minmax(0, 1.35fr) minmax(12rem, 1fr);
@@ -1602,6 +1613,45 @@
 
       .todo-task-grid--with-checklist .guest-card__field--full {
         grid-column: 1 / -1;
+      }
+
+      .todo-task-grid--with-checklist .todo-task-notes {
+        grid-column: 2;
+      }
+
+      .todo-task-checklist > .todo-task-checklist__heading {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .todo-task-checklist .todo-task-checklist__title {
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 500;
+        text-transform: none;
+      }
+
+      .todo-task-checklist .todo-task-checklist__edit {
+        min-height: 0;
+        padding: 0.14rem 0.42rem;
+        border-radius: 4px;
+        font-size: 0.72rem;
+      }
+
+      .todo-task-checklist .workspace-checklist__item {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        text-transform: none;
+      }
+
+      .todo-task-checklist .workspace-checklist__item > span {
+        display: inline;
+        color: inherit;
+        font-size: inherit;
+        font-weight: 600;
+        text-transform: none;
       }
 
       .shot-groups {
