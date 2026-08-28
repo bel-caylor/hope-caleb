@@ -174,7 +174,19 @@ function ensureGuestContactColumns() {
 }
 
 function listGuestContacts(assignMissingIds = false): GuestContact[] {
-  const { sheet, headers } = ensureGuestContactColumns();
+  // Loading the dashboard must be read-only. Adding columns or generating an
+  // ID for every guest belongs to the explicit migration/save path, never to
+  // the normal planner bootstrap.
+  const existingSheet = getSheetByName(GUESTS_SHEET);
+  if (!existingSheet || existingSheet.getLastRow() < 1) throw new Error("Guests sheet not found.");
+  const source = assignMissingIds
+    ? ensureGuestContactColumns()
+    : {
+      sheet: existingSheet,
+      headers: existingSheet.getRange(1, 1, 1, existingSheet.getLastColumn()).getDisplayValues()[0]
+        .map((value) => String(value || "").trim())
+    };
+  const { sheet, headers } = source;
   const values = sheet.getDataRange().getValues();
   const indexFor = (header: string) => headers.findIndex((item) => item.toLowerCase() === header.toLowerCase());
   const guestIdIndex = indexFor("Guest Id");
@@ -182,7 +194,7 @@ function listGuestContacts(assignMissingIds = false): GuestContact[] {
   values.slice(1).forEach((valuesRow, index) => {
     if (!valuesRow.some((value) => String(value || "").trim())) return;
     const row = Object.fromEntries(headers.map((header, column) => [header, valuesRow[column]]));
-    let id = String(valuesRow[guestIdIndex] || "").trim();
+    let id = guestIdIndex >= 0 ? String(valuesRow[guestIdIndex] || "").trim() : "";
     if (!id && assignMissingIds) {
       id = createId("guest");
       sheet.getRange(index + 2, guestIdIndex + 1).setValue(id);
@@ -321,7 +333,7 @@ export function listWorkspaceUsers() {
 export function listWorkspaceInvitees() {
   requireWorkspaceManager();
   const groups = new Map<string, string>();
-  const guests = listGuestContacts(true);
+  const guests = listGuestContacts();
   guests.forEach((guest) => guest.types.forEach((type) => groups.set(type.toLowerCase(), type)));
   return {
     groups: [...groups.values()].sort((left, right) => left.localeCompare(right)),
