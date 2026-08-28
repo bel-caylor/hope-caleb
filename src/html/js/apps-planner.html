@@ -6090,7 +6090,7 @@
               <span class="workspace-event-directory__summary-copy">
                 <strong>${escapeHtml(event.title || "Untitled event")}</strong>
                 <time class="meta workspace-event-directory__time" datetime="${escapeHtml(String(event.startsAt || ""))}">${escapeHtml(formatWorkspaceEventTime(event))}</time>
-                <button class="button button--icon button--light workspace-event-directory__edit" type="button" data-open-workspace-event="${escapeHtml(event.id)}" aria-label="Edit ${escapeHtml(event.title || "event")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>
+                ${viewerProfile.isAdmin ? `<button class="button button--icon button--light workspace-event-directory__edit" type="button" data-open-workspace-event="${escapeHtml(event.id)}" aria-label="Edit ${escapeHtml(event.title || "event")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>` : ""}
               </span>
             </span>
             ${tasks.length ? `<span class="workspace-event-directory__task-count" aria-label="${completedTasks.length} of ${tasks.length} tasks complete">${completedTasks.length} of ${tasks.length}</span>` : ""}
@@ -7005,14 +7005,18 @@
         </div>
       </div>
       <section class="workspace-event-tab-panel" data-workspace-event-tab-panel="details" ${activeWorkspaceEventTab === "details" ? "" : "hidden"}>
-        <form id="workspaceEventEditForm">
+        ${canManageEvent ? `<form id="workspaceEventEditForm">
           ${isPlanningProject ? `<label>Project name <input name="title" value="${escapeHtml(event.title || "")}" required></label>` : `<div class="workspace-event-details-fields"><label><span>Date</span><input name="eventDate" type="date" value="${escapeHtml(eventDateTime.date)}"></label><label><span>Time</span><input name="eventTime" type="time" value="${escapeHtml(eventDateTime.time)}"></label><label><span>Location</span><input name="location" value="${escapeHtml(event.location || "")}" placeholder="Where will this happen?"></label></div>`}
           <label class="workspace-event-details-notes"><span>Notes</span><textarea name="notes" placeholder="Plans, decisions, or helpful context.">${escapeHtml(event.notes || "")}</textarea></label>
           <section class="workspace-invitees-card">
             ${renderWorkspaceEventInvitees(event)}
           </section>
           <button class="button button--light" type="submit">Save ${isPlanningProject ? "project" : "event"} details</button>
-        </form>
+        </form>` : `<div class="workspace-event-readonly-details">
+          ${isPlanningProject ? "" : `<div class="workspace-event-details-fields"><div><span>Date</span><strong>${escapeHtml(formatWorkspaceEventDate(event))}</strong></div><div><span>Time</span><strong>${escapeHtml(formatWorkspaceEventTime(event))}</strong></div><div><span>Location</span><strong>${escapeHtml(event.location || "Location not set")}</strong></div></div>`}
+          ${event.notes ? `<div class="workspace-event-details-notes"><span>Notes</span><p>${escapeHtml(event.notes)}</p></div>` : ""}
+          <section class="workspace-invitees-card"><h4>Who's invited?</h4><p class="meta">You are included in this event.</p></section>
+        </div>`}
       </section>
       <section class="workspace-event-tab-panel" data-workspace-event-tab-panel="tasks" ${activeWorkspaceEventTab === "tasks" ? "" : "hidden"}>
       <div class="workspace-task-table-wrap">${tasks.length ? `<table class="workspace-task-table">
