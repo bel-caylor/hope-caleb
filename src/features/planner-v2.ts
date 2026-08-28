@@ -284,6 +284,17 @@ function eventIncludesWeddingPartyViewer(event: ReturnType<typeof mapEvent>, vie
   return viewerNames.some((name) => individuals.includes(name)) || viewerGroups.some((group) => groups.includes(group));
 }
 
+function taskIsAssignedToWorkspaceViewer(task: ReturnType<typeof mapTask>, viewer: ReturnType<typeof getWorkspaceViewer>) {
+  const assignedUserId = String(task.assignedUserId || "").trim().toLowerCase();
+  if (!assignedUserId) return false;
+  const viewerAssignments = [
+    viewer.userId,
+    viewer.guestId,
+    viewer.name ? `guest:${viewer.name}` : ""
+  ].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
+  return viewerAssignments.includes(assignedUserId);
+}
+
 function mapTask(row: Record<string, unknown>) {
   return {
     id: String(row.Id || "").trim(),
@@ -590,7 +601,7 @@ export function listWorkspaceTasks() {
   const tasks = readRows(PLANNER_V2_TASKS_SHEET).map(mapTask).filter((task) => task.title);
   const visibleTasks = viewer.accessLevel === "full_planner" || viewer.accessLevel === "contributor"
     ? tasks
-    : tasks.filter((task) => task.assignedUserId === viewer.userId);
+    : tasks.filter((task) => taskIsAssignedToWorkspaceViewer(task, viewer));
   return visibleTasks.sort((left, right) => {
     const leftOrder = Number(left.sortOrder || 0);
     const rightOrder = Number(right.sortOrder || 0);
@@ -603,7 +614,7 @@ export function saveWorkspaceTask(input: SaveWorkspaceTaskInput) {
   const viewer = getWorkspaceViewer();
   const id = String(input.id || "").trim() || createId("workspace_task");
   const existing = readRows(PLANNER_V2_TASKS_SHEET).map(mapTask).find((task) => task.id === id);
-  const ownsExistingTask = existing?.assignedUserId === viewer.userId;
+  const ownsExistingTask = Boolean(existing) && taskIsAssignedToWorkspaceViewer(existing, viewer);
   const isCompletionOnly = Boolean(existing) && ownsExistingTask && String(input.status || existing.status).trim().toLowerCase() === "done";
   if (viewer.accessLevel !== "full_planner" && viewer.accessLevel !== "contributor" && !isCompletionOnly) {
     throw new Error("You can only complete tasks assigned to you.");
@@ -656,7 +667,7 @@ export function setWorkspaceTaskCompleted(input: { id?: string; completed?: bool
 
   const existing = readRows(PLANNER_V2_TASKS_SHEET).map(mapTask).find((task) => task.id === id);
   if (!existing) throw new Error("Task not found.");
-  const canComplete = viewer.accessLevel === "full_planner" || existing.assignedUserId === viewer.userId;
+  const canComplete = viewer.accessLevel === "full_planner" || taskIsAssignedToWorkspaceViewer(existing, viewer);
   if (!canComplete) throw new Error("Only a full planner or the assigned person can complete this task.");
 
   const completed = normalizeBoolean(input.completed, false);

@@ -5719,10 +5719,23 @@
     return String(cachedWorkspaceUsers.find((user) => String(user.email || "").trim().toLowerCase() === profileEmail)?.id || "").trim();
   }
 
+  function isWorkspaceTaskAssignedToViewer(task) {
+    const assignedUserId = String(task?.assignedUserId || "").trim().toLowerCase();
+    if (!assignedUserId) return false;
+    const viewerUserId = getCurrentWorkspaceViewerUserId();
+    const workspaceUser = cachedWorkspaceUsers.find((user) => String(user.id || "").trim() === viewerUserId)
+      || cachedWorkspaceUsers.find((user) => String(user.email || "").trim().toLowerCase() === String(viewerProfile.email || "").trim().toLowerCase());
+    const assignments = [
+      viewerUserId,
+      workspaceUser?.guestId,
+      viewerProfile.name ? `guest:${viewerProfile.name}` : ""
+    ].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
+    return assignments.includes(assignedUserId);
+  }
+
   function renderWorkspaceTaskCompletionCheckbox(task) {
     const completed = String(task.status || "").trim().toLowerCase() === "done";
-    const viewerUserId = getCurrentWorkspaceViewerUserId();
-    const canToggle = Boolean(viewerProfile.isAdmin) || (Boolean(viewerUserId) && String(task.assignedUserId || "").trim() === viewerUserId);
+    const canToggle = Boolean(viewerProfile.isAdmin) || isWorkspaceTaskAssignedToViewer(task);
     return `<input class="todo-task-complete" type="checkbox" data-workspace-todo-complete="${escapeHtml(String(task.id || ""))}" aria-label="Mark ${escapeHtml(task.title || "task")} ${completed ? "incomplete" : "complete"}" ${completed ? "checked" : ""} ${canToggle ? "" : "disabled"}>`;
   }
 
@@ -5747,7 +5760,7 @@
     });
     const workspaceOpenTasks = sortTasksByDueDate(cachedWorkspaceTasks
       .filter((task) => String(task.status || "").trim().toLowerCase() !== "done")
-      .filter((task) => Boolean(viewerUserId) && String(task.assignedUserId || "").trim() === viewerUserId), (task) => task.dueAt);
+      .filter((task) => isWorkspaceTaskAssignedToViewer(task)), (task) => task.dueAt);
     const legacyOpenTasks = sortTasksByDueDate(
       cachedTodos.filter((task) => !task.isComplete && isLegacyTaskAssignedToViewer(task)),
       (task) => task.dueDate
@@ -7002,7 +7015,7 @@
     `;
     const taskCompletionCell = (task) => {
       const completed = String(task.status || "").trim().toLowerCase() === "done";
-      const canToggle = canManageEvent || (Boolean(viewerUserId) && String(task.assignedUserId || "").trim() === viewerUserId);
+      const canToggle = canManageEvent || isWorkspaceTaskAssignedToViewer(task);
       return `<td class="workspace-task-table__complete" data-label="Done"><input type="checkbox" data-workspace-task-complete="${escapeHtml(task.id)}" aria-label="Mark ${escapeHtml(task.title || "task")} ${completed ? "incomplete" : "complete"}" ${completed ? "checked" : ""} ${canToggle ? "" : "disabled"}></td>`;
     };
     const associatedListCell = (task) => associatedListForTask(task)
