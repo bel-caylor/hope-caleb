@@ -3,7 +3,7 @@ import { getViewerProfile } from "./auth";
 import { deleteEventList, deleteShot, deleteTodo, listBeds, listEventLists, listEvents, listPeople, listShots, listTables, listTodos, saveBed, saveEvent, saveEventList, saveGuestDetails, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveShot, saveTable, saveTableReservedOpenSeats, saveTodo, uploadTodoImage } from "./features/planner";
 import { generateEventPlan } from "./util/ai";
 import { PLANNER_BUILD_VERSION } from "./version";
-import { archiveLegacyPlanningData, deleteWorkspaceAsset, deleteWorkspaceEvent, deleteWorkspaceList, deleteWorkspaceTask, getWorkspaceAssetImage, getWorkspaceProfile, importLegacyPeopleToWorkspaceUsers, initializePlannerWorkspace, listWorkspaceAssets, listWorkspaceEvents, listWorkspaceInvitees, listWorkspaceLists, listWorkspaceTasks, listWorkspaceUsers, saveWorkspaceAsset, saveWorkspaceEvent, saveWorkspaceList, saveWorkspaceTask, saveWorkspaceUser, setWorkspaceListItemCompleted, setWorkspaceTaskCompleted } from "./features/planner-v2";
+import { archiveLegacyPlanningData, deleteWorkspaceAsset, deleteWorkspaceEvent, deleteWorkspaceList, deleteWorkspaceTask, getWorkspaceAssetImage, getWorkspaceProfile, importLegacyPeopleToWorkspaceUsers, initializePlannerWorkspace, listWorkspaceAssets, listWorkspaceEvents, listWorkspaceInvitees, listWorkspaceLists, listWorkspaceTasks, listWorkspaceUsers, saveWorkspaceAsset, saveWorkspaceEvent, saveWorkspaceList, saveWorkspaceTask, saveWorkspaceUser, setWorkspaceListItemCompleted, setWorkspaceTaskCompleted, syncPlannerUsersToGuests } from "./features/planner-v2";
 
 export function rpc(input: { method: string; payload: unknown }) {
   const { method, payload } = input;
@@ -83,6 +83,8 @@ export function rpc(input: { method: string; payload: unknown }) {
       return saveWorkspaceUser(payload as Parameters<typeof saveWorkspaceUser>[0]);
     case "importLegacyPeopleToWorkspaceUsers":
       return importLegacyPeopleToWorkspaceUsers();
+    case "syncPlannerUsersToGuests":
+      return syncPlannerUsersToGuests();
     case "archiveLegacyPlanningData":
       return archiveLegacyPlanningData();
     case "listWorkspaceEvents":

@@ -120,10 +120,7 @@ export const EVENT_LIST_HEADERS = [
 ];
 export const PLANNER_USER_HEADERS = [
   "Id",
-  "Name",
-  "Email",
-  "Phone",
-  "SmsOptedIn",
+  "GuestId",
   "WeddingRole",
   "AccessLevel",
   "Active",

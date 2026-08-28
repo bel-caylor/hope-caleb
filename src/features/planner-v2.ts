@@ -23,6 +23,7 @@ type WorkspaceAccessLevel = "full_planner" | "contributor" | "wedding_party";
 
 type SaveWorkspaceUserInput = {
   id?: string;
+  guestId?: string;
   name?: string;
   email?: string;
   phone?: string;
@@ -31,6 +32,25 @@ type SaveWorkspaceUserInput = {
   accessLevel?: WorkspaceAccessLevel | string;
   active?: boolean | string;
 };
+
+type GuestContact = {
+  rowNumber: number;
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  smsOptedIn: boolean;
+  smsConsentRecordedAt: string;
+  types: string[];
+};
+
+const GUEST_CONTACT_HEADERS = [
+  "Guest Id",
+  "Google Account Email",
+  "Mobile Number",
+  "SMS Opted In",
+  "SMS Consent Recorded At"
+];
 
 type SaveWorkspaceEventInput = {
   id?: string;
@@ -112,19 +132,92 @@ function iso(value: unknown) {
   return raw || "";
 }
 
-function mapUser(row: Record<string, unknown>) {
+function mapUser(row: Record<string, unknown>, guest?: GuestContact) {
   return {
     id: String(row.Id || "").trim(),
-    name: String(row.Name || "").trim(),
-    email: String(row.Email || "").trim().toLowerCase(),
-    phone: String(row.Phone || "").trim(),
-    smsOptedIn: normalizeBoolean(row.SmsOptedIn, false),
+    guestId: String(row.GuestId || "").trim(),
+    // Existing records retain their old values only until the admin runs the
+    // one-time guest sync. Afterwards every contact value comes from Guests.
+    name: guest?.name || String(row.Name || "").trim(),
+    email: guest?.email || String(row.Email || "").trim().toLowerCase(),
+    phone: guest?.phone || String(row.Phone || "").trim(),
+    smsOptedIn: guest ? guest.smsOptedIn : normalizeBoolean(row.SmsOptedIn, false),
+    smsConsentRecordedAt: guest?.smsConsentRecordedAt || "",
     weddingRole: String(row.WeddingRole || "").trim(),
     accessLevel: normalizeAccessLevel(row.AccessLevel),
     active: normalizeBoolean(row.Active),
     createdAt: iso(row.CreatedAt),
     updatedAt: iso(row.UpdatedAt)
   };
+}
+
+function normalizedHeader(value: unknown) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function firstGuestValue(row: Record<string, unknown>, patterns: RegExp[]) {
+  const entry = Object.entries(row).find(([key, value]) => patterns.some((pattern) => pattern.test(normalizedHeader(key))) && String(value || "").trim());
+  return String(entry?.[1] || "").trim();
+}
+
+function ensureGuestContactColumns() {
+  const sheet = getSheetByName(GUESTS_SHEET);
+  if (!sheet || sheet.getLastRow() < 1) throw new Error("Guests sheet not found.");
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map((value) => String(value || "").trim());
+  GUEST_CONTACT_HEADERS.forEach((header) => {
+    if (headers.some((existing) => existing.toLowerCase() === header.toLowerCase())) return;
+    const column = sheet.getLastColumn() + 1;
+    sheet.getRange(1, column).setValue(header);
+    headers.push(header);
+  });
+  return { sheet, headers };
+}
+
+function listGuestContacts(assignMissingIds = false): GuestContact[] {
+  const { sheet, headers } = ensureGuestContactColumns();
+  const values = sheet.getDataRange().getValues();
+  const indexFor = (header: string) => headers.findIndex((item) => item.toLowerCase() === header.toLowerCase());
+  const guestIdIndex = indexFor("Guest Id");
+  const contacts: GuestContact[] = [];
+  values.slice(1).forEach((valuesRow, index) => {
+    if (!valuesRow.some((value) => String(value || "").trim())) return;
+    const row = Object.fromEntries(headers.map((header, column) => [header, valuesRow[column]]));
+    let id = String(valuesRow[guestIdIndex] || "").trim();
+    if (!id && assignMissingIds) {
+      id = createId("guest");
+      sheet.getRange(index + 2, guestIdIndex + 1).setValue(id);
+    }
+    const name = firstGuestValue(row, [/^weddingguest$/, /^guest$/, /^name$/, /guestname/, /fullname/]);
+    if (!name) return;
+    contacts.push({
+      rowNumber: index + 2,
+      id,
+      name,
+      email: firstGuestValue(row, [/^googleaccountemail$/, /^googleemail$/, /^email$/, /emailaddress/]).toLowerCase(),
+      phone: firstGuestValue(row, [/^mobilenumber$/, /^mobile$/, /^phone$/, /phonenumber/, /cell/]),
+      smsOptedIn: normalizeBoolean(firstGuestValue(row, [/^smsoptedin$/, /^textconsent$/, /^smsconsent$/]), false),
+      smsConsentRecordedAt: firstGuestValue(row, [/^smsconsentrecordedat$/]),
+      types: String(row.Type || "").split(",").map((item) => item.trim()).filter(Boolean)
+    });
+  });
+  return contacts;
+}
+
+function saveGuestContact(input: SaveWorkspaceUserInput, guest: GuestContact) {
+  const { sheet, headers } = ensureGuestContactColumns();
+  const column = (name: string) => headers.findIndex((header) => header.toLowerCase() === name.toLowerCase()) + 1;
+  const email = String(input.email || "").trim().toLowerCase();
+  const phone = String(input.phone || "").trim();
+  // Access edits must never silently revoke RSVP consent. Only update consent
+  // when the caller explicitly supplies a value.
+  const smsOptedIn = input.smsOptedIn === undefined
+    ? guest.smsOptedIn
+    : normalizeBoolean(input.smsOptedIn, false);
+  sheet.getRange(guest.rowNumber, column("Google Account Email")).setValue(email);
+  sheet.getRange(guest.rowNumber, column("Mobile Number")).setValue(phone);
+  sheet.getRange(guest.rowNumber, column("SMS Opted In")).setValue(smsOptedIn ? "TRUE" : "FALSE");
+  sheet.getRange(guest.rowNumber, column("SMS Consent Recorded At")).setValue(smsOptedIn ? (guest.smsConsentRecordedAt || new Date().toISOString()) : "");
+  return listGuestContacts().find((item) => item.id === guest.id) || guest;
 }
 
 function mapEvent(row: Record<string, unknown>) {
@@ -217,7 +310,8 @@ function ensureWorkspaceSheets() {
 export function listWorkspaceUsers() {
   const viewer = getWorkspaceViewer();
   ensureWorkspaceSheets();
-  const users = readRows(PLANNER_USERS_SHEET).map(mapUser).filter((user) => user.name || user.email);
+  const guestsById = new Map(listGuestContacts().map((guest) => [guest.id, guest]));
+  const users = readRows(PLANNER_USERS_SHEET).map((row) => mapUser(row, guestsById.get(String(row.GuestId || "").trim()))).filter((user) => user.name || user.email);
   if (viewer.accessLevel === "full_planner" || viewer.accessLevel === "contributor") {
     return users;
   }
@@ -227,61 +321,11 @@ export function listWorkspaceUsers() {
 export function listWorkspaceInvitees() {
   requireWorkspaceManager();
   const groups = new Map<string, string>();
-  const guests = new Map<string, { name: string; email: string; phone: string; types: string[] }>();
-  readRows(GUESTS_SHEET).forEach((row) => {
-    const normalizedFields = Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toLowerCase().replace(/[^a-z0-9]/g, ""), value]));
-    const name = String(
-      row["Wedding Guest"]
-      || row["Guest Name"]
-      || row.Name
-      || normalizedFields.weddingguest
-      || normalizedFields.guestname
-      || normalizedFields.name
-      || normalizedFields.guest
-      || ""
-    ).trim();
-    const emailField = Object.entries(normalizedFields).find(([key]) => key.includes("email") || key === "googleaccount");
-    const phoneField = Object.entries(normalizedFields).find(([key]) => key.includes("phone") || key.includes("mobile") || key.includes("cell"));
-    const email = String(
-      row.Email
-      || normalizedFields.email
-      || normalizedFields.emailaddress
-      || normalizedFields.googleaccountemail
-      || normalizedFields.googleemail
-      || emailField?.[1]
-      || ""
-    ).trim();
-    const phone = String(
-      row.Phone
-      || row["Phone Number"]
-      || normalizedFields.phone
-      || normalizedFields.phonenumber
-      || normalizedFields.mobile
-      || normalizedFields.mobilephone
-      || normalizedFields.cell
-      || normalizedFields.cellphone
-      || phoneField?.[1]
-      || ""
-    ).trim();
-    const types = String(row.Type || "")
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-    types.forEach((type) => groups.set(type.toLowerCase(), type));
-    if (name) {
-      const key = name.toLowerCase();
-      const existing = guests.get(key);
-      guests.set(key, {
-        name: existing?.name || name,
-        email: existing?.email || email,
-        phone: existing?.phone || phone,
-        types: [...new Set([...(existing?.types || []), ...types])]
-      });
-    }
-  });
+  const guests = listGuestContacts(true);
+  guests.forEach((guest) => guest.types.forEach((type) => groups.set(type.toLowerCase(), type)));
   return {
     groups: [...groups.values()].sort((left, right) => left.localeCompare(right)),
-    guests: [...guests.values()].sort((left, right) => left.name.localeCompare(right.name))
+    guests: guests.sort((left, right) => left.name.localeCompare(right.name))
   };
 }
 
@@ -289,32 +333,65 @@ export function saveWorkspaceUser(input: SaveWorkspaceUserInput) {
   requirePlannerAccess();
   initializePlannerWorkspace();
   const id = String(input.id || "").trim() || createId("workspace_user");
-  const name = String(input.name || "").trim();
+  const guestId = String(input.guestId || "").trim();
+  const guest = listGuestContacts(true).find((item) => item.id === guestId);
+  const name = guest?.name || String(input.name || "").trim();
   const email = String(input.email || "").trim().toLowerCase();
   const active = normalizeBoolean(input.active);
-  if (!name) throw new Error("A name is required for each planner contact.");
+  if (!guest || !name) throw new Error("Choose a guest before giving planner access.");
   if (active && !email) throw new Error("A Google account email is required for an active planner user.");
+  const guestsById = new Map(listGuestContacts().map((item) => [item.id, item]));
   const matchingEmail = readRows(PLANNER_USERS_SHEET)
-    .map(mapUser)
+    .map((row) => mapUser(row, guestsById.get(String(row.GuestId || "").trim())))
     .find((user) => email && user.email === email && user.id !== id);
   if (matchingEmail) throw new Error("That Google account is already connected to another planner user.");
   const now = new Date().toISOString();
   const existing = listWorkspaceUsers().find((user) => user.id === id);
   const saved = {
     Id: id,
-    Name: name,
-    Email: email,
-    Phone: String(input.phone || "").trim(),
-    SmsOptedIn: normalizeBoolean(input.smsOptedIn, false) ? "TRUE" : "FALSE",
+    GuestId: guest.id,
     WeddingRole: String(input.weddingRole || "").trim(),
     AccessLevel: normalizeAccessLevel(input.accessLevel),
     Active: active ? "TRUE" : "FALSE",
     CreatedAt: existing?.createdAt || now,
     UpdatedAt: now
   };
+  const savedGuest = saveGuestContact(input, guest);
   upsertRow(PLANNER_USERS_SHEET, PLANNER_USER_HEADERS, id, saved);
   invalidatePlannerAccessCache();
-  return mapUser(saved);
+  return mapUser(saved, savedGuest);
+}
+
+/** Safely converts existing Planner Users rows to guest-linked access rows. */
+export function syncPlannerUsersToGuests() {
+  requirePlannerAccess();
+  initializePlannerWorkspace();
+  const guests = listGuestContacts(true);
+  const guestsByName = new Map(guests.map((guest) => [guest.name.toLowerCase(), guest]));
+  let linked = 0;
+  let unmatched = 0;
+  readRows(PLANNER_USERS_SHEET).forEach((row) => {
+    const existingGuestId = String(row.GuestId || "").trim();
+    const guest = guests.find((item) => item.id === existingGuestId)
+      || guestsByName.get(String(row.Name || "").trim().toLowerCase());
+    if (!guest) {
+      unmatched += 1;
+      return;
+    }
+    saveGuestContact({
+      email: String(row.Email || "").trim() || guest.email,
+      phone: String(row.Phone || "").trim() || guest.phone,
+      smsOptedIn: String(row.SmsOptedIn || "").trim() || guest.smsOptedIn
+    }, guest);
+    upsertRow(PLANNER_USERS_SHEET, PLANNER_USER_HEADERS, String(row.Id || "").trim(), {
+      ...row,
+      GuestId: guest.id,
+      UpdatedAt: new Date().toISOString()
+    });
+    linked += 1;
+  });
+  invalidatePlannerAccessCache();
+  return { linked, unmatched, guestCount: guests.length };
 }
 
 export function importLegacyPeopleToWorkspaceUsers() {
@@ -364,8 +441,9 @@ function getWorkspaceViewer() {
   if (!profile.signedIn) throw new Error("Please sign in with Google first.");
   if (profile.isAdmin) return { ...profile, accessLevel: "full_planner" as WorkspaceAccessLevel, userId: "" };
   ensureWorkspaceSheets();
+  const guestsById = new Map(listGuestContacts().map((guest) => [guest.id, guest]));
   const user = readRows(PLANNER_USERS_SHEET)
-    .map(mapUser)
+    .map((row) => mapUser(row, guestsById.get(String(row.GuestId || "").trim())))
     .find((item) => item.active && item.email === profile.email);
   if (!user) throw new Error("This email has not been invited to the planner yet.");
   return { ...profile, name: user.name || profile.name, accessLevel: user.accessLevel, userId: user.id };
