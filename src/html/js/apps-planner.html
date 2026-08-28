@@ -7951,7 +7951,7 @@
 
   async function backendRequest(method, payload) {
     const rpcUrl = getRpcUrl();
-    const authToken = getStoredSessionToken() || getStoredAuthToken();
+    let authToken = getStoredSessionToken() || getStoredAuthToken();
 
     if (!rpcUrl) {
       throw new Error("Planner backend URL is not configured yet.");
@@ -7988,6 +7988,15 @@
         if (result?.ok) return result.data;
 
         const message = String(result?.error || "Planner request failed.");
+        // A Worker session can expire independently of the Google credential
+        // saved by the browser. Retry the read with that credential once,
+        // rather than repeatedly submitting the expired session token.
+        if (response.status === 401 && /^session\./i.test(authToken) && getStoredAuthToken() && attempt < attempts - 1) {
+          window.localStorage.removeItem(STORAGE_KEYS.sessionToken);
+          authToken = getStoredAuthToken();
+          lastError = new Error(message);
+          continue;
+        }
         if (/Please sign in with Google first\./i.test(message)) {
           requestGoogleCredentialRefresh();
           throw new Error("Your Google session needs a quick refresh. Your saved dashboard is still available while Google reconnects you.");
