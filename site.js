@@ -13,7 +13,7 @@ const HONEYMOON_OPTIONS = {
 };
 
 const HOME_RSVP = {
-  scriptUrl: "https://script.google.com/macros/s/AKfycbwHUhSHLq2fm0p5JBDiaxQhBTkZdJEQRId3JSqkoyFhEiNPsfe2qe-e3On4Fljl1hBG/exec",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbyoMtRdoM2aIXVhtCHPctw5kZfxCWMtaMYGuqy-ocqx-fVfmHagODeTvMzqshbskbqG/exec",
   deadlineLabel: "Please reply by December 1, 2026."
 };
 

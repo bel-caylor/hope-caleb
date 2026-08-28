@@ -4,7 +4,7 @@ const EVENT = {
   location: "Casa Caylor",
   food: "BBQ, drinks, and cupcakes.",
   saveViewFood: "BBQ, drinks, and cupcakes. Bring a side, appetizer or drinks to share.",
-  googleScriptUrl: "https://script.google.com/macros/s/AKfycbwHUhSHLq2fm0p5JBDiaxQhBTkZdJEQRId3JSqkoyFhEiNPsfe2qe-e3On4Fljl1hBG/exec"
+  googleScriptUrl: "https://script.google.com/macros/s/AKfycbyoMtRdoM2aIXVhtCHPctw5kZfxCWMtaMYGuqy-ocqx-fVfmHagODeTvMzqshbskbqG/exec"
 };
 
 const form = document.querySelector("#rsvpForm");

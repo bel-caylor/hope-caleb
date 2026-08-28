@@ -348,8 +348,9 @@ export function saveWorkspaceUser(input: SaveWorkspaceUserInput) {
   const guestId = String(input.guestId || "").trim();
   const guest = listGuestContacts(true).find((item) => item.id === guestId);
   if (!guest?.name) throw new Error("Choose a guest before giving planner access.");
-  const email = guest.email;
-  if (!email) throw new Error("This guest needs a Google account email before planner access can be granted.");
+  const email = String(input.email || guest.email || "").trim().toLowerCase();
+  const phone = String(input.phone || guest.phone || "").trim();
+  if (!email || !phone) throw new Error("This guest needs a Google account email and mobile number before planner access can be granted.");
   const guestsById = new Map(listGuestContacts().map((item) => [item.id, item]));
   const matchingEmail = readRows(PLANNER_USERS_SHEET)
     .map((row) => mapUser(row, guestsById.get(String(row.GuestId || "").trim())))
@@ -366,9 +367,12 @@ export function saveWorkspaceUser(input: SaveWorkspaceUserInput) {
     CreatedAt: existing?.createdAt || now,
     UpdatedAt: now
   };
+  const savedGuest = email === guest.email && phone === guest.phone
+    ? guest
+    : saveGuestContact({ email, phone }, guest);
   upsertRow(PLANNER_USERS_SHEET, PLANNER_USER_HEADERS, id, saved);
   invalidatePlannerAccessCache();
-  return mapUser(saved, guest);
+  return mapUser(saved, savedGuest);
 }
 
 /** Safely converts existing Planner Users rows to guest-linked access rows. */

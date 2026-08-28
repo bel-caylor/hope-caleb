@@ -5837,6 +5837,7 @@
         <input name="id" type="hidden" value="${escapeHtml(user.id || "")}">
         <label>Guest <select name="guestId" required data-planner-user-guest>${guestOptions}</select></label>
         <label>Access level <select name="accessLevel">${accessOptions(user.accessLevel)}</select></label>
+        <div class="planner-users-form__wide" data-planner-user-guest-contact hidden></div>
         <p class="meta planner-users-form__wide">The guest record supplies the name, Google account, mobile number, and wedding role. Adding planner access activates that guest's account.</p>
         <div class="toolbar planner-users-form__wide"><button class="button" type="submit">${user.id ? "Save access" : "Grant access"}</button>${user.id ? '<button class="button button--light" type="button" data-cancel-planner-user-edit>Cancel</button>' : ""}</div>
       </form>`;
@@ -6308,6 +6309,26 @@
     cachedGuests.forEach((guest) => addGuest("", getGuestDisplayName(guest), getGuestEmail(guest), getGuestPhone(guest), getGuestTypeValue(guest)));
 
     return [...guestsByName.values()].sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  function renderPlannerUserGuestContactFields(form, guest) {
+    const container = form?.querySelector("[data-planner-user-guest-contact]");
+    if (!container) return false;
+    const needsEmail = !String(guest?.email || "").trim();
+    const needsPhone = !String(guest?.phone || "").trim();
+    container.hidden = !needsEmail && !needsPhone;
+    if (container.hidden) {
+      container.replaceChildren();
+      return false;
+    }
+    const existingEmail = String(form.elements?.email?.value || "").trim();
+    const existingPhone = String(form.elements?.phone?.value || "").trim();
+    container.innerHTML = `
+      <p class="meta">Add the missing contact detail to this guest before granting planner access.</p>
+      ${needsEmail ? `<label>Google account email <input name="email" type="email" required value="${escapeHtml(existingEmail)}" placeholder="name@gmail.com"></label>` : ""}
+      ${needsPhone ? `<label>Mobile number <input name="phone" type="tel" required value="${escapeHtml(existingPhone)}" placeholder="+12105551234"></label>` : ""}
+    `;
+    return true;
   }
 
   function renderWorkspaceDraft() {
@@ -10394,20 +10415,24 @@ function sortTables(items) {
     event.preventDefault();
     try {
       requirePlannerAccess();
+      const selectedGuest = getPlannerUserGuestChoices().find((guest) => guest.id === String(form.elements.guestId?.value || "").trim());
+      if (renderPlannerUserGuestContactFields(form, selectedGuest) && !form.reportValidity()) {
+        setStatus(plannerUsersPanelEl.querySelector("#plannerUsersStatus"), "Add the missing guest contact details before granting planner access.", "error");
+        return;
+      }
       const data = Object.fromEntries(new FormData(form).entries());
       const userId = String(data.id || "").trim() || createClientId("workspace_user");
       const previousUsers = [...cachedWorkspaceUsers];
       const now = new Date().toISOString();
       data.id = userId;
       data.active = true;
-      const selectedGuest = getPlannerUserGuestChoices().find((guest) => guest.id === String(data.guestId || "").trim());
       const existingUser = cachedWorkspaceUsers.find((user) => String(user.id || "") === userId);
       upsertCachedWorkspaceUser({
         id: userId,
         name: selectedGuest?.name || "",
-        email: String(selectedGuest?.email || "").trim().toLowerCase(),
+        email: String(data.email || selectedGuest?.email || "").trim().toLowerCase(),
         guestId: String(data.guestId || "").trim(),
-        phone: String(selectedGuest?.phone || "").trim(),
+        phone: String(data.phone || selectedGuest?.phone || "").trim(),
         smsOptedIn: selectedGuest?.smsOptedIn,
         weddingRole: (selectedGuest?.types || []).join(", "),
         accessLevel: String(data.accessLevel || "wedding_party").trim(),
@@ -10437,6 +10462,14 @@ function sortTables(items) {
     }
   });
 
+  plannerUsersPanelEl?.addEventListener("change", (event) => {
+    const guestSelect = event.target.closest("[data-planner-user-guest]");
+    if (!guestSelect) return;
+    const form = guestSelect.closest("[data-planner-user-form]");
+    const guest = getPlannerUserGuestChoices().find((item) => item.id === String(guestSelect.value || "").trim());
+    renderPlannerUserGuestContactFields(form, guest);
+  });
+
   plannerUsersPanelEl?.addEventListener("click", async (event) => {
     if (event.target.closest("[data-sync-planner-users-to-guests]")) {
       try {
@@ -10463,6 +10496,7 @@ function sortTables(items) {
       form.elements.id.value = String(user.id || "");
       form.elements.guestId.value = String(user.guestId || "");
       form.elements.accessLevel.value = String(user.accessLevel || "wedding_party");
+      renderPlannerUserGuestContactFields(form, getPlannerUserGuestChoices().find((guest) => guest.id === String(user.guestId || "")));
       form.querySelector("button[type=submit]").textContent = "Save access";
       const cancel = document.createElement("button");
       cancel.type = "button";
