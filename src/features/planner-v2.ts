@@ -46,8 +46,8 @@ type GuestContact = {
 
 const GUEST_CONTACT_HEADERS = [
   "Guest Id",
-  "Google Account Email",
-  "Mobile Number",
+  "Email",
+  "Phone Number",
   "SMS Opted In",
   "SMS Consent Recorded At"
 ];
@@ -156,8 +156,11 @@ function normalizedHeader(value: unknown) {
 }
 
 function firstGuestValue(row: Record<string, unknown>, patterns: RegExp[]) {
-  const entry = Object.entries(row).find(([key, value]) => patterns.some((pattern) => pattern.test(normalizedHeader(key))) && String(value || "").trim());
-  return String(entry?.[1] || "").trim();
+  for (const pattern of patterns) {
+    const entry = Object.entries(row).find(([key, value]) => pattern.test(normalizedHeader(key)) && String(value || "").trim());
+    if (entry) return String(entry[1] || "").trim();
+  }
+  return "";
 }
 
 function ensureGuestContactColumns() {
@@ -205,8 +208,8 @@ function listGuestContacts(assignMissingIds = false): GuestContact[] {
       rowNumber: index + 2,
       id,
       name,
-      email: firstGuestValue(row, [/^googleaccountemail$/, /^googleemail$/, /^email$/, /emailaddress/]).toLowerCase(),
-      phone: firstGuestValue(row, [/^mobilenumber$/, /^mobile$/, /^phone$/, /phonenumber/, /cell/]),
+      email: firstGuestValue(row, [/^email$/, /emailaddress/, /^googleaccountemail$/, /^googleemail$/]).toLowerCase(),
+      phone: firstGuestValue(row, [/^phonenumber$/, /^phone$/, /^mobilenumber$/, /^mobile$/, /cell/]),
       smsOptedIn: normalizeBoolean(firstGuestValue(row, [/^smsoptedin$/, /^textconsent$/, /^smsconsent$/]), false),
       smsConsentRecordedAt: firstGuestValue(row, [/^smsconsentrecordedat$/]),
       types: String(row.Type || "").split(",").map((item) => item.trim()).filter(Boolean)
@@ -225,8 +228,8 @@ function saveGuestContact(input: SaveWorkspaceUserInput, guest: GuestContact) {
   const smsOptedIn = input.smsOptedIn === undefined
     ? guest.smsOptedIn
     : normalizeBoolean(input.smsOptedIn, false);
-  sheet.getRange(guest.rowNumber, column("Google Account Email")).setValue(email);
-  sheet.getRange(guest.rowNumber, column("Mobile Number")).setValue(phone);
+  sheet.getRange(guest.rowNumber, column("Email")).setValue(email);
+  sheet.getRange(guest.rowNumber, column("Phone Number")).setValue(phone);
   sheet.getRange(guest.rowNumber, column("SMS Opted In")).setValue(smsOptedIn ? "TRUE" : "FALSE");
   sheet.getRange(guest.rowNumber, column("SMS Consent Recorded At")).setValue(smsOptedIn ? (guest.smsConsentRecordedAt || new Date().toISOString()) : "");
   return listGuestContacts().find((item) => item.id === guest.id) || guest;

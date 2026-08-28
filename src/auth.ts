@@ -150,7 +150,7 @@ function readPlannerAccessEmails() {
   const guestEmailsById = new Map(
     readRows(GUESTS_SHEET).map((row) => [
       String(row["Guest Id"] || "").trim(),
-      String(row["Google Account Email"] || row.Email || "").trim().toLowerCase()
+      String(row.Email || row["Google Account Email"] || "").trim().toLowerCase()
     ])
   );
   readRows(PLANNER_USERS_SHEET).forEach((row) => {
