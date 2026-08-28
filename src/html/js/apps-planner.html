@@ -10,6 +10,7 @@
   const plannerUsersPanelEl = document.querySelector("#plannerUsersPanel");
   const workspaceCalendarEl = document.querySelector("#workspaceCalendar");
   const workspaceCalendarTitleEl = document.querySelector("#workspaceCalendarTitle");
+  const calendarStatusEl = document.querySelector("#calendarStatus");
   const workspaceCalendarViewEl = document.querySelector("#workspaceCalendarView");
   const workspaceCalendarViewTabsEl = document.querySelector(".workspace-calendar-view-tabs");
   const workspaceCalendarNavigationEl = document.querySelector("#workspaceCalendarNavigation");
@@ -5499,15 +5500,18 @@
 
   function renderSummary() {
     const viewerUserId = getCurrentWorkspaceViewerUserId();
-    const workspaceOpenTasks = cachedWorkspaceTasks
+    const sortTasksByDueDate = (tasks, getDueDate) => [...tasks].sort((left, right) => {
+      const leftDue = normalizeWorkspaceTaskDueDate(getDueDate(left)) || "9999-12-31";
+      const rightDue = normalizeWorkspaceTaskDueDate(getDueDate(right)) || "9999-12-31";
+      return leftDue.localeCompare(rightDue) || String(left.title || "").localeCompare(String(right.title || ""));
+    });
+    const workspaceOpenTasks = sortTasksByDueDate(cachedWorkspaceTasks
       .filter((task) => String(task.status || "").trim().toLowerCase() !== "done")
-      .filter((task) => Boolean(viewerUserId) && String(task.assignedUserId || "").trim() === viewerUserId)
-      .sort((left, right) => {
-        const leftDue = String(left.dueAt || "9999-12-31");
-        const rightDue = String(right.dueAt || "9999-12-31");
-        return leftDue.localeCompare(rightDue) || String(left.title || "").localeCompare(String(right.title || ""));
-      });
-    const legacyOpenTasks = cachedTodos.filter((task) => !task.isComplete && isLegacyTaskAssignedToViewer(task));
+      .filter((task) => Boolean(viewerUserId) && String(task.assignedUserId || "").trim() === viewerUserId), (task) => task.dueAt);
+    const legacyOpenTasks = sortTasksByDueDate(
+      cachedTodos.filter((task) => !task.isComplete && isLegacyTaskAssignedToViewer(task)),
+      (task) => task.dueDate
+    );
     // Once the Workspace contains tasks, it is the source of truth. In
     // particular, do not fall back to legacy unassigned tasks when this
     // signed-in person has no Workspace tasks of their own.
@@ -5522,7 +5526,8 @@
             : cachedEvents.find((item) => String(item.id || "") === String(task.eventId || ""));
           const context = event?.title || "No event or project yet";
           const dueDate = isWorkspaceTask ? String(task.dueAt || "") : String(task.dueDate || "");
-          const dueLabel = isWorkspaceTask ? formatWorkspaceTaskDueDate(dueDate) : (formatEventDateShort(dueDate) || "No due date");
+          // Keep the homepage's accordion date compact: month and day only.
+          const dueLabel = formatEventDateShort(dueDate) || "No due date";
           const status = isWorkspaceTask ? String(task.status || "Not Started") : (task.isComplete ? "Done" : "Not Started");
           const isProject = isWorkspaceTask && !String(event?.startsAt || "").trim();
           const parentLabel = isProject ? "project" : "event";
@@ -5538,8 +5543,8 @@
                 <span class="accordion-summary__main">
                   <span class="accordion-toggle" aria-hidden="true"></span>
                   <span class="event-accordion__title-main">
-                    <span class="accordion-title">${escapeHtml(task.title || "Untitled task")}</span>
-                    <span class="meta">${escapeHtml(context)}</span>
+                    <span class="accordion-title todo-task-title">${escapeHtml(task.title || "Untitled task")}</span>
+                    <span class="meta todo-task-parent">${escapeHtml(context)}</span>
                   </span>
                 </span>
                 <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(dueLabel)}</span>
@@ -5669,8 +5674,6 @@
         <div class="toolbar planner-users-form__wide"><button class="button" type="submit">${user.id ? "Save changes" : "Add contact"}</button>${user.id ? '<button class="button button--light" type="button" data-cancel-planner-user-edit>Cancel</button>' : ""}</div>
       </form>`;
     };
-    const textContacts = users.filter((user) => user.smsOptedIn && String(user.phone || "").trim());
-
     plannerUsersPanelEl.innerHTML = `
       <section class="card">
         <p class="eyebrow">Contacts, access & assignments</p>
@@ -5679,17 +5682,6 @@
         <div class="toolbar"><button class="button button--light" type="button" data-import-legacy-people>Import People &amp; Vendors contacts</button></div>
         <div id="plannerUserEditor">${userForm()}</div>
         <p class="status" id="plannerUsersStatus"></p>
-      </section>
-      <section class="card">
-        <p class="eyebrow">Texting</p>
-        <h3>Start a text</h3>
-        <p class="meta">This opens your device’s messaging app with the recipient and message filled in. It only lists contacts with a mobile number and documented text-message consent.</p>
-        ${textContacts.length ? `<form class="planner-users-form" data-planner-message-form>
-          <label>To <select name="recipientId" required>${textContacts.map((user) => `<option value="${escapeHtml(user.id)}">${escapeHtml(user.name)} · ${escapeHtml(user.phone)}</option>`).join("")}</select></label>
-          <label class="planner-users-form__wide">Message <textarea name="message" required rows="4" placeholder="Hi! Here is the latest wedding-planning update..."></textarea></label>
-          <div class="toolbar planner-users-form__wide"><button class="button" type="submit">Open text message</button></div>
-        </form>` : '<p class="meta">Add a mobile number and record text-message consent for a contact to start a text.</p>'}
-        <p class="status" id="plannerMessageStatus"></p>
       </section>
       <section class="card">
         <h3>Contacts</h3>
@@ -6182,14 +6174,14 @@
     const selectedIndividuals = new Set(invitationSelection.individuals.map((item) => item.toLowerCase()));
     const invitedGuests = guestChoices.filter((guest) => selectedIndividuals.has(String(guest.name || "").toLowerCase()) || (guest.types || []).some((type) => selectedGroups.has(String(type || "").toLowerCase())));
     workspaceDraftContentEl.innerHTML = `
-      <p class="eyebrow">Review the plan</p>
+      <p class="eyebrow">${draft.isManual ? "Create an event" : "Review the plan"}</p>
       <h4>${escapeHtml(draft.title || "New event")}</h4>
-      <p class="meta">Nothing is saved until you confirm it.</p>
+      <p class="meta">${draft.isManual ? "Enter the event details below. Nothing is saved until you create it." : "Nothing is saved until you confirm it."}</p>
       <form id="workspaceDraftForm">
-        <label>Event title <input name="title" required value="${escapeHtml(draft.title || "")}"></label>
+        <label>Event title <span class="workspace-voice-field"><input name="title" data-title-case data-voice-no-period required value="${escapeHtml(draft.title || "")}">${workspaceInlineVoiceButton("new-event-title", "event title")}</span></label>
         <div class="split">
           <label>Starts <input name="startsAt" type="datetime-local" required value="${escapeHtml(draft.startsAt || "")}"></label>
-          <label>Location <input name="location" value="${escapeHtml(draft.location || "")}" placeholder="Venue"></label>
+          <label>Location <span class="workspace-voice-field"><input name="location" data-title-case data-voice-no-period value="${escapeHtml(draft.location || "")}" placeholder="Venue">${workspaceInlineVoiceButton("new-event-location", "location")}</span></label>
         </div>
         <div class="workspace-invitees">
           <input type="hidden" name="invitees" value="${escapeHtml(draft.invitees)}">
@@ -6207,13 +6199,24 @@
         <p class="meta">Inviting someone does not give them planner access.</p>
         <label>Notes <textarea name="notes" placeholder="Add any context for this event.">${escapeHtml(draft.notes || "")}</textarea></label>
         <div class="toolbar">
-          <button class="button" type="submit">Create event page</button>
-          <button class="button button--light" type="button" data-discard-workspace-draft>Start over</button>
+          <button class="button" type="submit">${draft.isManual ? "Create event" : "Create event page"}</button>
+          <button class="button button--light" type="button" data-discard-workspace-draft>${draft.isManual ? "Cancel" : "Start over"}</button>
         </div>
       </form>
     `;
     workspaceDraftContentEl.querySelector("[data-discard-workspace-draft]")?.addEventListener("click", clearWorkspaceDraft);
     workspaceDraftContentEl.querySelector("#workspaceDraftForm")?.addEventListener("submit", saveWorkspaceDraft);
+    workspaceDraftContentEl.querySelectorAll("[data-title-case]").forEach((input) => {
+      input.addEventListener("input", () => {
+        input.value = formatTitleCase(input.value).replace(/\.+$/u, "");
+      });
+    });
+    workspaceDraftContentEl.querySelectorAll("[data-workspace-inline-mic]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const input = button.closest(".workspace-voice-field")?.querySelector("input, textarea");
+        toggleWorkspaceInlineVoiceInput(input, button, String(button.dataset.workspaceInlineMic || ""), String(button.dataset.workspaceInlineVoiceLabel || "voice input"));
+      });
+    });
     workspaceDraftContentEl.querySelectorAll("[data-workspace-invitee-group]").forEach((input) => input.addEventListener("change", refreshWorkspaceDraftInvitationSelection));
     workspaceDraftContentEl.querySelector("[data-add-workspace-invitee]")?.addEventListener("click", () => {
       syncWorkspaceDraftTasksFromReview();
@@ -6307,10 +6310,11 @@
           interimTranscript = mergeVoiceTranscriptIntoNotes(interimTranscript, transcript);
         }
       }
-      input.value = mergeVoiceTranscriptIntoNotes(
+      const voiceValue = mergeVoiceTranscriptIntoNotes(
         recognition.__baseValue,
         mergeVoiceTranscriptIntoNotes(recognition.__transcript, interimTranscript)
       );
+      input.value = input.dataset.voiceNoPeriod === "true" ? voiceValue.replace(/\.+$/u, "") : voiceValue;
       input.dispatchEvent(new Event("input", { bubbles: true }));
     };
     recognition.onerror = (errorEvent) => {
@@ -6500,7 +6504,12 @@
     if (!workspaceDraftState || !workspaceDraftContentEl) return;
     const form = workspaceDraftContentEl.querySelector("#workspaceDraftForm");
     if (!form) return;
-    const selection = parseWorkspaceInvitationSelection(new FormData(form).get("invitees"));
+    const formData = new FormData(form);
+    workspaceDraftState.title = String(formData.get("title") || "").trim();
+    workspaceDraftState.startsAt = String(formData.get("startsAt") || "").trim();
+    workspaceDraftState.location = String(formData.get("location") || "").trim();
+    workspaceDraftState.notes = String(formData.get("notes") || "").trim();
+    const selection = parseWorkspaceInvitationSelection(formData.get("invitees"));
     selection.groups = Array.from(form.querySelectorAll("[data-workspace-invitee-group]:checked")).map((input) => String(input.value || "").trim()).filter(Boolean);
     workspaceDraftState.invitees = JSON.stringify(selection);
   }
@@ -6544,6 +6553,34 @@
     workspaceCapturePromptEl?.focus();
   }
 
+  function openNewWorkspaceEvent() {
+    selectedWorkspaceEventId = "";
+    activeWorkspaceEventTab = "details";
+    window.sessionStorage.removeItem(STORAGE_KEYS.workspaceEventId);
+    window.sessionStorage.removeItem(STORAGE_KEYS.workspaceEventTab);
+    if (workspaceEventPageEl) workspaceEventPageEl.hidden = true;
+    setActivePlannerPanel("workspace");
+
+    // Keep an unfinished new-event draft intact rather than discarding it.
+    if (workspaceDraftState) {
+      renderWorkspaceDraft();
+      return;
+    }
+
+    const selectedDate = parseWorkspaceDate(selectedWorkspaceCalendarDate);
+    workspaceDraftState = {
+      title: "",
+      startsAt: selectedDate ? `${workspaceDateKey(selectedDate)}T12:00` : "",
+      location: "",
+      audience: "wedding_party",
+      invitees: "",
+      notes: "",
+      todos: [],
+      isManual: true
+    };
+    renderWorkspaceDraft();
+  }
+
   function makeWorkspaceDraft(prompt) {
     if (workspaceCaptureRecognition) {
       workspaceCaptureRecognition.__stoppedManually = true;
@@ -6574,22 +6611,46 @@
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
     try {
-      setStatus(workspaceStatusEl, "Creating event workspace…", "pending");
-      const savedEvent = await backendRequest("saveWorkspaceEvent", {
+      requirePlannerAccess();
+      const now = new Date().toISOString();
+      const optimisticEvent = {
+        id: createClientId("workspace_event"),
         title: String(data.title || "").trim(),
         startsAt: String(data.startsAt || "").trim(),
         location: String(data.location || "").trim(),
         audience: "wedding_party",
         invitees: String(new FormData(form).get("invitees") || "").trim(),
-        notes: String(data.notes || "").trim()
-      });
+        notes: String(data.notes || "").trim(),
+        assignedUserIds: [],
+        createdAt: now,
+        updatedAt: now
+      };
+
+      upsertCachedWorkspaceEvent(optimisticEvent);
+      savePlannerSessionCache();
       workspaceDraftState = null;
-      selectedWorkspaceEventId = String(savedEvent.id || "").trim();
-      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
-      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+      selectedWorkspaceEventId = "";
+      window.sessionStorage.removeItem(STORAGE_KEYS.workspaceEventId);
+      window.sessionStorage.removeItem(STORAGE_KEYS.workspaceEventTab);
       if (workspaceDraftEl) workspaceDraftEl.hidden = true;
-      await refreshWorkspaceCollections();
-      setStatus(workspaceStatusEl, "Event page created. Add tasks when you are ready.", "success");
+      setActivePlannerPanel("calendar");
+      renderWorkspace();
+      setStatus(calendarStatusEl, "Event added to your calendar. Saving in the background…", "pending");
+
+      void (async () => {
+        try {
+          const savedEvent = await backendRequest("saveWorkspaceEvent", optimisticEvent);
+          upsertCachedWorkspaceEvent(savedEvent);
+          savePlannerSessionCache();
+          renderWorkspace();
+          setStatus(calendarStatusEl, "Event saved.", "success");
+        } catch (error) {
+          cachedWorkspaceEvents = cachedWorkspaceEvents.filter((item) => String(item.id || "") !== optimisticEvent.id);
+          savePlannerSessionCache();
+          renderWorkspace();
+          setStatus(calendarStatusEl, error.message || "Unable to save this event.", "error");
+        }
+      })();
     } catch (error) {
       setStatus(workspaceStatusEl, error.message || "Unable to create this event.", "error");
     }
@@ -6725,7 +6786,10 @@
     });
     workspaceInlineVoiceRecognitions.clear();
     workspaceEventPageContentEl.innerHTML = `
-      <h3>${escapeHtml(formatTitleCase(event.title || "Untitled event"))}</h3>
+      <div class="workspace-event-title-row">
+        <h3>${escapeHtml(formatTitleCase(event.title || "Untitled event"))}</h3>
+        ${canManageEvent ? `<span class="workspace-event-title-actions"><button class="button button--icon button--light" type="button" data-edit-workspace-event-title aria-label="Edit event title" title="Edit title"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button><button class="button button--icon button--light workspace-event-delete-button" type="button" data-delete-workspace-event aria-label="Delete ${escapeHtml(event.title || "event")}" title="Delete event"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg></button></span>` : ""}
+      </div>
       <div class="workspace-event-tabs" role="tablist" aria-label="${isPlanningProject ? "Planning project" : "Event"} workspace sections">
         <button class="workspace-event-tab ${activeWorkspaceEventTab === "details" ? "is-active" : ""}" type="button" role="tab" aria-selected="${activeWorkspaceEventTab === "details"}" data-workspace-event-tab="details">${isPlanningProject ? "Project details" : "Event details"}</button>
         <button class="workspace-event-tab ${activeWorkspaceEventTab === "tasks" ? "is-active" : ""}" type="button" role="tab" aria-selected="${activeWorkspaceEventTab === "tasks"}" data-workspace-event-tab="tasks">Tasks</button>
@@ -6780,6 +6844,66 @@
       <form id="workspaceEventListForm" class="workspace-quick-form"><label>New list <input name="title" required placeholder="Breakfast shopping list"></label><label>Items <textarea name="items" required placeholder="Coffee&#10;Fruit&#10;Pastries"></textarea></label><button class="button button--light" type="submit">Add list</button></form>
       </section>
     `;
+    workspaceEventPageContentEl.querySelector("[data-edit-workspace-event-title]")?.addEventListener("click", () => {
+      const title = window.prompt("Event title", event.title || "");
+      if (title === null) return;
+      const nextTitle = formatTitleCase(title);
+      if (!nextTitle || nextTitle === event.title) return;
+      const previousEvent = { ...event };
+      Object.assign(event, { title: nextTitle, updatedAt: new Date().toISOString() });
+      upsertCachedWorkspaceEvent(event);
+      savePlannerSessionCache();
+      renderWorkspaceEventPage();
+      setStatus(workspaceStatusEl, "Event title updated. Saving in the background…", "pending");
+      void (async () => {
+        try {
+          const savedEvent = await backendRequest("saveWorkspaceEvent", event);
+          Object.assign(event, savedEvent);
+          upsertCachedWorkspaceEvent(savedEvent);
+          savePlannerSessionCache();
+          setStatus(workspaceStatusEl, "Event title saved.", "success");
+        } catch (error) {
+          Object.assign(event, previousEvent);
+          upsertCachedWorkspaceEvent(previousEvent);
+          savePlannerSessionCache();
+          renderWorkspaceEventPage();
+          setStatus(workspaceStatusEl, error.message || "Unable to save the event title.", "error");
+        }
+      })();
+    });
+    workspaceEventPageContentEl.querySelector("[data-delete-workspace-event]")?.addEventListener("click", () => {
+      if (!window.confirm(`Delete “${event.title || "this event"}” and its tasks, lists, and attachments?`)) return;
+      const removedEvent = { ...event };
+      const removedTasks = cachedWorkspaceTasks.filter((task) => String(task.eventId || "") === event.id);
+      const removedLists = cachedWorkspaceLists.filter((list) => String(list.eventId || "") === event.id);
+      const removedTaskIds = new Set(removedTasks.map((task) => String(task.id || "")));
+      const removedAssets = cachedWorkspaceAssets.filter((asset) => String(asset.eventId || "") === event.id || removedTaskIds.has(String(asset.taskId || "")));
+      cachedWorkspaceEvents = cachedWorkspaceEvents.filter((item) => String(item.id || "") !== event.id);
+      cachedWorkspaceTasks = cachedWorkspaceTasks.filter((task) => String(task.eventId || "") !== event.id);
+      cachedWorkspaceLists = cachedWorkspaceLists.filter((list) => String(list.eventId || "") !== event.id);
+      cachedWorkspaceAssets = cachedWorkspaceAssets.filter((asset) => String(asset.eventId || "") !== event.id && !removedTaskIds.has(String(asset.taskId || "")));
+      selectedWorkspaceEventId = "";
+      window.sessionStorage.removeItem(STORAGE_KEYS.workspaceEventId);
+      window.sessionStorage.removeItem(STORAGE_KEYS.workspaceEventTab);
+      savePlannerSessionCache();
+      setActivePlannerPanel("calendar");
+      renderWorkspace();
+      setStatus(calendarStatusEl, "Event deleted. Finishing in the background…", "pending");
+      void (async () => {
+        try {
+          await backendRequest("deleteWorkspaceEvent", { id: event.id });
+          setStatus(calendarStatusEl, "Event deleted.", "success");
+        } catch (error) {
+          upsertCachedWorkspaceEvent(removedEvent);
+          cachedWorkspaceTasks.push(...removedTasks);
+          cachedWorkspaceLists.push(...removedLists);
+          cachedWorkspaceAssets.push(...removedAssets);
+          savePlannerSessionCache();
+          renderWorkspace();
+          setStatus(calendarStatusEl, error.message || "Unable to delete this event.", "error");
+        }
+      })();
+    });
     workspaceEventPageContentEl.querySelector("#workspaceEventEditForm")?.addEventListener("submit", (formEvent) => {
       formEvent.preventDefault();
       const form = formEvent.currentTarget;
@@ -9189,7 +9313,7 @@ function sortTables(items) {
   });
 
   openCalendarEventModalButton?.addEventListener("click", () => {
-    openEventModal("Add Event");
+    openNewWorkspaceEvent();
   });
 
   openShotModalButton.addEventListener("click", () => {
@@ -9911,23 +10035,6 @@ function sortTables(items) {
 
   plannerUsersPanelEl?.addEventListener("submit", async (event) => {
     const form = event.target.closest("[data-planner-user-form]");
-    const messageForm = event.target.closest("[data-planner-message-form]");
-    if (messageForm) {
-      event.preventDefault();
-      const statusEl = plannerUsersPanelEl.querySelector("#plannerMessageStatus");
-      const data = new FormData(messageForm);
-      const recipient = cachedWorkspaceUsers.find((user) => String(user.id || "") === String(data.get("recipientId") || ""));
-      const phone = String(recipient?.phone || "").trim();
-      const message = String(data.get("message") || "").trim();
-      if (!recipient?.smsOptedIn || !phone || !message) {
-        setStatus(statusEl, "Choose a consented contact with a mobile number and write a message.", "error");
-        return;
-      }
-      const destination = phone.replace(/[^\d+]/g, "");
-      window.location.href = `sms:${encodeURIComponent(destination)}?body=${encodeURIComponent(message)}`;
-      setStatus(statusEl, `Opening a text to ${recipient.name || "this contact"}…`, "success");
-      return;
-    }
     if (!form) return;
     event.preventDefault();
     try {

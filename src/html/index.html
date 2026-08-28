@@ -2264,6 +2264,12 @@
         min-height: 0;
       }
 
+      .planner-panel[data-planner-panel="todos"] {
+        height: calc(100vh - var(--planner-desktop-header-height));
+        height: calc(100dvh - var(--planner-desktop-header-height));
+        overflow: hidden;
+      }
+
       .planner-panel[data-planner-panel="events"] .list-header,
       .planner-panel[data-planner-panel="events"] .planner-filter-row,
       .planner-panel[data-planner-panel="event-detail"] .list-header,
@@ -4396,21 +4402,20 @@
         color: #284a2f;
       }
 
+      .workspace-calendar__day--holiday .workspace-calendar__date {
+        justify-self: start;
+        text-align: left;
+      }
+
       .workspace-calendar__holiday {
         align-self: center;
         padding: 0.35rem;
         color: #284a2f;
         font-family: var(--display-font);
         font-size: 0.92rem;
-        font-weight: 800;
+        font-weight: 400;
         line-height: 1.12;
         text-align: center;
-      }
-
-      @media (max-width: 1024px) {
-        .workspace-calendar__holiday {
-          font-weight: 400;
-        }
       }
 
       .workspace-calendar__date {
@@ -4443,6 +4448,16 @@
       .workspace-calendar__month-label-short,
       .workspace-calendar__holiday-short {
         display: none;
+      }
+
+      /* Full holiday names remain available to assistive technology, while
+         the calendar always uses the compact label in its seven-column grid. */
+      .workspace-calendar__holiday-full {
+        display: none;
+      }
+
+      .workspace-calendar__holiday-short {
+        display: inline;
       }
 
       .workspace-calendar__event {
@@ -4709,6 +4724,25 @@
         padding: 0;
         border: 0;
         border-radius: 0;
+        background: transparent;
+      }
+
+      .workspace-event-title-row,
+      .workspace-event-title-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .workspace-event-title-row {
+        justify-content: flex-start;
+      }
+
+      .workspace-event-title-row h3 { margin: 0; }
+
+      .workspace-event-delete-button.button--light,
+      .workspace-event-delete-button.button--light:hover,
+      .workspace-event-delete-button.button--light:focus-visible {
         background: transparent;
       }
 

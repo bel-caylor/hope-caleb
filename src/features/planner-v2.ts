@@ -432,6 +432,28 @@ export function saveWorkspaceEvent(input: SaveWorkspaceEventInput) {
   return mapEvent(saved);
 }
 
+export function deleteWorkspaceEvent(input: { id?: string }) {
+  requireWorkspaceManager();
+  const id = String(input.id || "").trim();
+  if (!id) throw new Error("Missing event id.");
+
+  const taskIds = readRows(PLANNER_V2_TASKS_SHEET)
+    .map(mapTask)
+    .filter((task) => task.eventId === id)
+    .map((task) => task.id);
+  readRows(PLANNER_V2_ASSETS_SHEET)
+    .map(mapAsset)
+    .filter((asset) => asset.eventId === id || taskIds.includes(asset.taskId))
+    .forEach((asset) => deleteRowById(PLANNER_V2_ASSETS_SHEET, PLANNER_V2_ASSET_HEADERS, asset.id));
+  taskIds.forEach((taskId) => deleteRowById(PLANNER_V2_TASKS_SHEET, PLANNER_V2_TASK_HEADERS, taskId));
+  readRows(PLANNER_V2_LISTS_SHEET)
+    .map(mapList)
+    .filter((list) => list.eventId === id)
+    .forEach((list) => deleteRowById(PLANNER_V2_LISTS_SHEET, PLANNER_V2_LIST_HEADERS, list.id));
+  deleteRowById(PLANNER_V2_EVENTS_SHEET, PLANNER_V2_EVENT_HEADERS, id);
+  return { ok: true, id };
+}
+
 export function listWorkspaceTasks() {
   const viewer = getWorkspaceViewer();
   const tasks = readRows(PLANNER_V2_TASKS_SHEET).map(mapTask).filter((task) => task.title);

@@ -3,7 +3,7 @@ import { getViewerProfile } from "./auth";
 import { deleteEventList, deleteShot, deleteTodo, listBeds, listEventLists, listEvents, listPeople, listShots, listTables, listTodos, saveBed, saveEvent, saveEventList, saveGuestDetails, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveShot, saveTable, saveTableReservedOpenSeats, saveTodo, uploadTodoImage } from "./features/planner";
 import { generateEventPlan } from "./util/ai";
 import { PLANNER_BUILD_VERSION } from "./version";
-import { archiveLegacyPlanningData, deleteWorkspaceAsset, deleteWorkspaceList, deleteWorkspaceTask, getWorkspaceAssetImage, getWorkspaceProfile, importLegacyPeopleToWorkspaceUsers, initializePlannerWorkspace, listWorkspaceAssets, listWorkspaceEvents, listWorkspaceInvitees, listWorkspaceLists, listWorkspaceTasks, listWorkspaceUsers, saveWorkspaceAsset, saveWorkspaceEvent, saveWorkspaceList, saveWorkspaceTask, saveWorkspaceUser, setWorkspaceListItemCompleted } from "./features/planner-v2";
+import { archiveLegacyPlanningData, deleteWorkspaceAsset, deleteWorkspaceEvent, deleteWorkspaceList, deleteWorkspaceTask, getWorkspaceAssetImage, getWorkspaceProfile, importLegacyPeopleToWorkspaceUsers, initializePlannerWorkspace, listWorkspaceAssets, listWorkspaceEvents, listWorkspaceInvitees, listWorkspaceLists, listWorkspaceTasks, listWorkspaceUsers, saveWorkspaceAsset, saveWorkspaceEvent, saveWorkspaceList, saveWorkspaceTask, saveWorkspaceUser, setWorkspaceListItemCompleted } from "./features/planner-v2";
 
 export function rpc(input: { method: string; payload: unknown }) {
   const { method, payload } = input;
@@ -89,6 +89,8 @@ export function rpc(input: { method: string; payload: unknown }) {
       return listWorkspaceEvents();
     case "saveWorkspaceEvent":
       return saveWorkspaceEvent(payload as Parameters<typeof saveWorkspaceEvent>[0]);
+    case "deleteWorkspaceEvent":
+      return deleteWorkspaceEvent(payload as Parameters<typeof deleteWorkspaceEvent>[0]);
     case "listWorkspaceTasks":
       return listWorkspaceTasks();
     case "saveWorkspaceTask":
