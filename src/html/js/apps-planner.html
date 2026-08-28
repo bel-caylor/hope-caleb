@@ -137,8 +137,9 @@
     eventDetailId: "hope-caleb-event-detail-id",
     eventDetailTab: "hope-caleb-event-detail-tab",
     plannerScrollPosition: "hope-caleb-planner-scroll-position",
-    plannerDataCache: "hope-caleb-planner-data-cache-v1"
+    plannerDataCache: "hope-caleb-planner-data-cache-v2"
   };
+  const PLANNER_CACHE_TTL_MS = 15 * 60 * 1000;
 
   let cachedPeople = [];
   let cachedEvents = [];
@@ -8183,6 +8184,7 @@
     if (!viewerProfile.email) return;
     try {
       window.sessionStorage.setItem(STORAGE_KEYS.plannerDataCache, JSON.stringify({
+        version: 2,
         email: viewerProfile.email,
         viewer: viewerProfile,
         savedAt: Date.now(),
@@ -8211,7 +8213,13 @@
   function restorePlannerSessionCache() {
     try {
       const cached = JSON.parse(String(window.sessionStorage.getItem(STORAGE_KEYS.plannerDataCache) || ""));
-      if (!cached || String(cached.email || "").toLowerCase() !== viewerProfile.email.toLowerCase()) return false;
+      const savedAt = Number(cached?.savedAt || 0);
+      const isCurrent = Number(cached?.version || 0) === 2;
+      const isFresh = savedAt > 0 && Date.now() - savedAt <= PLANNER_CACHE_TTL_MS;
+      if (!cached || !isCurrent || !isFresh || String(cached.email || "").toLowerCase() !== viewerProfile.email.toLowerCase()) {
+        window.sessionStorage.removeItem(STORAGE_KEYS.plannerDataCache);
+        return false;
+      }
       cachedPeople = Array.isArray(cached.people) ? cached.people : [];
       cachedEvents = Array.isArray(cached.events) ? cached.events : [];
       cachedShots = Array.isArray(cached.shots) ? cached.shots : [];
@@ -8250,7 +8258,12 @@
       const cached = JSON.parse(String(window.sessionStorage.getItem(STORAGE_KEYS.plannerDataCache) || ""));
       const cachedEmail = String(cached?.email || "").trim().toLowerCase();
       const requestedEmail = String(expectedEmail || "").trim().toLowerCase();
-      if (!cachedEmail || (requestedEmail && cachedEmail !== requestedEmail) || !cached?.viewer) return false;
+      const savedAt = Number(cached?.savedAt || 0);
+      const isFresh = Number(cached?.version || 0) === 2 && savedAt > 0 && Date.now() - savedAt <= PLANNER_CACHE_TTL_MS;
+      if (!isFresh || !cachedEmail || (requestedEmail && cachedEmail !== requestedEmail) || !cached?.viewer) {
+        window.sessionStorage.removeItem(STORAGE_KEYS.plannerDataCache);
+        return false;
+      }
       viewerProfile = { ...viewerProfile, ...cached.viewer, signedIn: true };
       if (!canUsePlanner() || !restorePlannerSessionCache()) return false;
       renderRoute();

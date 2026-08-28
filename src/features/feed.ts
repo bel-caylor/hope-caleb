@@ -12,7 +12,7 @@ import {
   TABLE_NUMBER_SHEET
 } from "../constants";
 import { requirePlannerAccess, requireScriptEditorAccess } from "../auth";
-import { ensureSheet, getSheetByName, readRows } from "../util/sheets";
+import { ensureSheet, getSheetByName, readRows, withSpreadsheetWriteLock } from "../util/sheets";
 
 type PublicSubmissionParams = Record<string, string | undefined>;
 
@@ -168,6 +168,12 @@ export function lookupPublicRsvpGroups(firstNameRaw: string | undefined, lastNam
 }
 
 export function savePublicSubmission(rawParams: Record<string, unknown> | undefined) {
+  // A public RSVP can update Guests, Groups, and the history sheet. Keep that
+  // whole sequence together so simultaneous submissions cannot interleave.
+  return withSpreadsheetWriteLock(() => savePublicSubmissionLocked(rawParams));
+}
+
+function savePublicSubmissionLocked(rawParams: Record<string, unknown> | undefined) {
   const data = toStringRecord(rawParams);
 
   if (isGroupRsvpSubmission(data)) {

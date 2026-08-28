@@ -1,4 +1,4 @@
-const CACHE_NAME = "hope-caleb-dashboard-v3";
+const CACHE_NAME = "hope-caleb-dashboard-v4";
 const APP_SHELL = [
   "/dashboard.html",
   "/Dashboard.html",
@@ -36,8 +36,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          cacheResponse(event, event.request, response);
           return response;
         })
         .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/dashboard.html")))
@@ -45,13 +44,43 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // HTML must be network-first so a deploy is visible immediately. Assets can
+  // use cache-first, but refresh themselves in the background when online.
+  if (requestUrl.pathname.endsWith(".html")) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          cacheResponse(event, event.request, response);
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
-      if (response.ok) {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+    caches.match(event.request).then((cached) => {
+      if (cached) {
+        event.waitUntil(
+          fetch(event.request)
+            .then((response) => cacheResponse(event, event.request, response))
+            .catch(() => undefined)
+        );
+        return cached;
       }
-      return response;
-    }))
+      return fetch(event.request).then((response) => {
+        cacheResponse(event, event.request, response);
+        return response;
+      });
+    })
   );
 });
+
+function cacheResponse(event, request, response) {
+  if (!response || !response.ok) return;
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.put(request, response.clone()))
+      .catch(() => undefined)
+  );
+}

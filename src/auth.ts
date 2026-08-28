@@ -123,7 +123,7 @@ function verifyGoogleIdToken(token: string): VerifiedUser | null {
 function readPlannerAccessEmails() {
   const spreadsheetId = getSpreadsheetId();
   const cache = CacheService.getScriptCache();
-  const cacheKey = `planner-admin-access:${spreadsheetId}`;
+  const cacheKey = getPlannerAccessCacheKey(spreadsheetId);
   const cached = cache.get(cacheKey);
   if (cached) {
     try {
@@ -155,6 +155,15 @@ function readPlannerAccessEmails() {
 
   cache.put(cacheKey, JSON.stringify([...emails]), 300);
   return emails;
+}
+
+function getPlannerAccessCacheKey(spreadsheetId: string) {
+  return `planner-admin-access:${spreadsheetId}`;
+}
+
+/** Clears the cached authorization list after a planner-user change. */
+export function invalidatePlannerAccessCache() {
+  CacheService.getScriptCache().remove(getPlannerAccessCacheKey(getSpreadsheetId()));
 }
 
 function getViewerName(email: string) {

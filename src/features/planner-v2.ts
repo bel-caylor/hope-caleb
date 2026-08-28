@@ -15,7 +15,7 @@ import {
   PLANNER_V2_TASKS_SHEET,
   PLANNER_V2_TASK_HEADERS
 } from "../constants";
-import { getViewerProfile, requirePlannerAccess } from "../auth";
+import { getViewerProfile, invalidatePlannerAccessCache, requirePlannerAccess } from "../auth";
 import { createId, deleteRowById, ensureSheet, readRows, upsertRow } from "../util/sheets";
 import { listEvents, listTodos } from "./planner";
 
@@ -313,6 +313,7 @@ export function saveWorkspaceUser(input: SaveWorkspaceUserInput) {
     UpdatedAt: now
   };
   upsertRow(PLANNER_USERS_SHEET, PLANNER_USER_HEADERS, id, saved);
+  invalidatePlannerAccessCache();
   return mapUser(saved);
 }
 

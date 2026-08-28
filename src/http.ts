@@ -2,6 +2,7 @@ import { getGoogleClientId } from "./auth";
 import { listPublicFeed, lookupPublicRsvpGroups, savePublicSubmission, syncGroupsSheet, syncGroupsSheetForEditor, syncGuestSummarySheets } from "./features/feed";
 import { initializeBedsSheet } from "./features/planner";
 import { rpc } from "./rpc";
+import { withSpreadsheetWriteLock } from "./util/sheets";
 import { PLANNER_BUILD_VERSION } from "./version";
 
 type RequestState = {
@@ -69,7 +70,9 @@ export function doPost(e?: GoogleAppsScript.Events.DoPost) {
     if (!method) {
       throw new Error("Missing RPC method.");
     }
-    const data = rpc({ method, payload: parsed.payload });
+    const data = isWriteRpcMethod(method)
+      ? withSpreadsheetWriteLock(() => rpc({ method, payload: parsed.payload }))
+      : rpc({ method, payload: parsed.payload });
     return jsonResponse({ ok: true, data }, e);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -92,6 +95,9 @@ function handleRpcGet(e?: GoogleAppsScript.Events.DoGet) {
   try {
     if (!method) {
       throw new Error("Missing RPC method.");
+    }
+    if (isWriteRpcMethod(method)) {
+      throw new Error("Planner changes must use POST requests.");
     }
     const data = rpc({ method, payload });
     return publicFeedResponse({ ok: true, data }, e);
@@ -181,6 +187,19 @@ function isRpcRequest(e?: GoogleAppsScript.Events.DoPost) {
   } catch (_) {
     return false;
   }
+}
+
+function isWriteRpcMethod(method: string) {
+  return new Set([
+    "savePerson", "saveBed", "saveEvent", "saveShot", "deleteShot",
+    "saveTodo", "uploadTodoImage", "deleteTodo", "saveEventList", "deleteEventList",
+    "saveTable", "saveTableReservedOpenSeats", "saveGuestTableAssignment", "saveGuestTableAssignments",
+    "saveGuestDetails", "syncGuestSummarySheets", "syncGroupsSheet", "savePlannerRsvpCorrection",
+    "initializePlannerWorkspace", "saveWorkspaceUser", "importLegacyPeopleToWorkspaceUsers",
+    "archiveLegacyPlanningData", "saveWorkspaceEvent", "deleteWorkspaceEvent", "saveWorkspaceTask",
+    "setWorkspaceTaskCompleted", "deleteWorkspaceTask", "saveWorkspaceList", "setWorkspaceListItemCompleted",
+    "deleteWorkspaceList", "saveWorkspaceAsset", "deleteWorkspaceAsset"
+  ]).has(method);
 }
 
 function getOrigin(e?: GoogleAppsScript.Events.DoPost) {

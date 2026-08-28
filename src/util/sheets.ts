@@ -62,6 +62,22 @@ export function getSheetByName(sheetName: string) {
   return getSpreadsheet().getSheetByName(sheetName);
 }
 
+/** Serializes an entire spreadsheet read/validate/write transaction. */
+export function withSpreadsheetWriteLock<T>(operation: () => T): T {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(25_000);
+  } catch (_) {
+    throw new Error("Another planner save is still finishing. Please try again in a moment.");
+  }
+
+  try {
+    return operation();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 export function upsertRow(sheetName: string, headers: string[], id: string, values: PlannerRow) {
   const sheet = ensureSheet(sheetName, headers);
   const rows = sheet.getDataRange().getValues();
