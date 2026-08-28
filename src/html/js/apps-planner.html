@@ -515,11 +515,11 @@
     plannerLoadingEl.hidden = !showPlanner || !hasAccess || plannerDataReady;
     plannerLoadingEl.setAttribute("aria-busy", String(!plannerDataReady));
     plannerContentEl.hidden = !showPlannerNavigation;
-    if (hasAccess && !viewerProfile.isAdmin && !["workspace", "calendar"].includes(activePlannerPanel)) {
-      activePlannerPanel = "workspace";
+    if (hasAccess && !viewerProfile.isAdmin && activePlannerPanel !== "calendar") {
+      activePlannerPanel = "calendar";
     }
     plannerSectionButtons.forEach((button) => {
-      button.hidden = !viewerProfile.isAdmin && !["workspace", "calendar"].includes(button.dataset.plannerSection);
+      button.hidden = !viewerProfile.isAdmin && button.dataset.plannerSection !== "calendar";
     });
     setActivePlannerPanel(activePlannerPanel, { recordHistory: false });
     syncPlannerRoute({ replace: true });
@@ -5838,7 +5838,6 @@
         <label>Guest <select name="guestId" required data-planner-user-guest>${guestOptions}</select></label>
         <label>Access level <select name="accessLevel">${accessOptions(user.accessLevel)}</select></label>
         <div class="planner-users-form__wide" data-planner-user-guest-contact hidden></div>
-        <p class="meta planner-users-form__wide">The guest record supplies the name, Google account, mobile number, and wedding role. Adding planner access activates that guest's account.</p>
         <div class="toolbar planner-users-form__wide"><button class="button" type="submit">${user.id ? "Save access" : "Grant access"}</button>${user.id ? '<button class="button button--light" type="button" data-cancel-planner-user-edit>Cancel</button>' : ""}</div>
       </form>`;
     };
@@ -6136,6 +6135,7 @@
     document.querySelectorAll("[data-workspace-manager-only]").forEach((element) => {
       element.hidden = !viewerProfile.isAdmin;
     });
+    if (openCalendarEventModalButton) openCalendarEventModalButton.hidden = !viewerProfile.isAdmin;
 
     const datedEvents = cachedWorkspaceEvents
       .map((event) => ({ event, date: parseWorkspaceDate(event.startsAt) }))
