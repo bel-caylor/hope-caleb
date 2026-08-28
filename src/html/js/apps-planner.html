@@ -4354,16 +4354,6 @@
       return;
     }
 
-    const groups = {
-      yes: [],
-      no: [],
-      maybe: []
-    };
-
-    dashboardRsvps.forEach((rsvp) => {
-      groups[getRsvpGroup(rsvp.attending)].push(rsvp);
-    });
-
     // The feed normally arrives newest-first, but the RSVP sheet can also be
     // read through older deployments that return its natural (oldest-first)
     // order. Sort here so the visible response is always genuinely the latest.
@@ -4405,12 +4395,18 @@
         const responseTone = getRsvpGroup(response);
         return `<li class="rsvp-member-response rsvp-member-response--${escapeHtml(responseTone)}"><strong>${escapeHtml(name)}</strong><span class="rsvp-response rsvp-response--${escapeHtml(responseTone)}">${escapeHtml(response)}</span></li>`;
       }).join("");
+    const getSubmissionGuestCount = (rsvp) => {
+      const members = String(rsvp.groupMembers || "").split("|").map((entry) => entry.trim()).filter(Boolean);
+      const weddingCount = members.filter((entry) => getRsvpGroup(entry.slice(entry.lastIndexOf(":") + 1)) === "yes").length;
+      const extras = Number.parseInt(rsvp.plusOneCount || "0", 10) + Number.parseInt(rsvp.childrenCount || "0", 10);
+      return members.length ? weddingCount + (Number.isNaN(extras) ? 0 : extras) : String(rsvp.guests || "").trim();
+    };
     const getSubmissionChanges = (current, previous) => {
       const fields = [
         ["Wedding", current.weddingRsvpSummary || current.attending, previous.weddingRsvpSummary || previous.attending],
         ["Rehearsal dinner", current.rehearsalRsvp, previous.rehearsalRsvp],
         ["Open house", current.openHouseRsvp, previous.openHouseRsvp],
-        ["Guest count", current.guests, previous.guests],
+        ["Guests attending", getSubmissionGuestCount(current), getSubmissionGuestCount(previous)],
         ["Wedding party", current.groupMembers, previous.groupMembers],
         ["Contact email", current.email, previous.email],
         ["Note", current.comment, previous.comment],
@@ -4439,7 +4435,7 @@
       </details>
     ` : "";
     const renderSubmissionAccordion = (rsvp, records, group) => {
-      const guestCount = String(rsvp.guests || "").trim();
+      const guestCount = getSubmissionGuestCount(rsvp);
       const detailFields = [
         ["Wedding", rsvp.weddingRsvpSummary || (rsvp.attending ? getRsvpLabel(getRsvpGroup(rsvp.attending)) : "")],
         ["Rehearsal dinner", rsvp.rehearsalRsvp],
@@ -4454,7 +4450,7 @@
             <span class="accordion-summary__main">
               <span class="accordion-toggle" aria-hidden="true"></span>
               <span class="accordion-title">${escapeHtml(rsvp.name || rsvp.group || "Guest")}</span>
-              <span class="rsvp-submission-count">${guestCount ? `${escapeHtml(guestCount)} guest${guestCount === "1" ? "" : "s"} attending` : "RSVP recorded"}</span>
+              <span class="rsvp-submission-count">${guestCount ? `${escapeHtml(guestCount)} guest${guestCount === 1 || guestCount === "1" ? "" : "s"} attending` : "RSVP recorded"}</span>
             </span>
             ${viewerProfile.isAdmin && records.length ? `<button class="button button--light rsvp-submission-edit-button" type="button" data-edit-rsvp-response="${escapeHtml(group)}">Edit response</button>` : ""}
           </summary>
@@ -4473,30 +4469,12 @@
       .map(({ group, latest, records }) => renderSubmissionAccordion(latest, records, group)).join("")}</div>`
       : '<p class="meta">No submitted RSVP records yet.</p>';
 
-    const currentAttendanceMarkup = Object.entries(groups).map(([key, items]) => `
-      <article class="card">
-        <h3>${escapeHtml(getRsvpLabel(key))} · ${items.length}</h3>
-        ${items.length ? items.map((rsvp) => `
-          <div class="dashboard-entry">
-            <strong>${escapeHtml(rsvp.name || "Guest")}</strong>
-            <p>${escapeHtml(formatRsvpMeta(rsvp))}</p>
-            ${rsvp.comment ? `<p class="meta">${escapeHtml(rsvp.comment)}</p>` : ""}
-          </div>
-        `).join("") : '<p class="meta">No responses in this group yet.</p>'}
-      </article>
-    `).join("");
-
     rsvpListEl.innerHTML = `
-      <article class="card">
-        <h3>Latest submissions · ${latestSubmissions.length}</h3>
-        <p class="meta">Showing the newest response for each group. Open a submission history to see earlier responses and exactly what changed.</p>
-        ${submissionMarkup}
-      </article>
-      <article class="card">
-        <h3>Current guest attendance · ${dashboardRsvps.length}</h3>
-        <p class="meta">This is the live per-person view from the Guests sheet; use the Guests tab to manage individual records.</p>
-      </article>
-      ${currentAttendanceMarkup}
+      <div class="rsvp-section-header">
+        <h3>Group RSVPs</h3>
+        <span>RSVP count · ${latestSubmissions.length}</span>
+      </div>
+      ${submissionMarkup}
       ${viewerProfile.isAdmin ? `<section class="modal" id="rsvpEditModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-rsvp-edit-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="rsvpEditModalTitle"><button class="modal__close" type="button" data-close-rsvp-edit-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="rsvpEditModalTitle">Edit RSVP response</h3><p class="meta">Saving records a corrected response and keeps the previous submission in its history.</p></div></div><form id="rsvpEditForm"><input name="group" type="hidden"><input name="contactName" type="hidden"><label>Contact email <input name="email" type="email"></label><fieldset class="type-options"><legend>Wedding party</legend><div class="rsvp-edit-members" data-rsvp-edit-members></div></fieldset><div class="split"><label>Rehearsal dinner <select name="rehearsalRsvp"><option value="">No response</option><option value="attending">Attending</option><option value="not-attending">Not attending</option></select></label><label>Open house <select name="openHouseRsvp"><option value="">No response</option><option value="attending">Attending</option><option value="not-attending">Not attending</option></select></label></div><div class="split"><label>Plus ones <input name="plusOneCount" type="number" min="0" step="1"></label><label>Plus-one name <input name="plusOneName"></label></div><div class="split"><label>Children <input name="childrenCount" type="number" min="0" step="1"></label><label>Children note <input name="childrenNote"></label></div><label>Note <textarea name="comment"></textarea></label><div class="toolbar"><button class="button" type="submit">Save corrected response</button><button class="button button--light" type="button" data-close-rsvp-edit-modal>Cancel</button></div><p class="status" id="rsvpEditStatus"></p></form></div></section>` : ""}
     `;
   }
@@ -5173,8 +5151,18 @@
     )).join("");
   }
 
+  function normalizeWorkspaceTaskDueDate(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+  }
+
   function getWorkspaceTaskDueDateValue(task) {
-    return String(task?.dueAt || task?.dueDate || "").trim();
+    return normalizeWorkspaceTaskDueDate(task?.dueAt || task?.dueDate || "");
   }
 
   function formatWorkspaceTaskDueDate(dueAt) {

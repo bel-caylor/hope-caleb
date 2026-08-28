@@ -1849,6 +1849,26 @@
         gap: 0.65rem;
       }
 
+      .rsvp-section-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        margin: 0 0 0.75rem;
+      }
+
+      .rsvp-section-header h3,
+      .rsvp-section-header span {
+        margin: 0;
+      }
+
+      .rsvp-section-header span {
+        color: var(--muted);
+        font-size: 0.9rem;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
       .rsvp-submission-card {
         background: #fcf4f5;
       }
@@ -2000,6 +2020,15 @@
       .rsvp-submission-edit-button {
         flex: 0 0 auto;
         margin: 0 0 0 auto;
+        min-height: 0;
+        padding: 0.3rem 0.5rem;
+        background: #6f1d2a;
+        color: #fff;
+      }
+
+      .rsvp-submission-edit-button:hover,
+      .rsvp-submission-edit-button:focus-visible {
+        background: #590000;
       }
 
       .rsvp-edit-members {
@@ -3187,13 +3216,13 @@
       .guest-card--pending.rsvp-submission-card summary {
         margin: 0;
         border-radius: 0;
-        background: #dcebd7;
-        color: #284a2f;
+        background: #e9cbd1;
+        color: #5a2833;
       }
 
       .rsvp-submission-card .accordion-summary__meta,
       .rsvp-submission-card .rsvp-submission-count {
-        color: #284a2f;
+        color: #5a2833;
       }
 
       .rsvp-submission-count {
@@ -3217,12 +3246,12 @@
       }
 
       .rsvp-submission-card[open] summary {
-        border-bottom-color: rgba(40, 74, 47, 0.2);
+        border-bottom-color: rgba(128, 61, 76, 0.2);
       }
 
       .rsvp-submission-members li {
         border-color: rgba(128, 61, 76, 0.2);
-        background: #fffdfd;
+        background: #fff;
       }
 
       .event-accordion {
