@@ -515,11 +515,11 @@
     plannerLoadingEl.hidden = !showPlanner || !hasAccess || plannerDataReady;
     plannerLoadingEl.setAttribute("aria-busy", String(!plannerDataReady));
     plannerContentEl.hidden = !showPlannerNavigation;
-    if (hasAccess && !viewerProfile.isAdmin && activePlannerPanel !== "calendar") {
+    if (hasAccess && !viewerProfile.isAdmin && !["calendar", "todos"].includes(activePlannerPanel)) {
       activePlannerPanel = "calendar";
     }
     plannerSectionButtons.forEach((button) => {
-      button.hidden = !viewerProfile.isAdmin && button.dataset.plannerSection !== "calendar";
+      button.hidden = !viewerProfile.isAdmin && !["calendar", "todos"].includes(button.dataset.plannerSection);
     });
     setActivePlannerPanel(activePlannerPanel, { recordHistory: false });
     syncPlannerRoute({ replace: true });
@@ -4139,6 +4139,16 @@
     `;
   }
 
+  function lockWeddingPartyTodoControls() {
+    if (viewerProfile.isAdmin || !todosListEl) return;
+    todosListEl.querySelectorAll("[data-open-workspace-task], [data-open-workspace-project]").forEach((button) => {
+      button.hidden = true;
+    });
+    todosListEl.querySelectorAll("[data-workspace-todo-list-item], [data-workspace-todo-assignee], [data-workspace-todo-status], [data-workspace-todo-due]").forEach((control) => {
+      control.disabled = true;
+    });
+  }
+
   function renderTodos() {
     const assignees = collectTodoAssignedToOptions(cachedWorkspaceTasks);
     renderTodoAssignedToFilter(assignees);
@@ -4197,6 +4207,7 @@
           </section>
         `;
       }).join("")}</div>`;
+      lockWeddingPartyTodoControls();
       hydrateWorkspaceTodoSnapshots(todosListEl);
       return;
     }
@@ -4293,6 +4304,7 @@
         `).join("")}
       </div>
     `;
+    lockWeddingPartyTodoControls();
     hydrateWorkspaceTodoSnapshots(todosListEl);
   }
 
