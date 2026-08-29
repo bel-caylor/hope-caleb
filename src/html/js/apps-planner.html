@@ -4321,7 +4321,10 @@
   function renderTodoByDateAccordion(todo) {
     const assignee = getWorkspaceTaskAssigneeLabel(todo.assignedUserId);
     const parent = getWorkspaceTaskParent(todo.eventId);
-    const parentTitle = parent?.title || "Tasks without a parent";
+    // A wedding-party member only sees tasks specifically assigned to them.
+    // Showing an internal data-cleanup label for a missing parent is neither
+    // useful nor actionable in that view.
+    const parentTitle = parent?.title || (viewerProfile.isAdmin ? "Tasks without a parent" : "");
     const checklist = cachedWorkspaceLists.find((list) => String(list.id || "") === String(todo.listId || ""));
     const checklistItems = String(checklist?.items || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
     const completedChecklistItems = new Set(Array.isArray(checklist?.completedItems) ? checklist.completedItems.map(Number) : []);
@@ -4338,7 +4341,7 @@
         <summary>
           <span class="accordion-summary__main">
             <span class="event-accordion__title-main">
-              <span class="accordion-title">${renderWorkspaceTaskCompletionCheckbox(todo)}<span class="todo-task-title">${escapeHtml(todo.title || "Untitled task")}</span><span class="todo-task-parent"> — ${escapeHtml(parentTitle)}</span></span>
+              <span class="accordion-title">${renderWorkspaceTaskCompletionCheckbox(todo)}<span class="todo-task-title">${escapeHtml(todo.title || "Untitled task")}</span>${parentTitle ? `<span class="todo-task-parent"> — ${escapeHtml(parentTitle)}</span>` : ""}</span>
               ${todo.eventId ? `<button class="button button--icon todo-parent-edit" type="button" data-open-workspace-task="${escapeHtml(todo.id)}" data-workspace-parent-id="${escapeHtml(todo.eventId)}" aria-label="Edit ${escapeHtml(todo.title || "task")}" title="Edit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>` : ""}
             </span>
           </span>
@@ -5368,6 +5371,16 @@
     const guestTypes = Array.isArray(cachedWorkspaceInvitees.groups)
       ? cachedWorkspaceInvitees.groups.map((group) => String(group || "").trim()).filter(Boolean)
       : [];
+    const availableIds = new Set([
+      ...users.map((user) => String(user.id || "")),
+      ...guestTypes.map((type) => `guest-type:${type}`)
+    ]);
+    // Older tasks can be assigned directly to a guest (guest:<name>) or by
+    // guest id. Retain that valid selection even when it is not one of the
+    // planner-manager choices displayed in this menu.
+    const selectedFallback = selected && !availableIds.has(selected)
+      ? `<optgroup label="Current assignment"><option value="${escapeHtml(selected)}" selected>${escapeHtml(getWorkspaceTaskAssigneeLabel(selected))}</option></optgroup>`
+      : "";
     return `
       <option value="">Unassigned</option>
       ${users.length ? `<optgroup label="Planner members">${users.map((user) => `<option value="${escapeHtml(user.id)}" ${String(user.id) === selected ? "selected" : ""}>${escapeHtml(user.name || user.email)}</option>`).join("")}</optgroup>` : ""}
@@ -5375,6 +5388,7 @@
         const id = `guest-type:${type}`;
         return `<option value="${escapeHtml(id)}" ${id === selected ? "selected" : ""}>${escapeHtml(type)}</option>`;
       }).join("")}</optgroup>` : ""}
+      ${selectedFallback}
     `;
   }
 
@@ -5738,9 +5752,23 @@
     const assignments = [
       viewerUserId,
       workspaceUser?.guestId,
-      viewerProfile.name ? `guest:${viewerProfile.name}` : ""
+      viewerProfile.name ? `guest:${viewerProfile.name}` : "",
+      workspaceUser?.name ? `guest:${workspaceUser.name}` : ""
     ].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
-    return assignments.includes(assignedUserId);
+    // Tasks may have been saved using the planner-user id, the linked guest
+    // id, or the legacy guest:<name> form. Normalize each representation to
+    // the same identity before deciding whether the checkbox is usable.
+    const assignedUser = cachedWorkspaceUsers.find((user) => (
+      String(user.id || "").trim().toLowerCase() === assignedUserId
+      || String(user.guestId || "").trim().toLowerCase() === assignedUserId
+    ));
+    const taskAssignments = [
+      assignedUserId,
+      assignedUser?.id,
+      assignedUser?.guestId,
+      assignedUser?.name ? `guest:${assignedUser.name}` : ""
+    ].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
+    return taskAssignments.some((assignment) => assignments.includes(assignment));
   }
 
   function renderWorkspaceTaskCompletionCheckbox(task) {
@@ -5787,7 +5815,7 @@
           const event = isWorkspaceTask
             ? cachedWorkspaceEvents.find((item) => String(item.id || "") === String(task.eventId || ""))
             : cachedEvents.find((item) => String(item.id || "") === String(task.eventId || ""));
-          const context = event?.title || "No event or project yet";
+          const context = event?.title || (viewerProfile.isAdmin ? "No event or project yet" : "");
           const dueDate = isWorkspaceTask ? String(task.dueAt || "") : String(task.dueDate || "");
           // Keep the homepage's accordion date compact: month and day only.
           const dueLabel = formatEventDateShort(dueDate) || "No due date";
@@ -5807,7 +5835,7 @@
                   <span class="accordion-toggle" aria-hidden="true"></span>
                   <span class="event-accordion__title-main">
                     <span class="accordion-title todo-task-title">${escapeHtml(task.title || "Untitled task")}</span>
-                    <span class="meta todo-task-parent">${escapeHtml(context)}</span>
+                    ${context ? `<span class="meta todo-task-parent">${escapeHtml(context)}</span>` : ""}
                   </span>
                 </span>
                 <span class="accordion-summary__meta accordion-summary__meta--end">${escapeHtml(dueLabel)}</span>
