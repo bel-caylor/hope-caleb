@@ -7636,6 +7636,16 @@
         if (editStatus) setStatus(editStatus, error.message || "Unable to prepare this task snapshot.", "error");
       }
     };
+    const workspaceTaskNotesField = workspaceTaskEditForm?.elements?.namedItem("notes");
+    if (workspaceTaskNotesField) {
+      const linkButton = document.createElement("button");
+      linkButton.className = "button button--light";
+      linkButton.type = "button";
+      linkButton.textContent = "Add link";
+      linkButton.addEventListener("click", () => insertTaskNoteLink(workspaceTaskNotesField));
+      workspaceTaskNotesField.closest("label")?.after(linkButton);
+    }
+
     workspaceEventPageContentEl.querySelector("[data-capture-workspace-task-photo]")?.addEventListener("click", () => workspaceTaskCameraInput?.click());
     workspaceEventPageContentEl.querySelector("[data-upload-workspace-task-photo]")?.addEventListener("click", () => workspaceTaskPhotoInput?.click());
     workspaceTaskCameraInput?.addEventListener("change", () => prepareWorkspaceTaskPhotos(workspaceTaskCameraInput));
