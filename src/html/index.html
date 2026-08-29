@@ -6450,6 +6450,44 @@
         stroke-linejoin: round;
       }
 
+      .event-accordion__tasks {
+        display: grid;
+        gap: 0.55rem;
+        margin-top: 0.85rem;
+        padding-top: 0.85rem;
+        border-top: 1px solid var(--planner-border);
+      }
+
+      .event-accordion__task {
+        display: flex;
+        align-items: baseline;
+        gap: 0.42rem;
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .event-accordion__task input {
+        flex: 0 0 auto;
+        width: 1.05rem;
+        height: 1.05rem;
+        margin: 0;
+        accent-color: #5f6f3a;
+      }
+
+      .event-accordion__task strong {
+        font-weight: 800;
+      }
+
+      .event-accordion__task span {
+        font-weight: 400;
+      }
+
+      .event-accordion__task.is-complete strong,
+      .event-accordion__task.is-complete span {
+        color: var(--muted);
+        text-decoration: line-through;
+      }
+
       .workspace-task-image-modal__dialog {
         width: min(100%, 56rem);
         padding: 0.75rem;

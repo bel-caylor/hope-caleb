@@ -354,6 +354,7 @@
   }
 
   function rerenderTodoData() {
+    renderEvents();
     renderTodos();
     renderEventDetail();
     renderSummary();
@@ -1996,11 +1997,9 @@
       <div class="event-accordion">
         ${filteredEvents.map((event) => {
           const dateLabel = formatEventDateShort(event.date);
+          const relatedTodos = getTodosForEvent(event.id);
           const shotCount = cachedShots.filter((shot) => String(shot.eventId || "").trim() === String(event.id || "").trim()).length;
-          const completedTaskCount = cachedTodos.filter((todo) => (
-            String(todo.eventId || "").trim() === String(event.id || "").trim()
-            && Boolean(todo.isComplete)
-          )).length;
+          const completedTaskCount = relatedTodos.filter((todo) => Boolean(todo.isComplete)).length;
           return `
             <details class="guest-card ${event.main ? "event-card--main" : ""}">
               <summary>
@@ -2063,6 +2062,21 @@
                 <div class="event-accordion__toolbar">
                   ${shotCount > 0 ? `<span class="meta">${escapeHtml(`${shotCount} linked shot${shotCount === 1 ? "" : "s"}`)}</span>` : ""}
                 </div>
+                ${relatedTodos.length ? `
+                  <div class="event-accordion__tasks" aria-label="Tasks">
+                    ${relatedTodos.map((todo) => `
+                      <label class="event-accordion__task ${todo.isComplete ? "is-complete" : ""}">
+                        <input
+                          type="checkbox"
+                          data-toggle-event-todo-complete="${escapeHtml(String(todo.id || ""))}"
+                          ${todo.isComplete ? "checked" : ""}
+                          aria-label="${todo.isComplete ? "Mark incomplete" : "Mark complete"}: ${escapeHtml(todo.title || "task")}">
+                        <strong>${escapeHtml(todo.title || "Untitled task")}</strong>
+                        ${todo.assignedTo ? `<span>— ${escapeHtml(todo.assignedTo)}</span>` : ""}
+                      </label>
+                    `).join("")}
+                  </div>
+                ` : ""}
               </div>
             </details>
           `;
@@ -10349,6 +10363,14 @@ function sortTables(items) {
   });
 
   eventsListEl.addEventListener("click", (event) => {
+    const taskCheckbox = event.target.closest("[data-toggle-event-todo-complete]");
+    if (taskCheckbox) {
+      event.preventDefault();
+      event.stopPropagation();
+      void toggleEventTodoComplete(taskCheckbox.dataset.toggleEventTodoComplete);
+      return;
+    }
+
     const workspaceButton = event.target.closest("[data-open-event-workspace]");
     if (workspaceButton) {
       event.preventDefault();
