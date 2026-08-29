@@ -673,6 +673,7 @@ function loadRsvpLookupJsonp(firstName, lastName) {
   return new Promise((resolve, reject) => {
     const callbackName = `homeRsvpLookup${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
     const script = document.createElement("script");
+    const timeoutMs = 15000;
     const url = new URL(HOME_RSVP.scriptUrl);
     url.searchParams.set("lookup", "rsvp");
     url.searchParams.set("firstName", firstName);
@@ -685,14 +686,24 @@ function loadRsvpLookupJsonp(firstName, lastName) {
       resolve(data || {});
     };
 
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Google's invitation service did not respond within 15 seconds. Try again in a moment. (Code: RSVP-SCRIPT-TIMEOUT)"));
+    }, timeoutMs);
+
     const cleanup = () => {
+      window.clearTimeout(timeout);
       delete window[callbackName];
       script.remove();
     };
 
     script.onerror = () => {
       cleanup();
-      reject(new Error("Unable to load the RSVP lookup right now."));
+      if (navigator.onLine === false) {
+        reject(new Error("This device appears to be offline. Connect to Wi-Fi or cellular data, then try again. (Code: RSVP-OFFLINE)"));
+        return;
+      }
+      reject(new Error("We could not load the invitation service from Google. A network filter, content blocker, or a temporary Google connection may be blocking it. Try another network or disable a blocker, then try again. (Code: RSVP-SCRIPT-LOAD)"));
     };
 
     script.src = url.toString();
