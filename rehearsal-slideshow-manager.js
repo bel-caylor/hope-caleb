@@ -1,4 +1,6 @@
 const RPC_URL = "https://hope-caleb-wedding-planner-proxy.belinda-caylor.workers.dev";
+const GOOGLE_CLIENT_ID = "1013045170295-uqapcrbk5aie1megfqa8jk62t87b2kha.apps.googleusercontent.com";
+const GOOGLE_PHOTOS_SCOPE = "https://www.googleapis.com/auth/photospicker.mediaitems.readonly";
 const SESSION_KEY = "hope-caleb-dashboard-session-token";
 const AUTH_KEY = "hope-caleb-dashboard-auth-token";
 const form = document.querySelector("#slideForm");
@@ -8,12 +10,14 @@ const preview = document.querySelector("#slidePreview");
 const statusEl = document.querySelector("#slideStatus");
 const list = document.querySelector("#slidesList");
 const refreshButton = document.querySelector("#refreshSlides");
+const chooseGooglePhotosButton = document.querySelector("#chooseGooglePhotos");
 let slides = [];
 let previewUrl = "";
 
 imageInput.addEventListener("change", showPreview);
 form.addEventListener("submit", saveSlide);
 refreshButton.addEventListener("click", loadSlides);
+chooseGooglePhotosButton.addEventListener("click", chooseGooglePhotos);
 list.addEventListener("click", handleListAction);
 loadSlides();
 
@@ -75,6 +79,85 @@ async function saveSlide(event) {
   finally { form.querySelector("button[type=submit]").disabled = false; }
 }
 
+async function chooseGooglePhotos() {
+  if (!window.google?.accounts?.oauth2) {
+    setStatus("Google Photos is still loading. Please try again in a moment.", "error");
+    return;
+  }
+  const pickerWindow = window.open("", "hope-caleb-google-photos", "popup,width=620,height=720");
+  chooseGooglePhotosButton.disabled = true;
+  setStatus("Connecting to Google Photos…");
+  try {
+    const accessToken = await requestGooglePhotosAccessToken();
+    const session = await googlePhotosRequest("https://photospicker.googleapis.com/v1/sessions", accessToken, { method: "POST", body: JSON.stringify({ pickingConfig: { maxItemCount: 100 } }) });
+    if (!session?.pickerUri || !session?.id) throw new Error("Google Photos did not create a picker session.");
+    const pickerUrl = `${session.pickerUri.replace(/\/$/, "")}/autoclose`;
+    if (pickerWindow) pickerWindow.location.href = pickerUrl;
+    else window.open(pickerUrl, "_blank", "noopener");
+    setStatus("Choose your photos in the Google Photos window, then tap Done.");
+    const pickedItems = await waitForPickedPhotos(session, accessToken);
+    if (!pickedItems.length) { setStatus("No Google Photos were selected."); return; }
+    setStatus(`Importing ${pickedItems.length} photo${pickedItems.length === 1 ? "" : "s"}…`);
+    await saveGooglePhotos(pickedItems, accessToken);
+    setStatus(`${pickedItems.length} photo${pickedItems.length === 1 ? "" : "s"} added to the slideshow.`, "success");
+    await loadSlides();
+  } catch (error) {
+    setStatus(error.message || "Unable to import Google Photos.", "error");
+  } finally {
+    chooseGooglePhotosButton.disabled = false;
+  }
+}
+
+function requestGooglePhotosAccessToken() {
+  return new Promise((resolve, reject) => {
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: GOOGLE_PHOTOS_SCOPE,
+      callback: (response) => response?.access_token ? resolve(response.access_token) : reject(new Error(response?.error || "Google Photos permission was not granted."))
+    });
+    tokenClient.requestAccessToken({ prompt: "consent" });
+  });
+}
+
+async function googlePhotosRequest(url, accessToken, options = {}) {
+  const response = await fetch(url, { ...options, headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", ...(options.headers || {}) } });
+  if (!response.ok) {
+    const details = await response.json().catch(() => ({}));
+    throw new Error(details?.error?.message || "Google Photos could not complete that request.");
+  }
+  return response.status === 204 ? null : response.json();
+}
+
+async function waitForPickedPhotos(session, accessToken) {
+  const interval = Math.max(2000, Number(String(session.pollingConfig?.pollInterval || "3s").replace("s", "")) * 1000);
+  const deadline = Date.now() + Math.max(60_000, Number(String(session.pollingConfig?.timeoutIn || "15m").replace("m", "")) * 60_000);
+  while (Date.now() < deadline) {
+    await delay(interval);
+    const current = await googlePhotosRequest(`https://photospicker.googleapis.com/v1/sessions/${encodeURIComponent(session.id)}`, accessToken);
+    if (!current.mediaItemsSet) continue;
+    const items = await googlePhotosRequest(`https://photospicker.googleapis.com/v1/mediaItems?sessionId=${encodeURIComponent(session.id)}`, accessToken);
+    await googlePhotosRequest(`https://photospicker.googleapis.com/v1/sessions/${encodeURIComponent(session.id)}`, accessToken, { method: "DELETE" }).catch(() => null);
+    return Array.isArray(items.mediaItems) ? items.mediaItems.filter((item) => String(item.mimeType || item.mediaFile?.mimeType || "").startsWith("image/")) : [];
+  }
+  throw new Error("Google Photos selection timed out. Please try again.");
+}
+
+async function saveGooglePhotos(items, accessToken) {
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    const baseUrl = String(item.mediaFile?.baseUrl || item.baseUrl || "").trim();
+    if (!baseUrl) continue;
+    const response = await fetch(`${baseUrl}=w1920-h1920`, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!response.ok) throw new Error("A selected Google Photo could not be downloaded.");
+    const fileName = String(item.filename || `google-photo-${index + 1}.jpg`);
+    const prepared = await prepareImageBlob(await response.blob(), fileName);
+    const uploaded = await request("uploadRehearsalSlideImage", prepared);
+    await request("saveRehearsalSlide", { imageUrl: uploaded.imageUrl, driveFileId: uploaded.fileId, caption: "", sortOrder: slides.length + index });
+  }
+}
+
+function delay(milliseconds) { return new Promise((resolve) => window.setTimeout(resolve, milliseconds)); }
+
 async function handleListAction(event) {
   const deleteButton = event.target.closest("[data-delete]");
   const moveButton = event.target.closest("[data-move]");
@@ -102,13 +185,16 @@ async function handleListAction(event) {
 async function saveOrder() { await Promise.all(slides.map((slide, index) => request("saveRehearsalSlide", { id: slide.id, sortOrder: index }))); }
 
 async function prepareImage(file) {
-  const image = await loadImage(file);
+  return prepareImageBlob(file, file.name);
+}
+async function prepareImageBlob(blob, fileName) {
+  const image = await loadImage(blob);
   const scale = Math.min(1, 1920 / Math.max(image.width, image.height));
   const canvas = document.createElement("canvas"); canvas.width = Math.round(image.width * scale); canvas.height = Math.round(image.height * scale);
   canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", .88));
-  if (!blob) throw new Error("The selected photo could not be prepared.");
-  return { data: await blobToDataUrl(blob), contentType: "image/jpeg", fileName: `${file.name.replace(/\.[^.]+$/, "") || "rehearsal-photo"}.jpg` };
+  const outputBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", .88));
+  if (!outputBlob) throw new Error("The selected photo could not be prepared.");
+  return { data: await blobToDataUrl(outputBlob), contentType: "image/jpeg", fileName: `${String(fileName || "rehearsal-photo").replace(/\.[^.]+$/, "") || "rehearsal-photo"}.jpg` };
 }
 function loadImage(file) { return new Promise((resolve, reject) => { const image = new Image(); const url = URL.createObjectURL(file); image.onload = () => { URL.revokeObjectURL(url); resolve(image); }; image.onerror = () => { URL.revokeObjectURL(url); reject(new Error("The selected file is not a usable image.")); }; image.src = url; }); }
 function blobToDataUrl(blob) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error("The selected photo could not be read.")); reader.readAsDataURL(blob); }); }

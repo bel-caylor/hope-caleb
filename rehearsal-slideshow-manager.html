@@ -20,7 +20,8 @@
           <label>Picture<input id="slideImage" type="file" accept="image/*" required></label>
           <label>Caption <span>(optional)</span><textarea id="slideCaption" rows="3" maxlength="280" placeholder="A favorite memory, date, or note..."></textarea></label>
           <div class="preview" id="slidePreview" hidden></div>
-          <button type="submit">Save to slideshow</button>
+          <div class="upload-actions"><button type="submit">Save to slideshow</button><button class="secondary" id="chooseGooglePhotos" type="button">Choose from Google Photos</button></div>
+          <p class="picker-help">Google Photos opens in a separate window so you can select several pictures at once.</p>
           <p class="status" id="slideStatus" role="status"></p>
         </form>
       </section>
