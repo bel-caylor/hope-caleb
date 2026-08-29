@@ -2000,6 +2000,7 @@
           const relatedTodos = getTodosForEvent(event.id);
           const shotCount = cachedShots.filter((shot) => String(shot.eventId || "").trim() === String(event.id || "").trim()).length;
           const completedTaskCount = relatedTodos.filter((todo) => Boolean(todo.isComplete)).length;
+          const location = String(event.location || "").trim();
           return `
             <details class="guest-card ${event.main ? "event-card--main" : ""}">
               <summary>
@@ -2044,10 +2045,12 @@
                     <span>Assigned To</span>
                     <strong>${escapeHtml(event.assignedTo || "No audience yet")}</strong>
                   </div>
-                  <div class="guest-card__field">
-                    <span>Location</span>
-                    <strong>${escapeHtml(event.location || "No location")}</strong>
-                  </div>
+                  ${location ? `
+                    <div class="guest-card__field">
+                      <span>Location</span>
+                      <strong>${escapeHtml(location)}</strong>
+                    </div>
+                  ` : ""}
                   <div class="guest-card__field">
                     <span>Reminder</span>
                     <strong>${escapeHtml(`remind ${event.reminderMinutes} minutes ahead`)}</strong>
