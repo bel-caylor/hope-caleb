@@ -3949,6 +3949,20 @@
         width: min(100%, 62rem);
       }
 
+      #workspaceTaskModal .modal__dialog,
+      .workspace-task-editor-page .workspace-task-editor-page__header,
+      .workspace-task-editor-page.workspace-task-editor-page form {
+        width: min(calc(100vw - 2rem), 62rem);
+        max-width: 62rem;
+      }
+
+      @media (min-width: 760px) {
+        #workspaceTaskModal .workspace-task-group-list > div,
+        .workspace-task-editor-page .workspace-task-group-list > div {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+
       .workspace-list-modal__dialog {
         background: var(--white);
       }
