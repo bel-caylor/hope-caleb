@@ -7083,7 +7083,7 @@
       return optimisticList;
     };
     const eventDateTime = splitWorkspaceDateTime(event.startsAt);
-    const taskAssignmentGroups = ["Bartender", "Bridesmaids", "Coordinator", "DJ", "Family Kaler", "Family Montez", "Food", "Groomsmen", "Parents", "Photographer", "Vendor", "Wedding Party"];
+    const taskAssignmentGroups = ["Bartender", "Bridesmaids", "Coordinator", "DJ", "Family Kaler", "Family Montez", "Food", "Groomsmen", "Parents", "Pastors", "Photographer", "Vendor", "Wedding Party"];
     const taskAssignmentGroupLookup = new Set(taskAssignmentGroups.map((group) => group.toLowerCase()));
     const taskEligibleGuests = getWorkspaceInviteeGuestChoices().filter((guest) =>
       Array.isArray(guest?.types) && guest.types.some((type) => taskAssignmentGroupLookup.has(String(type || "").trim().toLowerCase()))
