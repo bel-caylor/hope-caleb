@@ -38,6 +38,7 @@
   const workspaceManualToolsEl = document.querySelector("#workspaceManualTools");
   const plannerSyncStatusEl = document.querySelector("#plannerSyncStatus");
   const plannerReconnectGoogleButton = document.querySelector("#plannerReconnectGoogle");
+  const plannerSignOutButton = document.querySelector("#plannerSignOut");
   const plannerVersionInfoEl = document.querySelector("#plannerVersionInfo");
   const rsvpListEl = document.querySelector("#rsvpList");
   const personModal = document.querySelector("#personModal");
@@ -137,9 +138,12 @@
     eventDetailId: "hope-caleb-event-detail-id",
     eventDetailTab: "hope-caleb-event-detail-tab",
     plannerScrollPosition: "hope-caleb-planner-scroll-position",
-    plannerDataCache: "hope-caleb-planner-data-cache-v2"
+    plannerDataCache: "hope-caleb-planner-data-cache-v3"
   };
-  const PLANNER_CACHE_TTL_MS = 15 * 60 * 1000;
+  // This is private data on the current device, not an authentication token.
+  // Keep it long enough to make returning to the dashboard feel instant, while
+  // still refreshing it from the spreadsheet whenever a connection is available.
+  const PLANNER_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
   let cachedPeople = [];
   let cachedEvents = [];
@@ -515,6 +519,7 @@
     plannerLoadingEl.hidden = !showPlanner || !hasAccess || plannerDataReady;
     plannerLoadingEl.setAttribute("aria-busy", String(!plannerDataReady));
     plannerContentEl.hidden = !showPlannerNavigation;
+    plannerSignOutButton.hidden = !viewerProfile.signedIn;
     if (hasAccess && !viewerProfile.isAdmin && !["calendar", "todos"].includes(activePlannerPanel)) {
       activePlannerPanel = "calendar";
     }
@@ -543,10 +548,15 @@
     return String(window.localStorage.getItem(STORAGE_KEYS.sessionToken) || "").trim();
   }
 
+  function hasStoredPlannerSession() {
+    return Boolean(getStoredSessionToken() || getStoredAuthToken());
+  }
+
   function clearStoredAuthToken() {
     window.localStorage.removeItem(STORAGE_KEYS.authToken);
     window.sessionStorage.removeItem(STORAGE_KEYS.authToken);
     window.localStorage.removeItem(STORAGE_KEYS.sessionToken);
+    window.localStorage.removeItem(STORAGE_KEYS.plannerDataCache);
     window.sessionStorage.removeItem(STORAGE_KEYS.plannerDataCache);
     plannerCacheHydrated = false;
     plannerDataReady = false;
@@ -555,6 +565,29 @@
   function clearStoredGoogleCredential() {
     window.localStorage.removeItem(STORAGE_KEYS.authToken);
     window.sessionStorage.removeItem(STORAGE_KEYS.authToken);
+  }
+
+  function signOutPlanner() {
+    clearStoredAuthToken();
+    // This signs out of the planner on this device without signing the person
+    // out of Google everywhere else.
+    window.google?.accounts?.id?.disableAutoSelect?.();
+    viewerProfile = {
+      signedIn: false,
+      email: "",
+      name: "",
+      userId: "",
+      isAdmin: false,
+      hasWorkspaceAccess: false,
+      accessLevel: ""
+    };
+    plannerDataReady = false;
+    rsvpFeedConnected = false;
+    plannerContentEl.hidden = true;
+    renderRoute();
+    renderGoogleSignIn();
+    setStatus(plannerLoginStatusEl, "Signed out. Saved dashboard data was removed from this device.", "success");
+    setStatus(plannerSyncStatusEl, "", "");
   }
 
   function savePlannerScrollPosition() {
@@ -7976,7 +8009,11 @@
         setStatus(plannerSyncStatusEl, error.message || "The planner connection is still waking up. Saved data is available.", "pending");
         return;
       }
-      clearStoredAuthToken();
+      // Do not throw away a durable session or saved dashboard merely because
+      // Google Sheets/Apps Script had a temporary outage during sign-in.
+      if (/Please sign in with Google first|not been invited|account access/i.test(String(error?.message || ""))) {
+        clearStoredAuthToken();
+      }
       viewerProfile = {
         signedIn: false,
         email: "",
@@ -8311,8 +8348,8 @@
   function savePlannerSessionCache() {
     if (!viewerProfile.email) return;
     try {
-      window.sessionStorage.setItem(STORAGE_KEYS.plannerDataCache, JSON.stringify({
-        version: 2,
+      const serialized = JSON.stringify({
+        version: 3,
         email: viewerProfile.email,
         viewer: viewerProfile,
         savedAt: Date.now(),
@@ -8331,7 +8368,10 @@
         workspaceLists: cachedWorkspaceLists,
         workspaceAssets: cachedWorkspaceAssets,
         workspaceInvitees: cachedWorkspaceInvitees
-      }));
+      });
+      window.localStorage.setItem(STORAGE_KEYS.plannerDataCache, serialized);
+      // Remove the old tab-only cache once the durable cache has been written.
+      window.sessionStorage.removeItem(STORAGE_KEYS.plannerDataCache);
     } catch (_) {
       // The cache is only a speed-up. If browser storage is full or disabled,
       // the planner continues to load directly from Google Sheets.
@@ -8340,11 +8380,16 @@
 
   function restorePlannerSessionCache() {
     try {
-      const cached = JSON.parse(String(window.sessionStorage.getItem(STORAGE_KEYS.plannerDataCache) || ""));
+      const cached = JSON.parse(String(
+        window.localStorage.getItem(STORAGE_KEYS.plannerDataCache)
+        || window.sessionStorage.getItem(STORAGE_KEYS.plannerDataCache)
+        || ""
+      ));
       const savedAt = Number(cached?.savedAt || 0);
-      const isCurrent = Number(cached?.version || 0) === 2;
+      const isCurrent = Number(cached?.version || 0) === 3;
       const isFresh = savedAt > 0 && Date.now() - savedAt <= PLANNER_CACHE_TTL_MS;
       if (!cached || !isCurrent || !isFresh || String(cached.email || "").toLowerCase() !== viewerProfile.email.toLowerCase()) {
+        window.localStorage.removeItem(STORAGE_KEYS.plannerDataCache);
         window.sessionStorage.removeItem(STORAGE_KEYS.plannerDataCache);
         return false;
       }
@@ -8383,12 +8428,17 @@
 
   function showCachedPlannerWhileVerifying(expectedEmail = "") {
     try {
-      const cached = JSON.parse(String(window.sessionStorage.getItem(STORAGE_KEYS.plannerDataCache) || ""));
+      const cached = JSON.parse(String(
+        window.localStorage.getItem(STORAGE_KEYS.plannerDataCache)
+        || window.sessionStorage.getItem(STORAGE_KEYS.plannerDataCache)
+        || ""
+      ));
       const cachedEmail = String(cached?.email || "").trim().toLowerCase();
       const requestedEmail = String(expectedEmail || "").trim().toLowerCase();
       const savedAt = Number(cached?.savedAt || 0);
-      const isFresh = Number(cached?.version || 0) === 2 && savedAt > 0 && Date.now() - savedAt <= PLANNER_CACHE_TTL_MS;
+      const isFresh = Number(cached?.version || 0) === 3 && savedAt > 0 && Date.now() - savedAt <= PLANNER_CACHE_TTL_MS;
       if (!isFresh || !cachedEmail || (requestedEmail && cachedEmail !== requestedEmail) || !cached?.viewer) {
+        window.localStorage.removeItem(STORAGE_KEYS.plannerDataCache);
         window.sessionStorage.removeItem(STORAGE_KEYS.plannerDataCache);
         return false;
       }
@@ -9284,6 +9334,8 @@ function sortTables(items) {
     googleCredentialPromptPending = false;
     requestGoogleCredentialRefresh();
   });
+
+  plannerSignOutButton?.addEventListener("click", signOutPlanner);
 
   personForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -11065,7 +11117,7 @@ function sortTables(items) {
 
   window.addEventListener("load", async () => {
     renderGoogleSignIn();
-    const hasStoredToken = Boolean(getStoredAuthToken());
+    const hasStoredToken = hasStoredPlannerSession();
     const cacheShown = hasStoredToken && showCachedPlannerWhileVerifying();
     try {
       await refreshViewer();
