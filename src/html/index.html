@@ -823,7 +823,7 @@
         left: 0;
         z-index: 25;
         align-self: start;
-        height: fit-content;
+        height: calc(100vh - var(--planner-desktop-header-height));
         max-height: none;
         overflow: visible;
         display: grid;
@@ -980,6 +980,38 @@
         border: 0;
         background: transparent;
         box-shadow: none;
+      }
+
+      #plannerUnlocked {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        flex-direction: column;
+      }
+
+      .planner-sidebar__session {
+        width: 8.75rem;
+        margin-top: auto;
+        padding: 0.75rem 0.7rem;
+      }
+
+      .planner-sidebar__sign-out {
+        width: 100%;
+        padding: 0.45rem 0.7rem;
+        border: 0;
+        border-radius: 0.85rem 0 0 0.85rem;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-weight: 700;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .planner-sidebar__sign-out:hover,
+      .planner-sidebar__sign-out:focus-visible {
+        color: #6f1d2a;
+        background: rgba(111, 29, 42, 0.08);
       }
 
       .planner-section-button {
@@ -4058,6 +4090,7 @@
           z-index: 40;
           width: max-content;
           max-width: calc(100vw - 1rem);
+          height: fit-content;
           padding: 0.9rem 0.75rem 1rem 0;
           border-radius: 0 1rem 1rem 0;
           background: #f3f7ef;
@@ -4082,6 +4115,20 @@
 
         .planner-sections {
           width: max-content;
+        }
+
+        #plannerUnlocked {
+          flex: none;
+        }
+
+        .planner-sidebar__session {
+          width: max-content;
+          margin-top: 0.35rem;
+          padding: 0 0 0 0.7rem;
+        }
+
+        .planner-sidebar__sign-out {
+          border-radius: 0.85rem;
         }
 
         .planner-section-button {
@@ -6233,7 +6280,6 @@
           </div>
           <div class="toolbar">
             <button class="button button--light" type="button" id="plannerReconnectGoogle" hidden>Reconnect Google</button>
-            <button class="button button--light" type="button" id="plannerSignOut" hidden>Sign out &amp; remove saved data</button>
           </div>
           <p class="status" id="plannerSyncStatus"></p>
         </section>
@@ -6289,6 +6335,9 @@
                   <strong>Beds</strong>
                 </button>
               </nav>
+              <div class="planner-sidebar__session">
+                <button class="planner-sidebar__sign-out" type="button" id="plannerSignOut" hidden>Sign Out</button>
+              </div>
             </div>
           </aside>
 
