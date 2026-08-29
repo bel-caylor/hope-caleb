@@ -5401,14 +5401,15 @@
     const normalizedAssignees = Array.isArray(assignees) ? assignees : [];
     const assigneeLookup = new Set(normalizedAssignees.map((assignee) => assignee.id));
     selectedTodoAssignedTo = selectedTodoAssignedTo
-      .filter((assignee) => assigneeLookup.has(String(assignee || "")))
+      .filter((assignee) => String(assignee || "") === "__unassigned__" || assigneeLookup.has(String(assignee || "")))
       .slice(0, 1);
     todoAssignedToFilterEl.innerHTML = `
       <option value="">All assignees</option>
+      <option value="__unassigned__">Unassigned</option>
       ${normalizedAssignees.map((assignee) => `<option value="${escapeHtml(assignee.id)}">${escapeHtml(assignee.label)}</option>`).join("")}
     `;
     todoAssignedToFilterEl.value = selectedTodoAssignedTo[0] || "";
-    todoAssignedToFilterEl.disabled = normalizedAssignees.length === 0;
+    todoAssignedToFilterEl.disabled = false;
   }
 
   function syncTodoGroupToggle() {
@@ -5424,6 +5425,9 @@
     const selectedLookup = new Set(selectedTodoAssignedTo);
     return cachedWorkspaceTasks.filter((todo) => {
       const ids = Array.isArray(todo?.assignedUserIds) ? todo.assignedUserIds : [todo?.assignedUserId];
+      if (selectedLookup.has("__unassigned__")) {
+        return !ids.some((id) => String(id || "").trim());
+      }
       return ids.some((id) => selectedLookup.has(String(id || "").trim()));
     });
   }
