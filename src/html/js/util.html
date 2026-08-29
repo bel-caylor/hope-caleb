@@ -57,19 +57,22 @@
   }
   function renderTaskNotes(value) {
     const text = String(value || "");
-    const urlPattern = /https?:\/\/[^\s<>"']+/gi;
+    const linkPattern = /\[([^\]\r\n]+)\]\((https?:\/\/[^\s)]+)\)|https?:\/\/[^\s<>"']+/gi;
     let lastIndex = 0;
     let output = "";
 
-    text.replace(urlPattern, (candidate, offset) => {
+    text.replace(linkPattern, (...matchParts) => {
+      const [candidate, label, markdownUrl] = matchParts;
+      const offset = matchParts[matchParts.length - 2];
       output += escapeHtml(text.slice(lastIndex, offset));
-      const url = candidate.replace(/[.,;:!?]+$/, "");
-      const trailingText = candidate.slice(url.length);
+      const url = String(markdownUrl || candidate).replace(/[.,;:!?]+$/, "");
+      const trailingText = markdownUrl ? "" : candidate.slice(url.length);
+      const linkText = String(label || url);
 
       try {
         const parsed = new URL(url);
         output += (parsed.protocol === "http:" || parsed.protocol === "https:")
-          ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>${escapeHtml(trailingText)}`
+          ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)}</a>${escapeHtml(trailingText)}`
           : escapeHtml(candidate);
       } catch (_) {
         output += escapeHtml(candidate);

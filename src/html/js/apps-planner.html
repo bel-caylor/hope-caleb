@@ -1710,6 +1710,20 @@
     }
   }
 
+  function insertTaskNoteLink(notesField) {
+    if (!notesField) return;
+    const selectedText = notesField.value.slice(notesField.selectionStart, notesField.selectionEnd).trim();
+    const label = window.prompt("Link text", selectedText || "");
+    if (label === null) return;
+    const url = window.prompt("Web address", "https://");
+    if (url === null || !url.trim()) return;
+
+    const linkText = label.trim() || url.trim();
+    const markdownLink = `[${linkText}](${url.trim()})`;
+    notesField.setRangeText(markdownLink, notesField.selectionStart, notesField.selectionEnd, "end");
+    notesField.focus();
+  }
+
   function closeTodoModal() {
     todoModal.hidden = true;
     todoModal.setAttribute("aria-hidden", "true");
@@ -10028,6 +10042,10 @@ function sortTables(items) {
 
   document.querySelector("[data-reset-todo]").addEventListener("click", () => {
     clearTodoForm();
+  });
+
+  document.querySelector("[data-insert-task-note-link]")?.addEventListener("click", () => {
+    insertTaskNoteLink(todoForm?.elements?.namedItem("notes"));
   });
 
   document.querySelectorAll("[data-close-todo-modal]").forEach((button) => {
