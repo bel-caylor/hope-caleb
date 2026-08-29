@@ -6357,7 +6357,7 @@
           <h4>Who's invited?</h4>
           <strong class="workspace-invitees__count">${invitedGuests.length} invited</strong>
         </div>
-        <div>
+        <div class="workspace-invitees__groups">
           <strong>Include guest groups</strong>
           <div class="workspace-invitees__choices workspace-invitees__choices--groups">
             ${groups.length ? groups.map((group) => `<label class="workspace-invitees__choice"><input type="checkbox" data-workspace-event-invitee-group value="${escapeHtml(group)}" ${selectedGroups.has(String(group).toLowerCase()) ? "checked" : ""}>${escapeHtml(group)}</label>`).join("") : '<span class="meta">No guest groups are available yet.</span>'}
@@ -6487,8 +6487,7 @@
       .sort(compareGuestsByLastName);
     workspaceDraftContentEl.innerHTML = `
       <p class="eyebrow">${draft.isManual ? "Create an event" : "Review the plan"}</p>
-      <h4>${escapeHtml(draft.title || "New event")}</h4>
-      <p class="meta">${draft.isManual ? "Enter the event details below. Nothing is saved until you create it." : "Nothing is saved until you confirm it."}</p>
+      ${draft.isManual ? "" : `<h4>${escapeHtml(draft.title || "New event")}</h4><p class="meta">Nothing is saved until you confirm it.</p>`}
       <form id="workspaceDraftForm">
         <label>Event title <span class="workspace-voice-field"><input name="title" data-title-case data-voice-no-period required value="${escapeHtml(draft.title || "")}">${workspaceInlineVoiceButton("new-event-title", "event title")}</span></label>
         <div class="split">
@@ -6498,7 +6497,7 @@
         <div class="workspace-invitees">
           <input type="hidden" name="invitees" value="${escapeHtml(draft.invitees)}">
           <div class="workspace-invitees__header"><h4>Who's invited?</h4><strong class="workspace-invitees__count">${invitedGuests.length} invited</strong></div>
-          <div><strong>Include guest groups</strong><div class="workspace-invitees__choices workspace-invitees__choices--groups">${groupChoices.length ? groupChoices.map((group) => `<label class="workspace-invitees__choice"><input type="checkbox" data-workspace-invitee-group value="${escapeHtml(group)}" ${selectedGroups.has(String(group).toLowerCase()) ? "checked" : ""}>${escapeHtml(group)}</label>`).join("") : '<span class="meta">Group choices will load from the guest Type column.</span>'}</div></div>
+          <div class="workspace-invitees__groups"><strong>Include guest groups</strong><div class="workspace-invitees__choices workspace-invitees__choices--groups">${groupChoices.length ? groupChoices.map((group) => `<label class="workspace-invitees__choice"><input type="checkbox" data-workspace-invitee-group value="${escapeHtml(group)}" ${selectedGroups.has(String(group).toLowerCase()) ? "checked" : ""}>${escapeHtml(group)}</label>`).join("") : '<span class="meta">Group choices will load from the guest Type column.</span>'}</div></div>
           <div class="workspace-invitees__add"><label>Add an individual guest <select data-workspace-invitee-guest><option value="">Choose a guest…</option>${guestChoices.map((guest) => `<option value="${escapeHtml(guest.name)}">${escapeHtml(guest.name)}${guest.types?.length ? ` (${escapeHtml(guest.types.join(", "))})` : ""}</option>`).join("")}</select></label><button class="button button--light" type="button" data-add-workspace-invitee>Add guest</button></div>
           ${invitedGuests.length ? `<details open><summary>View invited guests</summary><ul class="workspace-invitees__guest-list">${invitedGuests.map((guest) => {
             const guestName = String(guest.name || "").trim();

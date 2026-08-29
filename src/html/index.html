@@ -5839,8 +5839,17 @@
       }
 
       .workspace-invitees__choices--groups {
-        display: block;
-        columns: 3 12rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+        gap: 0.55rem 0.85rem;
+        min-width: 0;
+      }
+
+      .workspace-invitees__groups {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        align-items: start;
+        gap: 0.8rem;
       }
 
       .workspace-invitees__choice {
@@ -5851,10 +5860,9 @@
 
       .workspace-invitees__choices--groups .workspace-invitees__choice {
         display: flex;
-        width: 100%;
         align-items: flex-start;
         justify-content: flex-start;
-        margin: 0 0 0.55rem;
+        margin: 0;
         font-weight: 400;
         break-inside: avoid;
         text-align: left;
@@ -5886,7 +5894,8 @@
       }
 
       .workspace-invitees__add label {
-        flex: 1 1 16rem;
+        flex: 0 1 42rem;
+        max-width: 100%;
       }
 
       .workspace-invitees__guest-list {
@@ -5931,7 +5940,12 @@
         }
 
         .workspace-invitees__choices--groups {
-          columns: 1;
+          grid-template-columns: 1fr;
+        }
+
+        .workspace-invitees__groups {
+          grid-template-columns: 1fr;
+          gap: 0.45rem;
         }
 
         .workspace-event-directory__details-grid {
