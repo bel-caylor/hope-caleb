@@ -3816,7 +3816,6 @@
       textarea,
       select {
         width: 100%;
-        padding: 0.75rem 0.85rem;
         border: 1px solid rgba(89, 0, 0, 0.18);
         border-radius: 6px;
         font: inherit;
@@ -6842,6 +6841,7 @@
               <label>Image URL <input name="imageUrl" placeholder="https://..." inputmode="url"></label>
               <label>SMS Message <textarea name="smsMessage" placeholder="Reminder: invitations need to go in the mail by Friday."></textarea></label>
               <label>Notes <textarea name="notes" placeholder="Any details, links, vendor notes, or next steps."></textarea></label>
+              <p class="meta">Paste a web link in notes and it will be clickable when viewing the task.</p>
               <div class="toolbar">
                 <button class="button" type="submit">Save Task</button>
                 <button class="button button--light" type="button" data-reset-todo>Clear</button>

@@ -4334,7 +4334,7 @@
                   ${todo.notes ? `
                     <div class="guest-card__field ${hasChecklist ? "todo-task-notes" : "guest-card__field--full"}">
                       <span>Notes</span>
-                      <strong>${escapeHtml(todo.notes)}</strong>
+                      <strong>${renderTaskNotes(todo.notes)}</strong>
                     </div>
                   ` : ""}
                   ${renderWorkspaceTodoSnapshots(todo)}
@@ -4403,7 +4403,7 @@
               <span>Status</span>
               <select data-workspace-todo-status data-workspace-todo-id="${escapeHtml(todo.id)}">${renderTodoStatusOptions(todo.status)}</select>
             </div>
-            ${todo.notes ? `<div class="guest-card__field ${hasChecklist ? "todo-task-notes" : "guest-card__field--full"}"><span>Notes</span><strong>${escapeHtml(todo.notes)}</strong></div>` : ""}
+            ${todo.notes ? `<div class="guest-card__field ${hasChecklist ? "todo-task-notes" : "guest-card__field--full"}"><span>Notes</span><strong>${renderTaskNotes(todo.notes)}</strong></div>` : ""}
             ${renderWorkspaceTodoSnapshots(todo)}
           </div>
         </div>
@@ -5876,7 +5876,7 @@
               <div class="guest-card__body">
                 <div class="guest-card__grid">
                   <div class="guest-card__field"><span>Status</span><select data-home-task-status data-home-task-id="${escapeHtml(task.id)}" data-home-task-source="${isWorkspaceTask ? "workspace" : "legacy"}" aria-label="Change status for ${escapeHtml(task.title || "task")}">${renderTodoStatusOptions(status)}</select></div>
-                  ${task.notes ? `<div class="guest-card__field guest-card__field--full"><span>Notes</span><strong>${escapeHtml(task.notes)}</strong></div>` : ""}
+                  ${task.notes ? `<div class="guest-card__field guest-card__field--full"><span>Notes</span><strong>${renderTaskNotes(task.notes)}</strong></div>` : ""}
                 </div>
                 ${event ? (isWorkspaceTask
                   ? `<button class="button button--light" type="button" data-home-open-workspace-parent="${escapeHtml(task.eventId)}" data-home-parent-is-project="${isProject ? "true" : "false"}">Open ${parentLabel}</button>`
