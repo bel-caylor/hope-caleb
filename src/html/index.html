@@ -5692,7 +5692,7 @@
 
       .workspace-list-modal__item {
         display: grid;
-        grid-template-columns: 2.4rem 3.1rem minmax(0, 1fr) 2.4rem;
+        grid-template-columns: 2.4rem 3.1rem minmax(0, 1fr) 4.8rem;
         align-items: center;
       }
 
@@ -5753,6 +5753,13 @@
         stroke-width: 2;
       }
 
+      .workspace-list-modal__actions {
+        display: flex;
+        gap: 0.15rem;
+        justify-content: center;
+      }
+
+      .workspace-list-modal__edit,
       .workspace-list-modal__delete {
         display: grid;
         width: 2.1rem;
@@ -5766,6 +5773,11 @@
         box-shadow: none;
       }
 
+      .workspace-list-modal__edit {
+        color: var(--planner-accent);
+      }
+
+      .workspace-list-modal__edit svg,
       .workspace-list-modal__delete svg {
         width: 1rem;
         height: 1rem;
@@ -5793,7 +5805,7 @@
 
       @media (max-width: 480px) {
         .workspace-list-modal__item {
-          grid-template-columns: 2.2rem 2.95rem minmax(0, 1fr) 2.2rem;
+          grid-template-columns: 2.2rem 2.95rem minmax(0, 1fr) 4.4rem;
         }
       }
 
