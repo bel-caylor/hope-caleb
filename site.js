@@ -755,6 +755,8 @@ function normalizeLookupGuest(item) {
 }
 
 function normalizeLookupGroup(item) {
+  const savedWeddingResponse = String(item?.weddingRsvp || item?.savedWeddingRsvp || "").trim();
+
   return {
     rowNumber: Number(item?.rowNumber || 0),
     group: String(item?.group || "").trim(),
@@ -766,7 +768,8 @@ function normalizeLookupGroup(item) {
     invitedOpenHouse: isTruthyInvitationValue(item?.invitedOpenHouse),
     childrenCount: normalizeWholeNumber(item?.childrenCount),
     maxPlusOnes: normalizeWholeNumber(item?.maxPlusOnes),
-    weddingRsvp: normalizeLookupAnswer(item?.weddingRsvp || item?.savedWeddingRsvp),
+    weddingRsvp: normalizeLookupAnswer(savedWeddingResponse),
+    hasRecordedWeddingResponse: Boolean(savedWeddingResponse),
     rehearsalRsvp: normalizeLookupAnswer(item?.rehearsalRsvp || item?.savedRehearsalRsvp),
     openHouseRsvp: normalizeLookupAnswer(item?.openHouseRsvp || item?.savedOpenHouseRsvp),
     savedEmail: String(item?.savedEmail || item?.email || "").trim(),
@@ -866,7 +869,15 @@ function renderRsvpEditor(group) {
     </article>
   `).join("");
 
+  // Guest-sheet rows can contain a planning default before this invitation has
+  // submitted an RSVP. Only restore member choices after the group has a
+  // recorded wedding response; otherwise every guest must start unselected.
+  const hasRecordedWeddingResponse = group.hasRecordedWeddingResponse;
   members.forEach((member) => {
+    if (!hasRecordedWeddingResponse) {
+      return;
+    }
+
     const selectedValue = normalizeLookupAnswer(member.rsvp);
     if (!selectedValue) {
       return;
