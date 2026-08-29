@@ -45,10 +45,21 @@ function renderSlides() {
   if (!slides.length) { list.innerHTML = '<p class="empty">No photos yet. Add the first one above.</p>'; return; }
   list.innerHTML = slides.map((slide, index) => `
     <article class="slide-item">
-      <img src="${escapeHtml(displaySlideImage(slide))}" alt="Slideshow photo ${index + 1}">
+      <img src="${escapeHtml(displaySlideImage(slide))}" data-rehearsal-slide-image="${escapeHtml(slide.id)}" alt="Slideshow photo ${index + 1}">
       <div><small>Slide ${index + 1}</small><p>${escapeHtml(slide.caption || "No caption")}</p></div>
       <div class="slide-actions"><button type="button" data-move="${slide.id}" data-direction="-1" aria-label="Move slide up" ${index === 0 ? "disabled" : ""}>↑</button><button type="button" data-move="${slide.id}" data-direction="1" aria-label="Move slide down" ${index === slides.length - 1 ? "disabled" : ""}>↓</button><button class="delete" type="button" data-delete="${slide.id}">Delete</button></div>
     </article>`).join("");
+  void hydrateSlideImages();
+}
+
+async function hydrateSlideImages() {
+  const images = Array.from(list.querySelectorAll("[data-rehearsal-slide-image]"));
+  await Promise.all(images.map(async (image) => {
+    try {
+      const response = await request("getRehearsalSlideImage", { id: image.dataset.rehearsalSlideImage });
+      if (String(response?.dataUrl || "").startsWith("data:image/")) image.src = response.dataUrl;
+    } catch (_) { /* Keep the direct Drive link as a fallback. */ }
+  }));
 }
 
 async function showPreview() {
@@ -95,10 +106,10 @@ async function chooseGooglePhotos() {
     const accessToken = await withTimeout(requestGooglePhotosAccessToken(), 45_000, "Google Photos permission did not finish. Close the extra window, verify the API setup, and try again.");
     const session = await googlePhotosRequest("https://photospicker.googleapis.com/v1/sessions", accessToken, { method: "POST", body: JSON.stringify({ pickingConfig: { maxItemCount: 100 } }) });
     if (!session?.pickerUri || !session?.id) throw new Error("Google Photos did not create a picker session.");
-    const pickerUrl = `${session.pickerUri.replace(/\/$/, "")}/autoclose`;
+    const pickerUrl = session.pickerUri;
     if (!pickerWindow) throw new Error("Your browser blocked the Google Photos window. Allow popups for this site, then try again.");
     pickerWindow.location.href = pickerUrl;
-    setStatus("Choose your photos in the Google Photos window, then tap Done.");
+    setStatus("Choose your photos in the Google Photos window, then tap Done. Keep that window open until importing begins here.");
     const pickedItems = await waitForPickedPhotos(session, accessToken);
     if (!pickedItems.length) { setStatus("No Google Photos were selected."); return; }
     setStatus(`Importing ${pickedItems.length} photo${pickedItems.length === 1 ? "" : "s"}…`);
