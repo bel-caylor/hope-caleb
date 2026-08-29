@@ -2501,12 +2501,43 @@ form[data-rsvp-response-form] {
   padding: 0;
 }
 
+.rsvp-form-section--details {
+  padding: 1.15rem;
+  border: 1px solid rgba(95, 111, 91, 0.22);
+  border-radius: 1rem;
+  background: rgba(95, 111, 91, 0.07);
+}
+
+.rsvp-form-section--details h4 {
+  margin: 0;
+  color: #5f6f5b;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.rsvp-form-section--details .meta {
+  margin: -0.25rem 0 0;
+}
+
+.rsvp-contact-section {
+  display: grid;
+  gap: 1rem;
+}
+
+.rsvp-contact-section .rsvp-form-grid {
+  gap: 0.9rem;
+}
+
 [data-rsvp-out-of-town-section] {
   gap: 0.45rem;
 }
 
 [data-rsvp-children-section] {
-  padding: 0;
+  padding: 1.15rem;
 }
 
 .rsvp-form-section h4 {

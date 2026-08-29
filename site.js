@@ -45,6 +45,7 @@ const rsvpPlusOneCopy = document.querySelector("[data-rsvp-plus-one-copy]");
 const rsvpPlusOneCount = document.querySelector("[data-rsvp-plus-one-count]");
 const rsvpPlusOneName = document.querySelector("[data-rsvp-plus-one-name]");
 const rsvpChildrenCount = document.querySelector("[data-rsvp-children-count]");
+const rsvpChildrenName = document.querySelector("[data-rsvp-children-name]");
 const rsvpContactName = document.querySelector("[data-rsvp-contact-name]");
 const rsvpEmail = document.querySelector("[data-rsvp-email]");
 const rsvpSubmitStatus = document.querySelector("[data-rsvp-submit-status]");
@@ -928,9 +929,11 @@ function renderRsvpEditor(group) {
     rsvpChildrenSection.hidden = false;
     fillCountSelect(rsvpChildrenCount, childAllowance);
     rsvpChildrenCount.value = String(Math.min(group.savedChildrenCount || 0, childAllowance));
+    rsvpChildrenName.value = group.savedChildrenNote || "";
   } else {
     rsvpChildrenSection.hidden = true;
     fillCountSelect(rsvpChildrenCount, 0);
+    rsvpChildrenName.value = "";
   }
 
   syncRsvpGuestExtrasLayout();

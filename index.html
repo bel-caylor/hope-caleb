@@ -356,7 +356,7 @@
               </div>
             </div>
             <div class="rsvp-form-grid" data-rsvp-guest-extras>
-              <div class="rsvp-form-section" data-rsvp-plus-one-section hidden>
+              <div class="rsvp-form-section rsvp-form-section--details" data-rsvp-plus-one-section hidden>
                 <h4>Plus One</h4>
                 <p class="meta" data-rsvp-plus-one-copy></p>
                 <label class="rsvp-field">
@@ -368,27 +368,35 @@
                   <input type="text" name="plusOneName" data-rsvp-plus-one-name placeholder="Optional">
                 </label>
               </div>
-              <div class="rsvp-form-section" data-rsvp-children-section hidden>
-                <label class="rsvp-field rsvp-field--inline-select">
+              <div class="rsvp-form-section rsvp-form-section--details" data-rsvp-children-section hidden>
+                <h4>Children Attending</h4>
+                <label class="rsvp-field">
                   <span>How many children are attending?</span>
                   <select name="childrenCount" data-rsvp-children-count></select>
                 </label>
+                <label class="rsvp-field">
+                  <span>Children's name(s)</span>
+                  <input type="text" name="childrenNote" data-rsvp-children-name placeholder="Optional">
+                </label>
               </div>
             </div>
-            <div class="rsvp-form-grid rsvp-form-grid--single">
-              <label class="rsvp-field rsvp-field--inline-input">
-                <span>Email</span>
-                <input type="email" name="email" data-rsvp-email autocomplete="email">
+            <section class="rsvp-form-section rsvp-form-section--details rsvp-contact-section" aria-labelledby="rsvp-contact-heading">
+              <h4 id="rsvp-contact-heading">Contact Information</h4>
+              <div class="rsvp-form-grid rsvp-form-grid--single">
+                <label class="rsvp-field rsvp-field--inline-input">
+                  <span>Email</span>
+                  <input type="email" name="email" data-rsvp-email autocomplete="email">
+                </label>
+                <label class="rsvp-field rsvp-field--inline-input">
+                  <span>Mobile number <small>(optional)</small></span>
+                  <input type="tel" name="mobile" autocomplete="tel" inputmode="tel" placeholder="(555) 555-5555">
+                </label>
+              </div>
+              <label class="rsvp-sms-consent">
+                <input type="checkbox" name="smsOptIn" value="yes">
+                <span>I agree to receive up to 4 wedding-planning text messages per month from Hope &amp; Caleb Wedding at the number above. Message and data rates may apply. Reply <strong>STOP</strong> to opt out and <strong>HELP</strong> for help. Consent is not required to RSVP. See our <a href="privacy-policy.html">Privacy Policy</a> and <a href="terms-and-conditions.html">Terms &amp; Conditions</a>.</span>
               </label>
-              <label class="rsvp-field rsvp-field--inline-input">
-                <span>Mobile number <small>(optional)</small></span>
-                <input type="tel" name="mobile" autocomplete="tel" inputmode="tel" placeholder="(555) 555-5555">
-              </label>
-            </div>
-            <label class="rsvp-sms-consent">
-              <input type="checkbox" name="smsOptIn" value="yes">
-              <span>I agree to receive up to 4 wedding-planning text messages per month from Hope &amp; Caleb Wedding at the number above. Message and data rates may apply. Reply <strong>STOP</strong> to opt out and <strong>HELP</strong> for help. Consent is not required to RSVP. See our <a href="privacy-policy.html">Privacy Policy</a> and <a href="terms-and-conditions.html">Terms &amp; Conditions</a>.</span>
-            </label>
+            </section>
             <label class="rsvp-field rsvp-field--note">
               <span>Note for Hope &amp; Caleb</span>
               <textarea name="comment" rows="4" placeholder="Optional"></textarea>
