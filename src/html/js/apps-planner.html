@@ -7083,7 +7083,7 @@
       return optimisticList;
     };
     const eventDateTime = splitWorkspaceDateTime(event.startsAt);
-    const taskAssignmentGroups = ["Bartender", "Coordinator", "DJ", "Family Kaler", "Family Montez", "Food", "Parents", "Photographer", "Vendor", "Wedding Party"];
+    const taskAssignmentGroups = ["Bartender", "Bridesmaids", "Coordinator", "DJ", "Family Kaler", "Family Montez", "Food", "Groomsmen", "Parents", "Photographer", "Vendor", "Wedding Party"];
     const taskAssignmentGroupLookup = new Set(taskAssignmentGroups.map((group) => group.toLowerCase()));
     const taskEligibleGuests = getWorkspaceInviteeGuestChoices().filter((guest) =>
       Array.isArray(guest?.types) && guest.types.some((type) => taskAssignmentGroupLookup.has(String(type || "").trim().toLowerCase()))
@@ -7586,6 +7586,7 @@
           const itemMarkup = items.length ? items.map((item, index) => `
             <div class="workspace-list-modal__item">
               <div class="workspace-list-modal__complete"><input type="checkbox" data-edit-workspace-list-item="${escapeHtml(String(currentList.id || ""))}" data-workspace-list-item-index="${index}" aria-label="Mark ${escapeHtml(item)} complete" ${completedItems.has(index) ? "checked" : ""} ${canManageEvent ? "" : "disabled"}></div>
+              ${canManageEvent ? `<div class="workspace-list-modal__reorder" aria-label="Reorder ${escapeHtml(item)}"><button class="button button--light workspace-list-modal__move" type="button" data-move-workspace-list-item="up" data-workspace-list-item-index="${index}" aria-label="Move ${escapeHtml(item)} up" title="Move up" ${index === 0 ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 15 6-6 6 6"></path></svg></button><button class="button button--light workspace-list-modal__move" type="button" data-move-workspace-list-item="down" data-workspace-list-item-index="${index}" aria-label="Move ${escapeHtml(item)} down" title="Move down" ${index === items.length - 1 ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"></path></svg></button></div>` : '<span aria-hidden="true"></span>'}
               <label class="workspace-checklist__item ${completedItems.has(index) ? "is-complete" : ""}">
                 <span>${escapeHtml(item)}</span>
               </label>
@@ -7630,6 +7631,29 @@
               } catch (error) {
                 deleteButton.disabled = false;
                 setStatus(workspaceTaskListModalContent.querySelector("[data-workspace-list-modal-status]"), error.message || "Unable to delete the list item.", "error");
+              }
+            });
+          });
+          workspaceTaskListModalContent.querySelectorAll("[data-move-workspace-list-item]").forEach((moveButton) => {
+            moveButton.addEventListener("click", async () => {
+              const index = Number(moveButton.dataset.workspaceListItemIndex);
+              const direction = moveButton.dataset.moveWorkspaceListItem === "up" ? -1 : 1;
+              const targetIndex = index + direction;
+              if (!Number.isInteger(index) || targetIndex < 0 || targetIndex >= items.length) return;
+              moveButton.disabled = true;
+              try {
+                const nextItems = [...items];
+                [nextItems[index], nextItems[targetIndex]] = [nextItems[targetIndex], nextItems[index]];
+                const nextCompleted = new Set([...completedItems].map((itemIndex) => {
+                  if (itemIndex === index) return targetIndex;
+                  if (itemIndex === targetIndex) return index;
+                  return itemIndex;
+                }));
+                const savedList = await saveWorkspaceListItems(currentList, nextItems, nextCompleted);
+                renderModalList(savedList);
+              } catch (error) {
+                moveButton.disabled = false;
+                setStatus(workspaceTaskListModalContent.querySelector("[data-workspace-list-modal-status]"), error.message || "Unable to reorder the list item.", "error");
               }
             });
           });
