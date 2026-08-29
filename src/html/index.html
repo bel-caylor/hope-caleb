@@ -6819,14 +6819,14 @@
                   <button class="button button--icon" type="button" id="openCalendarEventModal" aria-label="Add event" title="Add event">+</button>
                 </div>
                 <div class="workspace-calendar-view-tabs" role="tablist" aria-label="Calendar view">
-                  <button class="workspace-calendar-view-tab" type="button" role="tab" id="workspaceMonthTab" data-workspace-calendar-view="month" aria-controls="workspaceCalendarView" aria-selected="true">Month</button>
-                  <button class="workspace-calendar-view-tab" type="button" role="tab" id="workspaceListTab" data-workspace-calendar-view="list" aria-controls="workspaceEventDirectory" aria-selected="false">List</button>
+                  <button class="workspace-calendar-view-tab" type="button" role="tab" id="workspaceListTab" data-workspace-calendar-view="list" aria-controls="workspaceEventDirectory" aria-selected="true">List</button>
+                  <button class="workspace-calendar-view-tab" type="button" role="tab" id="workspaceMonthTab" data-workspace-calendar-view="month" aria-controls="workspaceCalendarView" aria-selected="false">Month</button>
                 </div>
               </div>
-              <section class="workspace-event-directory" id="workspaceEventDirectory" role="tabpanel" aria-labelledby="workspaceListTab" hidden>
+              <section class="workspace-event-directory" id="workspaceEventDirectory" role="tabpanel" aria-labelledby="workspaceListTab">
                 <div id="workspaceEventDirectoryList"><p class="meta">Loading events…</p></div>
               </section>
-              <section id="workspaceCalendarView" role="tabpanel" aria-labelledby="workspaceMonthTab">
+              <section id="workspaceCalendarView" role="tabpanel" aria-labelledby="workspaceMonthTab" hidden>
                 <div class="workspace-calendar" id="workspaceCalendar"><p class="meta">Loading the calendar…</p></div>
               </section>
             </section>
