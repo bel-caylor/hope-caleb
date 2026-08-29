@@ -7639,11 +7639,19 @@
     const workspaceTaskNotesField = workspaceTaskEditForm?.elements?.namedItem("notes");
     if (workspaceTaskNotesField) {
       const linkButton = document.createElement("button");
-      linkButton.className = "button button--light";
+      linkButton.className = "button button--light workspace-task-edit-notes-label__link-button";
       linkButton.type = "button";
-      linkButton.textContent = "Add link";
+      linkButton.setAttribute("aria-label", "Add link to notes");
+      linkButton.title = "Add link";
+      linkButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10.6 13.4a1 1 0 0 0 1.4 1.4l3.5-3.5a3 3 0 0 0-4.2-4.2l-2 2a1 1 0 1 0 1.4 1.4l2-2a1 1 0 0 1 1.4 1.4L10.6 12a1 1 0 0 0 0 1.4Zm2.8-2.8a1 1 0 0 0-1.4-1.4L8.5 12.7a3 3 0 1 0 4.2 4.2l2-2a1 1 0 1 0-1.4-1.4l-2 2a1 1 0 0 1-1.4-1.4l3.5-3.5a1 1 0 0 0 0-1.4Z" fill="currentColor"/></svg>';
       linkButton.addEventListener("click", () => insertTaskNoteLink(workspaceTaskNotesField));
-      workspaceTaskNotesField.closest("label")?.after(linkButton);
+      const notesLabel = workspaceTaskNotesField.closest("label");
+      const notesHeader = document.createElement("span");
+      notesHeader.className = "workspace-task-edit-notes-label__header";
+      notesHeader.textContent = "Notes";
+      notesLabel?.classList.add("workspace-task-edit-notes-label");
+      notesLabel?.firstChild?.replaceWith(notesHeader);
+      notesHeader.append(linkButton);
     }
 
     workspaceEventPageContentEl.querySelector("[data-capture-workspace-task-photo]")?.addEventListener("click", () => workspaceTaskCameraInput?.click());
