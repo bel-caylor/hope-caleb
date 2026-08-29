@@ -645,7 +645,27 @@ async function loadRsvpLookupMatches(firstName, lastName) {
     throw new Error("Add your Apps Script URL in site.js before publishing the RSVP form.");
   }
 
-  const payload = await loadRsvpLookupJsonp(firstName, lastName);
+  // Apps Script occasionally drops a JSONP script request while redirecting
+  // from script.google.com to its response host. Retrying once keeps that
+  // momentary failure from preventing a guest from finding their invitation.
+  let payload;
+  let lastError;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      payload = await loadRsvpLookupJsonp(firstName, lastName);
+      break;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, 350));
+      }
+    }
+  }
+
+  if (!payload) {
+    throw lastError || new Error("Unable to load the RSVP lookup right now.");
+  }
+
   return Array.isArray(payload?.matches) ? payload.matches.map(normalizeLookupMatch) : [];
 }
 
@@ -658,6 +678,7 @@ function loadRsvpLookupJsonp(firstName, lastName) {
     url.searchParams.set("firstName", firstName);
     url.searchParams.set("lastName", lastName);
     url.searchParams.set("callback", callbackName);
+    url.searchParams.set("request", String(Date.now()));
 
     window[callbackName] = (data) => {
       cleanup();
