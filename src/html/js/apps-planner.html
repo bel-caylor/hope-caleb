@@ -6491,8 +6491,8 @@
       <form id="workspaceDraftForm">
         <label>Event title <span class="workspace-voice-field"><input name="title" data-title-case data-voice-no-period required value="${escapeHtml(draft.title || "")}">${workspaceInlineVoiceButton("new-event-title", "event title")}</span></label>
         <div class="split">
-          <label>Starts <input name="startsAt" type="datetime-local" required value="${escapeHtml(draft.startsAt || "")}"></label>
-          <label>Location <span class="workspace-voice-field"><input name="location" data-title-case data-voice-no-period value="${escapeHtml(draft.location || "")}" placeholder="Venue">${workspaceInlineVoiceButton("new-event-location", "location")}</span></label>
+          <label class="workspace-draft__inline-field"><span>Starts</span><input name="startsAt" type="datetime-local" required value="${escapeHtml(draft.startsAt || "")}"></label>
+          <label class="workspace-draft__inline-field"><span>Location</span><span class="workspace-voice-field"><input name="location" data-title-case data-voice-no-period value="${escapeHtml(draft.location || "")}" placeholder="Venue">${workspaceInlineVoiceButton("new-event-location", "location")}</span></label>
         </div>
         <div class="workspace-invitees">
           <input type="hidden" name="invitees" value="${escapeHtml(draft.invitees)}">
