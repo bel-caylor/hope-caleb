@@ -6365,7 +6365,7 @@
         </div>
         <div class="workspace-invitees__add">
           <label>Add an individual guest
-            <select data-workspace-event-invitee-guest><option value="">Choose a guest…</option>${guests.map((guest) => `<option value="${escapeHtml(guest.name)}">${escapeHtml(guest.name)}${guest.types?.length ? ` (${escapeHtml(guest.types.join(", "))})` : ""}</option>`).join("")}</select>
+            <select data-workspace-event-invitee-guest><option value="">Choose a guest…</option>${guests.map((guest) => `<option value="${escapeHtml(guest.name)}">${escapeHtml(guest.name)}</option>`).join("")}</select>
           </label>
           <button class="button button--light" type="button" data-add-workspace-event-invitee>Add guest</button>
         </div>
@@ -6402,7 +6402,7 @@
 
   function getWorkspaceInviteeGuestChoices() {
     const backendChoices = Array.isArray(cachedWorkspaceInvitees.guests) ? cachedWorkspaceInvitees.guests : [];
-    if (backendChoices.length) return backendChoices;
+    if (backendChoices.length) return [...backendChoices].sort(compareGuestsByLastName);
 
     const guestsByName = new Map();
     cachedGuests.forEach((guest) => {
@@ -6416,7 +6416,7 @@
         types: [...new Set([...(existing?.types || []), ...types])]
       });
     });
-    return [...guestsByName.values()].sort((left, right) => left.name.localeCompare(right.name));
+    return [...guestsByName.values()].sort(compareGuestsByLastName);
   }
 
   function getPlannerUserGuestChoices() {
