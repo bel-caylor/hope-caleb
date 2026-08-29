@@ -85,15 +85,19 @@ async function chooseGooglePhotos() {
     return;
   }
   const pickerWindow = window.open("", "hope-caleb-google-photos", "popup,width=620,height=720");
+  if (pickerWindow) {
+    pickerWindow.document.title = "Google Photos";
+    pickerWindow.document.body.innerHTML = "<p style='font:16px system-ui;padding:2rem'>Connecting to Google Photos…</p>";
+  }
   chooseGooglePhotosButton.disabled = true;
   setStatus("Connecting to Google Photos…");
   try {
-    const accessToken = await requestGooglePhotosAccessToken();
+    const accessToken = await withTimeout(requestGooglePhotosAccessToken(), 45_000, "Google Photos permission did not finish. Close the extra window, verify the API setup, and try again.");
     const session = await googlePhotosRequest("https://photospicker.googleapis.com/v1/sessions", accessToken, { method: "POST", body: JSON.stringify({ pickingConfig: { maxItemCount: 100 } }) });
     if (!session?.pickerUri || !session?.id) throw new Error("Google Photos did not create a picker session.");
     const pickerUrl = `${session.pickerUri.replace(/\/$/, "")}/autoclose`;
-    if (pickerWindow) pickerWindow.location.href = pickerUrl;
-    else window.open(pickerUrl, "_blank", "noopener");
+    if (!pickerWindow) throw new Error("Your browser blocked the Google Photos window. Allow popups for this site, then try again.");
+    pickerWindow.location.href = pickerUrl;
     setStatus("Choose your photos in the Google Photos window, then tap Done.");
     const pickedItems = await waitForPickedPhotos(session, accessToken);
     if (!pickedItems.length) { setStatus("No Google Photos were selected."); return; }
@@ -113,7 +117,8 @@ function requestGooglePhotosAccessToken() {
     const tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: GOOGLE_PHOTOS_SCOPE,
-      callback: (response) => response?.access_token ? resolve(response.access_token) : reject(new Error(response?.error || "Google Photos permission was not granted."))
+      callback: (response) => response?.access_token ? resolve(response.access_token) : reject(new Error(response?.error || "Google Photos permission was not granted.")),
+      error_callback: (error) => reject(new Error(error?.message || "Google Photos permission window could not open."))
     });
     tokenClient.requestAccessToken({ prompt: "consent" });
   });
@@ -157,6 +162,7 @@ async function saveGooglePhotos(items, accessToken) {
 }
 
 function delay(milliseconds) { return new Promise((resolve) => window.setTimeout(resolve, milliseconds)); }
+function withTimeout(promise, milliseconds, message) { return Promise.race([promise, new Promise((_, reject) => window.setTimeout(() => reject(new Error(message)), milliseconds))]); }
 
 async function handleListAction(event) {
   const deleteButton = event.target.closest("[data-delete]");
