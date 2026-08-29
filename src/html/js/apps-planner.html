@@ -130,6 +130,7 @@
     sessionToken: "hope-caleb-dashboard-session-token",
     workspaceEventId: "hope-caleb-workspace-event-id",
     workspaceEventTab: "hope-caleb-workspace-event-tab",
+    workspaceTaskId: "hope-caleb-workspace-task-id",
     workspaceHubView: "hope-caleb-workspace-hub-view",
     workspaceCalendarView: "hope-caleb-workspace-calendar-view",
     workspaceCalendarDate: "hope-caleb-workspace-calendar-date",
@@ -169,6 +170,7 @@
   // alongside the main sidebar page so a refresh returns to the same place.
   let selectedWorkspaceEventId = getRequestedWorkspaceEventId() || String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceEventId) || "").trim();
   let activeWorkspaceEventTab = getRequestedWorkspaceEventTab() || String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceEventTab) || "details").trim() || "details";
+  let selectedWorkspaceTaskId = getRequestedWorkspaceTaskId() || String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceTaskId) || "").trim();
   let activeWorkspaceHubView = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceHubView) || "create").trim() || "create";
   let activeWorkspaceCalendarView = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarView) || "month").trim() || "month";
   let selectedWorkspaceCalendarDate = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarDate) || "").trim();
@@ -434,6 +436,10 @@
     return ["details", "tasks", "lists"].includes(tab) ? tab : "";
   }
 
+  function getRequestedWorkspaceTaskId() {
+    return String(new URLSearchParams(window.location.search).get("task") || "").trim();
+  }
+
   function syncPlannerRoute(options = {}) {
     if (currentView !== "planner") {
       return;
@@ -444,9 +450,12 @@
     if (activePlannerPanel === "workspace" && selectedWorkspaceEventId) {
       url.searchParams.set("event", selectedWorkspaceEventId);
       url.searchParams.set("eventTab", activeWorkspaceEventTab);
+      if (selectedWorkspaceTaskId) url.searchParams.set("task", selectedWorkspaceTaskId);
+      else url.searchParams.delete("task");
     } else {
       url.searchParams.delete("event");
       url.searchParams.delete("eventTab");
+      url.searchParams.delete("task");
     }
 
     const nextUrl = `${url.pathname}${url.search}${url.hash}`;
@@ -462,6 +471,7 @@
     const requestedPanel = getRequestedPlannerPanel();
     const requestedEventId = getRequestedWorkspaceEventId();
     const requestedEventTab = getRequestedWorkspaceEventTab();
+    const requestedTaskId = getRequestedWorkspaceTaskId();
     const availablePanels = plannerPanels.map((panel) => panel.dataset.plannerPanel);
 
     if (requestedPanel && availablePanels.includes(requestedPanel)) {
@@ -469,12 +479,16 @@
     }
     selectedWorkspaceEventId = requestedEventId;
     activeWorkspaceEventTab = requestedEventTab || "details";
+    selectedWorkspaceTaskId = requestedTaskId;
     if (selectedWorkspaceEventId) {
       window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
       window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+      if (selectedWorkspaceTaskId) window.sessionStorage.setItem(STORAGE_KEYS.workspaceTaskId, selectedWorkspaceTaskId);
+      else window.sessionStorage.removeItem(STORAGE_KEYS.workspaceTaskId);
     } else {
       window.sessionStorage.removeItem(STORAGE_KEYS.workspaceEventId);
       window.sessionStorage.removeItem(STORAGE_KEYS.workspaceEventTab);
+      window.sessionStorage.removeItem(STORAGE_KEYS.workspaceTaskId);
     }
   }
 
@@ -4298,7 +4312,7 @@
               <span class="meta">${group.isProject ? "Planning project · " : ""}${group.tasks.length} task${group.tasks.length === 1 ? "" : "s"}</span>
             </div>
             ${group.tasks.map((todo) => {
-          const assignee = getWorkspaceTaskAssigneeLabel(todo.assignedUserId);
+          const assignee = getWorkspaceTaskAssigneeLabel(todo.assignedUserIds || todo.assignedUserId);
           const checklist = cachedWorkspaceLists.find((list) => String(list.id || "") === String(todo.listId || ""));
           const checklistItems = String(checklist?.items || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
           const completedChecklistItems = new Set(Array.isArray(checklist?.completedItems) ? checklist.completedItems.map(Number) : []);
@@ -4366,7 +4380,7 @@
   }
 
   function renderTodoByDateAccordion(todo) {
-    const assignee = getWorkspaceTaskAssigneeLabel(todo.assignedUserId);
+    const assignee = getWorkspaceTaskAssigneeLabel(todo.assignedUserIds || todo.assignedUserId);
     const parent = getWorkspaceTaskParent(todo.eventId);
     // A wedding-party member only sees tasks specifically assigned to them.
     // Showing an internal data-cleanup label for a missing parent is neither
@@ -5357,8 +5371,8 @@
   function collectTodoAssignedToOptions(todos) {
     const options = new Map();
     (Array.isArray(todos) ? todos : []).forEach((todo) => {
-      const id = String(todo?.assignedUserId || "").trim();
-      if (id) options.set(id, getWorkspaceTaskAssigneeLabel(id));
+      const ids = Array.isArray(todo?.assignedUserIds) ? todo.assignedUserIds : [todo?.assignedUserId];
+      ids.map((id) => String(id || "").trim()).filter(Boolean).forEach((id) => options.set(id, getWorkspaceTaskAssigneeLabel(id)));
     });
     return Array.from(options, ([id, label]) => ({ id, label }))
       .sort((left, right) => left.label.localeCompare(right.label, undefined, { sensitivity: "base" }));
@@ -5391,7 +5405,10 @@
   function getFilteredTodos() {
     if (!selectedTodoAssignedTo.length) return cachedWorkspaceTasks;
     const selectedLookup = new Set(selectedTodoAssignedTo);
-    return cachedWorkspaceTasks.filter((todo) => selectedLookup.has(String(todo?.assignedUserId || "").trim()));
+    return cachedWorkspaceTasks.filter((todo) => {
+      const ids = Array.isArray(todo?.assignedUserIds) ? todo.assignedUserIds : [todo?.assignedUserId];
+      return ids.some((id) => selectedLookup.has(String(id || "").trim()));
+    });
   }
 
   function getWorkspaceTaskListName(listId) {
@@ -5403,13 +5420,16 @@
     return cachedWorkspaceEvents.find((item) => String(item.id || "") === String(eventId || "")) || null;
   }
 
-  function getWorkspaceTaskAssigneeLabel(assignedUserId) {
-    const id = String(assignedUserId || "").trim();
-    if (!id) return "Unassigned";
-    if (id.startsWith("guest-type:")) return id.slice("guest-type:".length) || "Guest type";
-    if (id.startsWith("guest:")) return id.slice("guest:".length) || "Guest";
-    const user = cachedWorkspaceUsers.find((item) => String(item.id || "") === id);
-    return user?.name || user?.email || id;
+  function getWorkspaceTaskAssigneeLabel(assignedUserIds) {
+    const ids = (Array.isArray(assignedUserIds) ? assignedUserIds : String(assignedUserIds || "").split(/[\n,;]+/))
+      .map((id) => String(id || "").trim()).filter(Boolean);
+    if (!ids.length) return "Unassigned";
+    return ids.map((id) => {
+      if (id.startsWith("guest-type:")) return id.slice("guest-type:".length) || "Guest type";
+      if (id.startsWith("guest:")) return id.slice("guest:".length) || "Guest";
+      const user = cachedWorkspaceUsers.find((item) => String(item.id || "") === id);
+      return user?.name || user?.email || id;
+    }).join(", ");
   }
 
   function renderTodoAssigneeOptions(selectedId) {
@@ -6512,7 +6532,7 @@
           <input type="hidden" name="invitees" value="${escapeHtml(draft.invitees)}">
           <div class="workspace-invitees__header"><h4>Who's invited?</h4><strong class="workspace-invitees__count">${invitedGuests.length} invited</strong></div>
           <div class="workspace-invitees__groups"><strong>Include guest groups</strong><div class="workspace-invitees__choices workspace-invitees__choices--groups">${groupChoices.length ? groupChoices.map((group) => `<label class="workspace-invitees__choice"><input type="checkbox" data-workspace-invitee-group value="${escapeHtml(group)}" ${selectedGroups.has(String(group).toLowerCase()) ? "checked" : ""}>${escapeHtml(group)}</label>`).join("") : '<span class="meta">Group choices will load from the guest Type column.</span>'}</div></div>
-          <div class="workspace-invitees__add"><label>Add an individual guest <select data-workspace-invitee-guest><option value="">Choose a guest…</option>${guestChoices.map((guest) => `<option value="${escapeHtml(guest.name)}">${escapeHtml(guest.name)}${guest.types?.length ? ` (${escapeHtml(guest.types.join(", "))})` : ""}</option>`).join("")}</select></label><button class="button button--light" type="button" data-add-workspace-invitee>Add guest</button></div>
+          <div class="workspace-invitees__add"><label>Add an individual guest <select data-workspace-invitee-guest><option value="">Choose a guest…</option>${guestChoices.map((guest) => `<option value="${escapeHtml(guest.name)}">${escapeHtml(guest.name)}</option>`).join("")}</select></label><button class="button button--light" type="button" data-add-workspace-invitee>Add guest</button></div>
           ${invitedGuests.length ? `<details open><summary>View invited guests</summary><ul class="workspace-invitees__guest-list">${invitedGuests.map((guest) => {
             const guestName = String(guest.name || "").trim();
             const guestKey = guestName.toLowerCase();
@@ -7007,6 +7027,16 @@
       return;
     }
     const isPlanningProject = !String(event.startsAt || "").trim();
+    const taskBeingEdited = cachedWorkspaceTasks.find((item) => String(item.id || "") === selectedWorkspaceTaskId) || null;
+    if (selectedWorkspaceTaskId && (!taskBeingEdited || String(taskBeingEdited.eventId || "") !== String(event.id || ""))) {
+      selectedWorkspaceTaskId = "";
+      window.sessionStorage.removeItem(STORAGE_KEYS.workspaceTaskId);
+      syncPlannerRoute({ replace: true });
+    } else if (taskBeingEdited && activeWorkspaceEventTab !== "tasks") {
+      activeWorkspaceEventTab = "tasks";
+      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+      syncPlannerRoute({ replace: true });
+    }
     const tasks = cachedWorkspaceTasks
       .filter((task) => String(task.eventId || "") === event.id)
       .sort((left, right) => Number(left.sortOrder || 0) - Number(right.sortOrder || 0));
@@ -7053,36 +7083,30 @@
       return optimisticList;
     };
     const eventDateTime = splitWorkspaceDateTime(event.startsAt);
-    const guestTypes = Array.isArray(cachedWorkspaceInvitees.groups)
-      ? cachedWorkspaceInvitees.groups.map((group) => String(group || "").trim()).filter(Boolean)
-      : [];
-    const individualGuestsByType = getWorkspaceInviteeGuestChoices().reduce((groups, guest) => {
-      const name = String(guest?.name || "").trim();
-      if (!name) return groups;
-      const type = String(Array.isArray(guest?.types) ? guest.types[0] : "").trim() || "Guests";
-      if (!groups.has(type)) groups.set(type, []);
-      groups.get(type).push(name);
-      return groups;
-    }, new Map());
-    const assigneeOptions = (selectedId) => `
-      <option value="">Unassigned</option>
-      ${cachedWorkspaceUsers.filter((person) => person.active).length ? `<optgroup label="Planner members">${cachedWorkspaceUsers.filter((person) => person.active).map((person) => `<option value="${escapeHtml(person.id)}" ${String(person.id) === String(selectedId || "") ? "selected" : ""}>${escapeHtml(person.name || person.email)}</option>`).join("")}</optgroup>` : ""}
-      ${Array.from(individualGuestsByType.entries()).sort(([left], [right]) => left.localeCompare(right)).map(([type, names]) => `<optgroup label="${escapeHtml(type)}">${names.sort((left, right) => left.localeCompare(right)).map((name) => {
-        const value = `guest:${name}`;
-        return `<option value="${escapeHtml(value)}" ${value === String(selectedId || "") ? "selected" : ""}>${escapeHtml(name)}</option>`;
-      }).join("")}</optgroup>`).join("")}
-      ${guestTypes.length ? `<optgroup label="Guest types">${guestTypes.map((type) => {
-        const value = `guest-type:${type}`;
-        return `<option value="${escapeHtml(value)}" ${value === String(selectedId || "") ? "selected" : ""}>${escapeHtml(type)}</option>`;
-      }).join("")}</optgroup>` : ""}
+    const taskAssignmentGroups = ["Bartender", "Coordinator", "DJ", "Family Kaler", "Family Montez", "Food", "Parents", "Photographer", "Vendor", "Wedding Party"];
+    const taskAssignmentGroupLookup = new Set(taskAssignmentGroups.map((group) => group.toLowerCase()));
+    const taskEligibleGuests = getWorkspaceInviteeGuestChoices().filter((guest) =>
+      Array.isArray(guest?.types) && guest.types.some((type) => taskAssignmentGroupLookup.has(String(type || "").trim().toLowerCase()))
+    );
+    const taskAssignmentControls = () => `
+      <input type="hidden" name="assignedUserIds" value="">
+      <fieldset class="workspace-task-assignment"><legend>Assigned to</legend>
+        <div class="workspace-task-assignee-selection" data-workspace-task-assignee-selection>No one selected.</div>
+        <label class="workspace-task-edit-field"><span>Add individual</span><div class="split"><select data-workspace-task-assignee-person><option value="">Choose a person</option>${taskEligibleGuests.map((guest) => `<option value="guest:${escapeHtml(guest.name)}">${escapeHtml(guest.name)}</option>`).join("")}</select><button class="button button--light" type="button" data-add-workspace-task-assignee>Add person</button></div></label>
+        <div class="workspace-task-group-list"><span>Groups</span><div>${taskAssignmentGroups.map((group) => `
+          <label><input type="checkbox" value="guest-type:${escapeHtml(group)}" data-workspace-task-assignee-group><span>${escapeHtml(group)}</span></label>
+        `).join("")}</div></div>
+      </fieldset>
     `;
-    const formatTaskAssignee = (assignedUserId) => {
-      const value = String(assignedUserId || "").trim();
-      if (!value) return "Unassigned";
-      if (value.startsWith("guest-type:")) return value.slice("guest-type:".length) || "Guest type";
-      if (value.startsWith("guest:")) return value.slice("guest:".length) || "Guest";
-      const person = cachedWorkspaceUsers.find((user) => String(user.id || "") === value);
-      return person?.name || person?.email || value;
+    const formatTaskAssignee = (assignedUserIds) => {
+      const values = Array.isArray(assignedUserIds) ? assignedUserIds : String(assignedUserIds || "").split(/[\n,;]+/);
+      const labels = values.map((item) => String(item || "").trim()).filter(Boolean).map((value) => {
+        if (value.startsWith("guest-type:")) return value.slice("guest-type:".length) || "Guest type";
+        if (value.startsWith("guest:")) return value.slice("guest:".length) || "Guest";
+        const person = cachedWorkspaceUsers.find((user) => String(user.id || "") === value);
+        return person?.name || person?.email || value;
+      });
+      return labels.length ? labels.join(", ") : "Unassigned";
     };
     const formatTaskDueDate = (dueAt) => {
       const date = String(dueAt || "").slice(0, 10);
@@ -7091,10 +7115,10 @@
       return Number.isNaN(parsed.getTime()) ? date : parsed.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
     };
     const inlineTaskFields = (task) => canManageEvent ? `
-      <td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserId))}</td>
+      <td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserIds || task.assignedUserId))}</td>
       <td data-label="Due"><input type="date" value="${escapeHtml(normalizeWorkspaceTaskDueDate(task.dueAt))}" data-update-workspace-task-field="dueAt" data-workspace-task-id="${escapeHtml(task.id)}" aria-label="Due date for ${escapeHtml(task.title || "task")}"></td>
     ` : `
-      <td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserId))}</td>
+      <td data-label="Assigned to">${escapeHtml(formatTaskAssignee(task.assignedUserIds || task.assignedUserId))}</td>
       <td data-label="Due">${escapeHtml(formatTaskDueDate(task.dueAt))}</td>
     `;
     const taskCompletionCell = (task) => {
@@ -7179,8 +7203,9 @@
           </tr>` : `<tr class="workspace-task-accordion ${String(task.status || "").trim().toLowerCase() === "done" ? "is-complete" : ""}"><td data-label="Task"><span class="workspace-task-title-with-photo"><button class="workspace-task-accordion-toggle" type="button" data-workspace-task-accordion aria-expanded="false">${escapeHtml(task.title || "Untitled task")}</button>${taskPhotoButton(task)}${taskListButton(task)}</span></td>${taskCompletionCell(task)}${inlineTaskFields(task)}${associatedListCell(task)}</tr>`).join("")}</tbody>
       </table>` : '<p class="meta">No tasks yet.</p>'}</div>
       <section class="modal" id="workspaceTaskPhotosModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-photos-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskPhotosModalTitle"><button class="modal__close" type="button" data-close-workspace-task-photos-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskPhotosModalTitle">Task snapshots</h3></div></div><div class="workspace-task-photo-viewer" id="workspaceTaskPhotosModalContent"></div></div></section>
+      <section class="modal" id="workspaceTaskImageModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-image-modal></div><div class="modal__dialog workspace-task-image-modal__dialog" role="dialog" aria-modal="true" aria-label="Photo preview"><button class="modal__close" type="button" data-close-workspace-task-image-modal aria-label="Close photo preview">X</button><img class="workspace-task-image-modal__image" id="workspaceTaskImageModalImage" alt=""></div></section>
       <section class="modal" id="workspaceTaskListModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-list-modal></div><div class="modal__dialog workspace-list-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskListModalTitle"><button class="modal__close" type="button" data-close-workspace-task-list-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskListModalTitle">List</h3></div></div><div class="workspace-checklist__items" id="workspaceTaskListModalContent"></div></div></section>
-      ${canManageEvent ? `<section class="modal" id="workspaceTaskModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-workspace-task-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="workspaceTaskModalTitle"><button class="modal__close" type="button" data-close-workspace-task-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="workspaceTaskModalTitle">Edit task</h3></div></div><form id="workspaceTaskEditForm"><input type="hidden" name="id"><input class="workspace-task-edit-title" name="title" aria-label="Task" required><label class="workspace-task-edit-field"><span>Assigned to</span><select name="assignedUserId">${assigneeOptions("")}</select></label><label class="workspace-task-edit-field"><span>Due date</span><input name="dueAt" type="date"></label><label class="workspace-task-edit-field"><span>Associated list</span><select name="listId"><option value="">No associated list</option>${lists.map((list) => `<option value="${escapeHtml(list.id)}">${escapeHtml(list.title || "Untitled list")}</option>`).join("")}</select></label><label class="workspace-task-edit-field"><span>Status</span><select name="status"><option value="Not Started">Not started</option><option value="In Progress">In progress</option><option value="Done">Done</option></select></label><label>Notes <textarea name="notes" placeholder="Helpful details, links, or next steps."></textarea></label><div class="task-photo-field"><span>Task snapshots</span><div class="toolbar task-photo-actions"><button class="button" type="button" data-capture-workspace-task-photo>Take photo</button><button class="button button--light" type="button" data-upload-workspace-task-photo>Upload photos</button></div><input name="workspaceTaskCamera" type="file" accept="image/*" capture="environment" hidden><input name="workspaceTaskPhoto" type="file" accept="image/*" multiple hidden><p class="meta">Take a photo, or select multiple photos from your library. Each is attached when you save.</p><div class="task-photo-preview" data-workspace-task-photo-preview hidden></div><div class="workspace-task-photos" data-workspace-task-photos></div></div><div class="toolbar"><button class="button" type="submit">Save task</button><button class="button button--light" type="button" data-close-workspace-task-modal>Cancel</button></div><p class="status" id="workspaceTaskEditStatus"></p></form></div></section>` : ""}
+      ${canManageEvent ? `<section class="workspace-task-editor-page" id="workspaceTaskModal" ${taskBeingEdited ? "" : "hidden"} aria-labelledby="workspaceTaskModalTitle"><header class="workspace-task-editor-page__header"><button class="button button--icon button--light" type="button" data-close-workspace-task-modal aria-label="Back to tasks" title="Back to tasks"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path></svg></button><h3 id="workspaceTaskModalTitle">Edit task</h3></header><form id="workspaceTaskEditForm"><input type="hidden" name="id"><input class="workspace-task-edit-title" name="title" aria-label="Task" required><label class="workspace-task-edit-field"><span>Due date</span><input name="dueAt" type="date"></label><label class="workspace-task-edit-field"><span>Associated list</span><select name="listId"><option value="">No associated list</option>${lists.map((list) => `<option value="${escapeHtml(list.id)}">${escapeHtml(list.title || "Untitled list")}</option>`).join("")}</select></label><label class="workspace-task-edit-field"><span>Status</span><select name="status"><option value="Not Started">Not started</option><option value="In Progress">In progress</option><option value="Done">Done</option></select></label><label>Notes <textarea name="notes" placeholder="Helpful details, links, or next steps."></textarea></label>${taskAssignmentControls()}<fieldset class="task-photo-field workspace-task-snapshots"><legend>Snapshots</legend><div class="toolbar task-photo-actions"><button class="button" type="button" data-capture-workspace-task-photo>Take photo</button><button class="button button--light" type="button" data-upload-workspace-task-photo>Upload photos</button></div><input name="workspaceTaskCamera" type="file" accept="image/*" capture="environment" hidden><input name="workspaceTaskPhoto" type="file" accept="image/*" multiple hidden><div class="workspace-task-photo-grid"><div class="task-photo-preview" data-workspace-task-photo-preview hidden></div><div class="workspace-task-photos" data-workspace-task-photos></div></div></fieldset><p class="status" id="workspaceTaskEditStatus"></p></form><div class="workspace-save-bar" id="workspaceTaskSaveBar" role="region" aria-label="Save task changes" hidden><button class="button workspace-save-bar__button" type="submit" form="workspaceTaskEditForm">Save task</button></div></section>` : ""}
       ${canManageEvent ? `<form id="workspaceEventTaskForm" class="workspace-quick-form"><label>Add a task <span class="workspace-voice-field"><input name="title" data-voice-no-period data-voice-no-auto-capitalization required placeholder="What needs to happen?">${workspaceInlineVoiceButton(`new-task-${event.id}`, "new task")}</span></label><button class="button button--light" type="submit">Add task</button></form>` : ""}
       </section>
       <section class="workspace-event-tab-panel" data-workspace-event-tab-panel="lists" ${activeWorkspaceEventTab === "lists" ? "" : "hidden"}>
@@ -7192,7 +7217,7 @@
       }).join("") : '<p class="meta">No lists yet.</p>'}</div>
       <form id="workspaceEventListForm" class="workspace-quick-form"><label>New list <input name="title" required placeholder="Breakfast shopping list"></label><label>Items <textarea name="items" required placeholder="Coffee&#10;Fruit&#10;Pastries"></textarea></label><button class="button button--light" type="submit">Add list</button></form>
       </section>
-      ${canManageEvent ? `<div class="workspace-save-bar" id="workspaceSaveBar" role="region" aria-label="Save changes"><button class="button workspace-save-bar__button" id="workspaceSaveBarButton" type="submit" form="workspaceEventEditForm">Save event details</button></div>` : ""}
+      ${canManageEvent && !taskBeingEdited ? `<div class="workspace-save-bar" id="workspaceSaveBar" role="region" aria-label="Save changes"><button class="button workspace-save-bar__button" id="workspaceSaveBarButton" type="submit" form="workspaceEventEditForm">Save event details</button></div>` : ""}
     `;
     workspaceStickyHeaderObserver?.disconnect();
     const stickyHeader = workspaceEventPageContentEl.querySelector(".workspace-event-sticky-header");
@@ -7397,7 +7422,7 @@
         title,
         eventId: event.id,
         listId: "",
-        assignedUserId: "",
+        assignedUserIds: [],
         dueAt: "2027-01-08",
         notes: "",
         status: "Not Started",
@@ -7429,6 +7454,8 @@
     const workspaceTaskPhotosModal = workspaceEventPageContentEl.querySelector("#workspaceTaskPhotosModal");
     const workspaceTaskPhotosModalTitle = workspaceEventPageContentEl.querySelector("#workspaceTaskPhotosModalTitle");
     const workspaceTaskPhotosModalContent = workspaceEventPageContentEl.querySelector("#workspaceTaskPhotosModalContent");
+    const workspaceTaskImageModal = workspaceEventPageContentEl.querySelector("#workspaceTaskImageModal");
+    const workspaceTaskImageModalImage = workspaceEventPageContentEl.querySelector("#workspaceTaskImageModalImage");
     const workspaceTaskListModal = workspaceEventPageContentEl.querySelector("#workspaceTaskListModal");
     const workspaceTaskListModalTitle = workspaceEventPageContentEl.querySelector("#workspaceTaskListModalTitle");
     const workspaceTaskListModalContent = workspaceEventPageContentEl.querySelector("#workspaceTaskListModalContent");
@@ -7438,8 +7465,73 @@
     const workspaceTaskPhotos = workspaceTaskEditForm?.querySelector("[data-workspace-task-photos]");
     let pendingWorkspaceTaskPhotos = [];
     let workspaceTaskModalReturnFocus = null;
+    let workspaceTaskBaseline = "";
+    const workspaceTaskPhotoDeleteIcon = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>';
+    const renderWorkspaceTaskPhotoThumbnail = (src, alt, removeAttribute, imageAttribute = "") => `<figure class="workspace-task-photo"><button class="workspace-task-photo__preview" type="button" data-open-workspace-task-image aria-label="Open ${escapeHtml(alt)}"><img src="${escapeHtml(src)}" ${imageAttribute} alt="${escapeHtml(alt)}"></button><button class="workspace-task-photo__delete" type="button" ${removeAttribute} aria-label="Remove ${escapeHtml(alt)}" title="Remove photo">${workspaceTaskPhotoDeleteIcon}</button></figure>`;
+    const openWorkspaceTaskImageModal = (image) => {
+      if (!image?.src || !workspaceTaskImageModal || !workspaceTaskImageModalImage) return;
+      workspaceTaskImageModalImage.src = image.currentSrc || image.src;
+      workspaceTaskImageModalImage.alt = image.alt || "Photo preview";
+      workspaceTaskImageModal.hidden = false;
+      workspaceTaskImageModal.setAttribute("aria-hidden", "false");
+    };
+    const closeWorkspaceTaskImageModal = () => {
+      if (!workspaceTaskImageModal) return;
+      workspaceTaskImageModal.hidden = true;
+      workspaceTaskImageModal.setAttribute("aria-hidden", "true");
+      if (workspaceTaskImageModalImage) workspaceTaskImageModalImage.removeAttribute("src");
+    };
+    workspaceEventPageContentEl.querySelectorAll("[data-close-workspace-task-image-modal]").forEach((button) => {
+      button.addEventListener("click", closeWorkspaceTaskImageModal);
+    });
+    const getWorkspaceTaskAssigneeIds = () => String(workspaceTaskEditForm?.elements?.namedItem("assignedUserIds")?.value || "")
+      .split(/[\n,;]+/).map((value) => value.trim()).filter(Boolean);
+    const renderWorkspaceTaskAssigneeSelection = (values = getWorkspaceTaskAssigneeIds()) => {
+      if (!workspaceTaskEditForm) return;
+      const seen = new Set();
+      const selectedIds = values.filter((value) => {
+        const key = value.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      const selectedLookup = new Set(selectedIds.map((value) => value.toLowerCase()));
+      const hiddenField = workspaceTaskEditForm.elements.namedItem("assignedUserIds");
+      if (hiddenField) hiddenField.value = selectedIds.join(", ");
+      workspaceTaskEditForm.querySelectorAll("[data-workspace-task-assignee-group]").forEach((checkbox) => {
+        checkbox.checked = selectedLookup.has(String(checkbox.value || "").toLowerCase());
+      });
+      const selection = workspaceTaskEditForm.querySelector("[data-workspace-task-assignee-selection]");
+      if (selection) {
+        selection.innerHTML = selectedIds.length
+          ? selectedIds.map((id) => `<span class="workspace-task-assignee-pill">${escapeHtml(formatTaskAssignee([id]))}<button class="workspace-task-assignee-pill__remove" type="button" data-remove-workspace-task-assignee="${escapeHtml(id)}" aria-label="Remove ${escapeHtml(formatTaskAssignee([id]))}" title="Remove ${escapeHtml(formatTaskAssignee([id]))}">×</button></span>`).join("")
+          : "No one selected.";
+      }
+    };
+    workspaceTaskEditForm?.querySelectorAll("[data-workspace-task-assignee-group]").forEach((checkbox) => {
+      checkbox.addEventListener("change", () => {
+        const next = getWorkspaceTaskAssigneeIds().filter((id) => id.toLowerCase() !== String(checkbox.value || "").toLowerCase());
+        if (checkbox.checked) next.push(String(checkbox.value || ""));
+        renderWorkspaceTaskAssigneeSelection(next);
+        workspaceTaskEditForm?.__updateSaveBar?.();
+      });
+    });
+    workspaceTaskEditForm?.querySelector("[data-add-workspace-task-assignee]")?.addEventListener("click", () => {
+      const personField = workspaceTaskEditForm.querySelector("[data-workspace-task-assignee-person]");
+      const personId = String(personField?.value || "").trim();
+      if (!personId) return;
+      renderWorkspaceTaskAssigneeSelection([...getWorkspaceTaskAssigneeIds(), personId]);
+      personField.value = "";
+      workspaceTaskEditForm?.__updateSaveBar?.();
+    });
+    workspaceTaskEditForm?.querySelector("[data-workspace-task-assignee-selection]")?.addEventListener("click", (selectionEvent) => {
+      const removeButton = selectionEvent.target.closest("[data-remove-workspace-task-assignee]");
+      if (!removeButton) return;
+      const removedId = String(removeButton.dataset.removeWorkspaceTaskAssignee || "").toLowerCase();
+      renderWorkspaceTaskAssigneeSelection(getWorkspaceTaskAssigneeIds().filter((id) => id.toLowerCase() !== removedId));
+      workspaceTaskEditForm?.__updateSaveBar?.();
+    });
     const closeWorkspaceTaskModal = (discardPendingPhotos = true) => {
-      if (!workspaceTaskModal) return;
       if (discardPendingPhotos) {
         pendingWorkspaceTaskPhotos.forEach((photo) => {
           if (photo.previewUrl) URL.revokeObjectURL(photo.previewUrl);
@@ -7447,9 +7539,12 @@
         pendingWorkspaceTaskPhotos = [];
         renderPendingWorkspaceTaskPhotos();
       }
-      workspaceTaskModal.hidden = true;
-      workspaceTaskModal.setAttribute("aria-hidden", "true");
-      workspaceTaskModalReturnFocus?.focus();
+      selectedWorkspaceTaskId = "";
+      activeWorkspaceEventTab = "tasks";
+      window.sessionStorage.removeItem(STORAGE_KEYS.workspaceTaskId);
+      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+      syncPlannerRoute();
+      renderWorkspaceEventPage();
     };
     const closeWorkspaceTaskPhotosModal = () => {
       if (!workspaceTaskPhotosModal) return;
@@ -7570,31 +7665,49 @@
     workspaceEventPageContentEl.querySelectorAll("[data-edit-workspace-task]").forEach((button) => {
       button.addEventListener("click", () => {
         const task = tasks.find((item) => String(item.id || "") === String(button.dataset.editWorkspaceTask || ""));
-        if (!task || !workspaceTaskModal || !workspaceTaskEditForm) return;
-        workspaceTaskModalReturnFocus = button;
-        workspaceTaskEditForm.elements.namedItem("id").value = String(task.id || "");
-        workspaceTaskEditForm.elements.namedItem("title").value = String(task.title || "");
-        workspaceTaskEditForm.elements.namedItem("assignedUserId").value = String(task.assignedUserId || "");
-        workspaceTaskEditForm.elements.namedItem("dueAt").value = normalizeWorkspaceTaskDueDate(task.dueAt);
-        workspaceTaskEditForm.elements.namedItem("listId").value = String(task.listId || "");
-        workspaceTaskEditForm.elements.namedItem("status").value = String(task.status || "Not Started");
-        workspaceTaskEditForm.elements.namedItem("notes").value = String(task.notes || "");
-        if (workspaceTaskPhotos) {
-          const photos = taskAssets(task.id).filter((asset) => isSafeImageUrl(asset.assetUrl));
-          workspaceTaskPhotos.innerHTML = photos.length ? `<p class="meta">Attached snapshots</p>${photos.map((asset) => `<figure class="workspace-task-photo">${renderWorkspaceTaskSnapshot(asset, task)}<button class="button button--light" type="button" data-delete-workspace-task-photo="${escapeHtml(asset.id)}">Delete photo</button></figure>`).join("")}` : "";
-          void hydrateWorkspaceTaskSnapshots(workspaceTaskPhotos);
-        }
-        const editStatus = workspaceTaskEditForm.querySelector(".status");
-        if (editStatus) setStatus(editStatus, "", "");
-        workspaceTaskModal.hidden = false;
-        workspaceTaskModal.setAttribute("aria-hidden", "false");
-        window.setTimeout(() => workspaceTaskEditForm.elements.namedItem("title")?.focus(), 0);
+        if (!task) return;
+        selectedWorkspaceTaskId = String(task.id || "");
+        activeWorkspaceEventTab = "tasks";
+        window.sessionStorage.setItem(STORAGE_KEYS.workspaceTaskId, selectedWorkspaceTaskId);
+        window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
+        syncPlannerRoute();
+        renderWorkspaceEventPage();
       });
     });
     workspaceEventPageContentEl.querySelectorAll("[data-close-workspace-task-modal]").forEach((button) => {
       button.addEventListener("click", closeWorkspaceTaskModal);
     });
+    if (taskBeingEdited && workspaceTaskEditForm) {
+      workspaceTaskEditForm.elements.namedItem("id").value = String(taskBeingEdited.id || "");
+      workspaceTaskEditForm.elements.namedItem("title").value = String(taskBeingEdited.title || "");
+      renderWorkspaceTaskAssigneeSelection(Array.isArray(taskBeingEdited.assignedUserIds) ? taskBeingEdited.assignedUserIds : [taskBeingEdited.assignedUserId]);
+      workspaceTaskEditForm.elements.namedItem("dueAt").value = normalizeWorkspaceTaskDueDate(taskBeingEdited.dueAt);
+      workspaceTaskEditForm.elements.namedItem("listId").value = String(taskBeingEdited.listId || "");
+      workspaceTaskEditForm.elements.namedItem("status").value = String(taskBeingEdited.status || "Not Started");
+      workspaceTaskEditForm.elements.namedItem("notes").value = String(taskBeingEdited.notes || "");
+      if (workspaceTaskPhotos) {
+        const photos = taskAssets(taskBeingEdited.id).filter((asset) => isSafeImageUrl(asset.assetUrl));
+        workspaceTaskPhotos.innerHTML = photos.map((asset) => renderWorkspaceTaskPhotoThumbnail(displayImageUrl(asset.assetUrl), `Photo attached to ${taskBeingEdited.title || "task"}`, `data-delete-workspace-task-photo="${escapeHtml(asset.id)}"`, `data-workspace-asset-image="${escapeHtml(asset.id)}"`)).join("");
+        void hydrateWorkspaceTaskSnapshots(workspaceTaskPhotos);
+      }
+      workspaceTaskBaseline = new URLSearchParams(new FormData(workspaceTaskEditForm)).toString();
+      const updateTaskSaveBar = () => {
+        const saveBar = workspaceEventPageContentEl.querySelector("#workspaceTaskSaveBar");
+        const dirty = new URLSearchParams(new FormData(workspaceTaskEditForm)).toString() !== workspaceTaskBaseline || pendingWorkspaceTaskPhotos.length > 0;
+        if (saveBar) saveBar.hidden = !dirty;
+        workspaceEventPageEl.classList.toggle("workspace-event-page--has-save-bar", dirty);
+      };
+      workspaceTaskEditForm.addEventListener("input", updateTaskSaveBar);
+      workspaceTaskEditForm.addEventListener("change", updateTaskSaveBar);
+      workspaceTaskEditForm.__updateSaveBar = updateTaskSaveBar;
+      window.setTimeout(() => workspaceTaskEditForm.elements.namedItem("title")?.focus(), 0);
+    }
     workspaceTaskPhotos?.addEventListener("click", async (photoEvent) => {
+      const previewButton = photoEvent.target.closest("[data-open-workspace-task-image]");
+      if (previewButton) {
+        openWorkspaceTaskImageModal(previewButton.querySelector("img"));
+        return;
+      }
       const deleteButton = photoEvent.target.closest("[data-delete-workspace-task-photo]");
       if (!deleteButton) return;
       const assetId = String(deleteButton.dataset.deleteWorkspaceTaskPhoto || "").trim();
@@ -7619,7 +7732,7 @@
         return;
       }
       workspaceTaskPhotoPreview.hidden = false;
-      workspaceTaskPhotoPreview.innerHTML = pendingWorkspaceTaskPhotos.map((photo, index) => `<figure class="workspace-task-photo"><img src="${escapeHtml(photo.previewUrl)}" alt="Task snapshot ready to attach"><button class="button button--light" type="button" data-remove-pending-workspace-task-photo="${index}">Remove</button></figure>`).join("");
+      workspaceTaskPhotoPreview.innerHTML = pendingWorkspaceTaskPhotos.map((photo, index) => renderWorkspaceTaskPhotoThumbnail(photo.previewUrl, "Photo ready to attach", `data-remove-pending-workspace-task-photo="${index}"`)).join("");
     };
     const prepareWorkspaceTaskPhotos = async (fileInput) => {
       const files = Array.from(fileInput?.files || []);
@@ -7629,6 +7742,7 @@
         const preparedPhotos = await Promise.all(files.map((file) => prepareTodoPhoto(file)));
         pendingWorkspaceTaskPhotos.push(...preparedPhotos);
         renderPendingWorkspaceTaskPhotos();
+        workspaceTaskEditForm?.__updateSaveBar?.();
         if (fileInput) fileInput.value = "";
         if (editStatus) setStatus(editStatus, `${preparedPhotos.length} snapshot${preparedPhotos.length === 1 ? "" : "s"} ready to attach when you save.`, "success");
       } catch (error) {
@@ -7659,12 +7773,18 @@
     workspaceTaskCameraInput?.addEventListener("change", () => prepareWorkspaceTaskPhotos(workspaceTaskCameraInput));
     workspaceTaskPhotoInput?.addEventListener("change", () => prepareWorkspaceTaskPhotos(workspaceTaskPhotoInput));
     workspaceTaskPhotoPreview?.addEventListener("click", (photoEvent) => {
+      const previewButton = photoEvent.target.closest("[data-open-workspace-task-image]");
+      if (previewButton) {
+        openWorkspaceTaskImageModal(previewButton.querySelector("img"));
+        return;
+      }
       const removeButton = photoEvent.target.closest("[data-remove-pending-workspace-task-photo]");
       if (!removeButton) return;
       const index = Number(removeButton.dataset.removePendingWorkspaceTaskPhoto);
       const [removedPhoto] = pendingWorkspaceTaskPhotos.splice(index, 1);
       if (removedPhoto?.previewUrl) URL.revokeObjectURL(removedPhoto.previewUrl);
       renderPendingWorkspaceTaskPhotos();
+      workspaceTaskEditForm?.__updateSaveBar?.();
     });
     workspaceTaskEditForm?.addEventListener("submit", async (formEvent) => {
       formEvent.preventDefault();

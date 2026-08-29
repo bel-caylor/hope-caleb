@@ -3024,6 +3024,106 @@
         line-height: 1.2;
       }
 
+      .workspace-task-assignee-selection {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 2.5rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      #workspaceTaskEditForm .workspace-task-assignment {
+        display: grid;
+        gap: 0.8rem;
+        margin: 0.25rem 0;
+        padding: 1rem;
+        border: 1px solid #c8d3c0;
+        border-radius: 10px;
+        background: #fff;
+      }
+
+      #workspaceTaskEditForm .workspace-task-assignment > legend,
+      #workspaceTaskEditForm .workspace-task-snapshots > legend {
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .workspace-task-group-list {
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .workspace-task-group-list > span {
+        color: var(--muted);
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+
+      .workspace-task-group-list > div {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem 1rem;
+      }
+
+      .workspace-task-group-list label {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.2rem 0;
+        color: var(--ink);
+        font-size: 0.92rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .workspace-task-group-list input {
+        width: 1rem;
+        height: 1rem;
+        margin: 0;
+      }
+
+      .workspace-task-assignee-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.45rem 0.5rem 0.45rem 0.75rem;
+        border: 1px solid #8fa283;
+        border-radius: 999px;
+        background: #dfe9d8;
+        color: var(--ink);
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      .workspace-task-assignee-pill__remove {
+        display: inline-grid;
+        width: 1.35rem;
+        height: 1.35rem;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--ink);
+        font: inherit;
+        font-size: 1.2rem;
+        font-weight: 800;
+        line-height: 1;
+        cursor: pointer;
+      }
+
+      .workspace-task-assignee-pill__remove:hover,
+      .workspace-task-assignee-pill__remove:focus-visible {
+        background: #c4d4ba;
+        outline: none;
+      }
+
       .guest-card {
         border: 1px solid var(--planner-border);
         border-radius: 8px;
@@ -3986,7 +4086,7 @@
       #workspaceTaskModal .modal__dialog,
       .workspace-task-editor-page .workspace-task-editor-page__header,
       .workspace-task-editor-page.workspace-task-editor-page form {
-        width: min(calc(100vw - 2rem), 62rem);
+        width: min(100%, 62rem);
         max-width: 62rem;
       }
 
@@ -5750,6 +5850,46 @@
         color: #590000;
       }
 
+      /* Task editing is a nested workspace page, with the same persistent save affordance as event details. */
+      .workspace-task-editor-page {
+        position: fixed;
+        z-index: 25;
+        inset: var(--planner-desktop-header-height) 0 0 var(--planner-sidebar-width);
+        overflow-y: auto;
+        box-sizing: border-box;
+        padding: 1.25rem clamp(1rem, 3vw, 2rem) 6.5rem;
+        background: #fffdf9;
+      }
+
+      .workspace-task-editor-page[hidden] {
+        display: none;
+      }
+
+      .workspace-task-editor-page__header {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        min-width: 0;
+        max-width: 48rem;
+        margin: 0 auto 1rem;
+      }
+
+      .workspace-task-editor-page__header h3 {
+        margin: 0;
+      }
+
+      .workspace-task-editor-page form {
+        min-width: 0;
+        max-width: 48rem;
+        margin: 0 auto;
+      }
+
+      @media (max-width: 860px) {
+        .workspace-task-editor-page {
+          left: 0;
+        }
+      }
+
       @media (max-width: 480px) {
         .workspace-event-page--has-save-bar {
           padding-bottom: 6.6rem;
@@ -6087,6 +6227,26 @@
         gap: 0.45rem;
       }
 
+      /* Keep task photos together as a compact, clearly named group. */
+      #workspaceTaskEditForm .workspace-task-snapshots {
+        gap: 0.55rem;
+        margin: 0.25rem 0;
+        padding: 0.7rem;
+        border: 1px solid #c8d3c0;
+        border-radius: 10px;
+        background: #fff;
+      }
+
+      #workspaceTaskEditForm .workspace-task-snapshots .task-photo-actions {
+        gap: 0.4rem;
+      }
+
+      #workspaceTaskEditForm .workspace-task-snapshots .task-photo-actions .button {
+        min-height: 2rem;
+        padding: 0.3rem 0.65rem;
+        font-size: 0.82rem;
+      }
+
       /* The task editor keeps its compact metadata fields readable without a separate label row. */
       #workspaceTaskEditForm .workspace-task-edit-title {
         margin: 0;
@@ -6102,6 +6262,7 @@
 
       #workspaceTaskEditForm .workspace-task-edit-field > span {
         flex: 0 0 7.5rem;
+        text-align: right;
       }
 
       #workspaceTaskEditForm .workspace-task-edit-field > input,
@@ -6120,14 +6281,10 @@
         #workspaceTaskEditForm .workspace-task-edit-field > select {
           flex-basis: 100%;
         }
-      }
 
-      .task-photo-preview {
-        width: min(100%, 22rem);
-        overflow: hidden;
-        border: 1px solid var(--planner-border);
-        border-radius: 10px;
-        background: #fffdf9;
+        #workspaceTaskEditForm .workspace-task-edit-field > span {
+          text-align: left;
+        }
       }
 
       .task-photo-preview img,
@@ -6163,14 +6320,96 @@
         object-fit: cover;
       }
 
-      .workspace-task-photo {
-        display: grid;
-        gap: 0.45rem;
-        margin: 0.8rem 0 0;
+      .task-photo-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        margin-top: 0.8rem;
       }
 
-      .workspace-task-photo .button {
-        justify-self: start;
+      .task-photo-preview[hidden] {
+        display: none;
+      }
+
+      .workspace-task-photo-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.2rem;
+      }
+
+      .workspace-task-photo-grid > .task-photo-preview,
+      .workspace-task-photo-grid > .workspace-task-photos {
+        display: contents;
+      }
+
+      .workspace-task-photo-grid > .task-photo-preview[hidden] {
+        display: none;
+      }
+
+      .workspace-task-photo {
+        position: relative;
+        width: 4.25rem;
+        height: 4.25rem;
+        margin: 0;
+      }
+
+      .workspace-task-photo__preview {
+        display: block;
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        overflow: hidden;
+        border: 1px solid var(--planner-border);
+        border-radius: 8px;
+        background: #fffdf9;
+        cursor: zoom-in;
+      }
+
+      .workspace-task-photo__preview img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .workspace-task-photo__delete {
+        position: absolute;
+        top: -0.25rem;
+        right: -0.25rem;
+        display: grid;
+        width: 1.35rem;
+        height: 1.35rem;
+        place-items: center;
+        padding: 0;
+        border: 1px solid var(--planner-border);
+        border-radius: 50%;
+        background: var(--white);
+        color: #6f1d2a;
+        cursor: pointer;
+      }
+
+      .workspace-task-photo__delete svg {
+        width: 0.75rem;
+        height: 0.75rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .workspace-task-image-modal__dialog {
+        width: min(100%, 56rem);
+        padding: 0.75rem;
+      }
+
+      .workspace-task-image-modal__image {
+        display: block;
+        width: 100%;
+        max-height: calc(100vh - 4rem);
+        object-fit: contain;
+        border-radius: 7px;
       }
 
       .workspace-task-title-with-photo {

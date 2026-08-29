@@ -70,6 +70,7 @@ type SaveWorkspaceTaskInput = {
   eventId?: string;
   listId?: string;
   assignedUserId?: string;
+  assignedUserIds?: string[] | string;
   dueAt?: string;
   status?: string;
   priority?: string;
@@ -116,7 +117,13 @@ function normalizeBoolean(value: unknown, fallback = true) {
 
 function splitIds(value: unknown) {
   const values = Array.isArray(value) ? value : String(value || "").split(/[\n,;]+/);
-  return values.map((item) => String(item || "").trim()).filter(Boolean);
+  const seen = new Set<string>();
+  return values.map((item) => String(item || "").trim()).filter(Boolean).filter((item) => {
+    const key = item.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /** Keep planner names consistent without changing intentional acronyms such as "AI" or "UTSA". */
@@ -285,23 +292,29 @@ function eventIncludesWeddingPartyViewer(event: ReturnType<typeof mapEvent>, vie
 }
 
 function taskIsAssignedToWorkspaceViewer(task: ReturnType<typeof mapTask>, viewer: ReturnType<typeof getWorkspaceViewer>) {
-  const assignedUserId = String(task.assignedUserId || "").trim().toLowerCase();
-  if (!assignedUserId) return false;
+  const assignedUserIds = task.assignedUserIds.map((id) => id.toLowerCase());
+  if (!assignedUserIds.length) return false;
   const viewerAssignments = [
     viewer.userId,
     viewer.guestId,
     viewer.name ? `guest:${viewer.name}` : ""
   ].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
-  return viewerAssignments.includes(assignedUserId);
+  if (assignedUserIds.some((id) => viewerAssignments.includes(id))) return true;
+  const guest = listGuestContacts().find((item) => item.id === String(viewer.guestId || "").trim());
+  const groupAssignments = new Set(assignedUserIds
+    .filter((id) => id.startsWith("guest-type:"))
+    .map((id) => id.slice("guest-type:".length)));
+  return (guest?.types || []).some((type) => groupAssignments.has(type.trim().toLowerCase()));
 }
 
 function mapTask(row: Record<string, unknown>) {
   return {
     id: String(row.Id || "").trim(),
-    title: String(row.Title || "").trim(),
+    title: toTitleCase(row.Title),
     eventId: String(row.EventId || "").trim(),
     listId: String(row.ListId || "").trim(),
-    assignedUserId: String(row.AssignedUserId || "").trim(),
+    assignedUserIds: splitIds(row.AssignedUserId),
+    assignedUserId: splitIds(row.AssignedUserId)[0] || "",
     dueAt: iso(row.DueAt),
     status: String(row.Status || "Not Started").trim(),
     priority: String(row.Priority || "Medium").trim(),
@@ -626,9 +639,11 @@ export function saveWorkspaceTask(input: SaveWorkspaceTaskInput) {
   const listId = Object.prototype.hasOwnProperty.call(input, "listId")
     ? String(input.listId || "").trim()
     : String(existing?.listId || "").trim();
-  const assignedUserId = Object.prototype.hasOwnProperty.call(input, "assignedUserId")
-    ? String(input.assignedUserId || "").trim()
-    : String(existing?.assignedUserId || "").trim();
+  const assignedUserIds = Object.prototype.hasOwnProperty.call(input, "assignedUserIds")
+    ? splitIds(input.assignedUserIds)
+    : Object.prototype.hasOwnProperty.call(input, "assignedUserId")
+      ? splitIds(input.assignedUserId)
+      : existing?.assignedUserIds || splitIds(existing?.assignedUserId);
   const dueAt = Object.prototype.hasOwnProperty.call(input, "dueAt")
     ? String(input.dueAt || "").trim()
     : String(existing?.dueAt || "").trim();
@@ -641,10 +656,10 @@ export function saveWorkspaceTask(input: SaveWorkspaceTaskInput) {
       .reduce((highest, task) => Math.max(highest, Number(task.sortOrder || 0)), 0) + 1;
   const saved = {
     Id: id,
-    Title: String(input.title || existing?.title || "").trim(),
+    Title: toTitleCase(input.title || existing?.title),
     EventId: eventId,
     ListId: listId,
-    AssignedUserId: assignedUserId,
+    AssignedUserId: assignedUserIds.join(", "),
     DueAt: dueAt || (!existing ? DEFAULT_TASK_DUE_AT : ""),
     Status: status,
     Priority: String(input.priority || existing?.priority || "Medium").trim(),
@@ -677,7 +692,7 @@ export function setWorkspaceTaskCompleted(input: { id?: string; completed?: bool
     Title: existing.title,
     EventId: existing.eventId,
     ListId: existing.listId,
-    AssignedUserId: existing.assignedUserId,
+    AssignedUserId: existing.assignedUserIds.join(", "),
     DueAt: existing.dueAt,
     Status: completed ? "Done" : "Not Started",
     Priority: existing.priority,
