@@ -8125,6 +8125,9 @@
       return;
     }
 
+    // A Google account may have just been deliberately changed. Do not let a
+    // durable Worker session from the previous account win this verification.
+    window.localStorage.removeItem(STORAGE_KEYS.sessionToken);
     window.localStorage.setItem(STORAGE_KEYS.authToken, credential);
     window.sessionStorage.setItem(STORAGE_KEYS.authToken, credential);
     googleCredentialPromptPending = false;
@@ -8190,11 +8193,10 @@
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: handleGoogleCredentialResponse,
-        // Google always keeps the user in control of this flow. For a
-        // returning planner with one approved Google account, this supplies a
-        // fresh ID token after the previous one expires instead of making the
-        // dashboard look as though they deliberately signed out.
-        auto_select: true,
+        // Never silently reuse an account after someone signs out. This is
+        // particularly important on shared tablets, where the next person
+        // must be able to choose their own Google account.
+        auto_select: false,
         cancel_on_tap_outside: false
       });
       googleSignInReady = true;

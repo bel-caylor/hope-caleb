@@ -38,7 +38,11 @@ export default {
     let body: { method?: string; payload?: unknown; authToken?: string };
     try { body = JSON.parse(await request.text()); } catch { return jsonResponse({ ok: false, error: "Invalid JSON payload." }, allowedOrigin, 400); }
 
-    let sessionId = getCookie(request.headers.get("Cookie") || "", SESSION_COOKIE) || getSessionToken(String(body.authToken || ""));
+    // The browser always sends its chosen credential (or the session token we
+    // returned) in the request body. Do not fall back to the HttpOnly cookie:
+    // it cannot be cleared by the dashboard and would otherwise keep a shared
+    // tablet logged in as the previous Google account after it signs out.
+    let sessionId = getSessionToken(String(body.authToken || ""));
     let session = sessionId ? await getSession(env, sessionId) : null;
     let setCookie = "";
     if (!session) {
