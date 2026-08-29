@@ -35,7 +35,6 @@ let activeSlide = 0;
 const TRANSITIONS = ["kenburns-in", "kenburns-out", "drift-left", "drift-right", "lift"];
 
 buildLocalSlides();
-loadRehearsalSlides();
 loadSharedNotes();
 setupArrows();
 startSlideshow();
@@ -46,34 +45,6 @@ function buildLocalSlides() {
   });
 
   refreshSlides();
-}
-
-function loadRehearsalSlides() {
-  const callbackName = `handleRehearsalSlides${Date.now()}`;
-  const script = document.createElement("script");
-  const separator = GOOGLE_SCRIPT_URL.includes("?") ? "&" : "?";
-
-  window[callbackName] = (data) => {
-    (data.slides || []).forEach((slide) => slideshow.appendChild(createRehearsalSlide(slide)));
-    refreshSlides();
-    delete window[callbackName];
-    script.remove();
-  };
-  script.onerror = () => { delete window[callbackName]; script.remove(); };
-  script.src = `${GOOGLE_SCRIPT_URL}${separator}feed=rehearsal-slideshow&callback=${callbackName}`;
-  document.body.appendChild(script);
-}
-
-function createRehearsalSlide(slide) {
-  const section = createPhotoSlide(slide.imageUrl);
-  const caption = String(slide.caption || "").trim();
-  if (caption) {
-    const article = document.createElement("article");
-    article.className = "slide__note slide__note--overlay slide__note--plain";
-    article.innerHTML = `<p class="slide__note-text">${escapeHtml(caption)}</p>`;
-    section.querySelector(".slide__media-quote")?.appendChild(article);
-  }
-  return section;
 }
 
 function shuffleItems(items) {
