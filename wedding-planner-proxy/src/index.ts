@@ -24,6 +24,9 @@ export default {
     if (!allowedOrigin) return jsonResponse({ ok: false, error: "This planner endpoint is not available from this site." }, defaultOrigin(env), 403);
     if (request.method === "OPTIONS") return new Response("", { headers: cors(allowedOrigin) });
     if (request.method === "GET") {
+      if (url.pathname === "/rsvp-lookup") {
+        return proxyPublicRsvpLookup(url, env, allowedOrigin);
+      }
       if (url.pathname === "/session/validate") {
         const validated = await validateSessionAssertion(String(url.searchParams.get("token") || ""), env);
         return validated
@@ -82,6 +85,35 @@ async function getSession(env: Env, id: string): Promise<SessionRecord | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const session = await env.PLANNER_SESSIONS.get(`session:${id}`, "json") as SessionRecord | null;
   return session && session.email && session.sub && Number(session.expires || 0) > Date.now() ? session : null;
+}
+
+/**
+ * Serves the public invitation lookup without making a guest's browser load
+ * Apps Script directly. Some tablets and privacy filters block that cross-site
+ * script request even when the RSVP endpoint itself is healthy.
+ */
+async function proxyPublicRsvpLookup(requestUrl: URL, env: Env, origin: string) {
+  const firstName = String(requestUrl.searchParams.get("firstName") || "").trim();
+  const lastName = String(requestUrl.searchParams.get("lastName") || "").trim();
+  if (!firstName || !lastName) return jsonResponse({ ok: false, error: "Enter both a first name and a last name." }, origin, 400);
+
+  const appsScriptBase = normalizeAppsScriptBase(env.APPS_SCRIPT_BASE || DEFAULT_APPS_SCRIPT_BASE);
+  if (!appsScriptBase) return jsonResponse({ ok: false, error: "The RSVP service is not configured." }, origin, 500);
+
+  const upstreamUrl = new URL(`${appsScriptBase}/exec`);
+  upstreamUrl.searchParams.set("lookup", "rsvp");
+  upstreamUrl.searchParams.set("firstName", firstName);
+  upstreamUrl.searchParams.set("lastName", lastName);
+
+  try {
+    const upstream = await fetch(upstreamUrl.toString(), { headers: { "Accept": "application/json" } });
+    const text = await upstream.text();
+    if (!upstream.ok) return jsonResponse({ ok: false, error: `The RSVP service returned ${upstream.status}.` }, origin, 502);
+    const payload = JSON.parse(text);
+    return jsonResponse(payload, origin);
+  } catch (_) {
+    return jsonResponse({ ok: false, error: "The RSVP service could not be reached." }, origin, 502);
+  }
 }
 
 async function verifyGoogleToken(token: string, env: Env): Promise<Omit<SessionRecord, "expires"> | null> {

@@ -14,6 +14,7 @@ const HONEYMOON_OPTIONS = {
 
 const HOME_RSVP = {
   scriptUrl: "https://script.google.com/macros/s/AKfycbzn3RulyBWhCijHhvGYVIvBSaZkRAn8OrX5aFDDLUyOmTq3SCas_zeXu3Su9HE3Wo8/exec",
+  lookupUrl: "https://hope-caleb-wedding-planner-proxy.belinda-caylor.workers.dev/rsvp-lookup",
   deadlineLabel: "Please reply by December 1, 2026."
 };
 
@@ -645,14 +646,13 @@ async function loadRsvpLookupMatches(firstName, lastName) {
     throw new Error("Add your Apps Script URL in site.js before publishing the RSVP form.");
   }
 
-  // Apps Script occasionally drops a JSONP script request while redirecting
-  // from script.google.com to its response host. Retrying once keeps that
-  // momentary failure from preventing a guest from finding their invitation.
+  // Use the same-origin-approved Worker proxy so privacy filters on tablets do
+  // not have to permit a direct cross-site script load from Google.
   let payload;
   let lastError;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      payload = await loadRsvpLookupJsonp(firstName, lastName);
+      payload = await loadRsvpLookupViaProxy(firstName, lastName);
       break;
     } catch (error) {
       lastError = error;
@@ -667,6 +667,33 @@ async function loadRsvpLookupMatches(firstName, lastName) {
   }
 
   return Array.isArray(payload?.matches) ? payload.matches.map(normalizeLookupMatch) : [];
+}
+
+async function loadRsvpLookupViaProxy(firstName, lastName) {
+  const url = new URL(HOME_RSVP.lookupUrl);
+  url.searchParams.set("firstName", firstName);
+  url.searchParams.set("lastName", lastName);
+  url.searchParams.set("request", String(Date.now()));
+
+  let response;
+  try {
+    response = await fetch(url.toString(), { headers: { "Accept": "application/json" } });
+  } catch (_) {
+    throw new Error("We could not connect to the RSVP service. Check your connection, then try again. (Code: RSVP-PROXY-CONNECTION)");
+  }
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (_) {
+    throw new Error("The RSVP service returned an unreadable response. Try again in a moment. (Code: RSVP-PROXY-RESPONSE)");
+  }
+
+  if (!response.ok || payload?.ok === false) {
+    throw new Error(payload?.error || `The RSVP service is temporarily unavailable. (Code: RSVP-PROXY-${response.status || "ERROR"})`);
+  }
+
+  return payload;
 }
 
 function loadRsvpLookupJsonp(firstName, lastName) {
