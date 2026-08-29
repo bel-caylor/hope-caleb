@@ -7203,19 +7203,12 @@
       const bar = workspaceEventPageContentEl.querySelector("#workspaceSaveBar");
       const button = workspaceEventPageContentEl.querySelector("#workspaceSaveBarButton");
       if (!bar || !button) return;
-      const actions = {
-        details: {
-          form: "workspaceEventEditForm",
-          label: `Save ${isPlanningProject ? "project" : "event"} details`
-        },
-        tasks: { form: "workspaceEventTaskForm", label: "Add task" },
-        lists: { form: "workspaceEventListForm", label: "Add list" }
-      };
-      const action = actions[activeWorkspaceEventTab] || actions.details;
-      const form = workspaceEventPageContentEl.querySelector(`#${action.form}`);
-      bar.hidden = !form || (activeWorkspaceEventTab === "details" && !isDetailsDirty());
-      button.setAttribute("form", action.form);
-      button.textContent = action.label;
+      // Task and list forms own their actions immediately below their fields.
+      // Keep the fixed bar exclusively for saving unsaved event details.
+      const isVisible = activeWorkspaceEventTab === "details" && isDetailsDirty();
+      bar.hidden = !isVisible;
+      button.setAttribute("form", "workspaceEventEditForm");
+      button.textContent = `Save ${isPlanningProject ? "project" : "event"} details`;
       workspaceEventPageEl.classList.toggle("workspace-event-page--has-save-bar", !bar.hidden);
       workspaceStatusEl?.classList.toggle("workspace-status--above-save-bar", !bar.hidden);
     };
