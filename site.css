@@ -2440,7 +2440,7 @@ form[data-rsvp-response-form] {
   color: #5f6f5b;
   margin-bottom: 0.2rem;
   font-family: inherit;
-  font-size: 1.2rem;
+  font-size: 0.84rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1.2;
@@ -2542,7 +2542,7 @@ form[data-rsvp-response-form] {
 
 .rsvp-form-section h4 {
   margin-bottom: 0.2rem;
-  font-size: 1.2rem;
+  font-size: 0.84rem;
 }
 
 .rsvp-choice-row {
@@ -2569,7 +2569,7 @@ form[data-rsvp-response-form] {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 1.05rem;
-  color: #5f6f5b;
+  color: var(--wine-soft);
 }
 
 .rsvp-out-of-town-card .meta {
