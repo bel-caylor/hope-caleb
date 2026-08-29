@@ -3054,6 +3054,17 @@
         text-transform: uppercase;
       }
 
+      #workspaceTaskEditForm .workspace-task-edit-field .split {
+        grid-template-columns: minmax(0, 1fr) 2.5rem;
+        gap: 0.65rem;
+      }
+
+      #workspaceTaskEditForm .workspace-task-edit-field [data-add-workspace-task-assignee] {
+        width: 2.5rem;
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+      }
+
       .workspace-task-group-list {
         display: grid;
         gap: 0.45rem;
@@ -5681,7 +5692,7 @@
 
       .workspace-list-modal__item {
         display: grid;
-        grid-template-columns: 2.4rem 2.85rem minmax(0, 1fr) 2.4rem;
+        grid-template-columns: 2.4rem 3.1rem minmax(0, 1fr) 2.4rem;
         align-items: center;
       }
 
@@ -5716,8 +5727,9 @@
 
       .workspace-list-modal__reorder {
         display: flex;
-        gap: 0.05rem;
+        gap: 0.3rem;
         justify-content: center;
+        padding-inline: 0.1rem;
       }
 
       .workspace-list-modal__move {
@@ -5781,7 +5793,7 @@
 
       @media (max-width: 480px) {
         .workspace-list-modal__item {
-          grid-template-columns: 2.2rem 2.7rem minmax(0, 1fr) 2.2rem;
+          grid-template-columns: 2.2rem 2.95rem minmax(0, 1fr) 2.2rem;
         }
       }
 
