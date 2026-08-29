@@ -7092,7 +7092,7 @@
       <input type="hidden" name="assignedUserIds" value="">
       <fieldset class="workspace-task-assignment"><legend>Assigned to</legend>
         <div class="workspace-task-assignee-selection" data-workspace-task-assignee-selection>No one selected.</div>
-        <label class="workspace-task-edit-field"><span>Add individual</span><div class="split"><select data-workspace-task-assignee-person><option value="">Choose a person</option>${taskEligibleGuests.map((guest) => `<option value="guest:${escapeHtml(guest.name)}">${escapeHtml(guest.name)}</option>`).join("")}</select><button class="button button--light" type="button" data-add-workspace-task-assignee>Add person</button></div></label>
+        <label class="workspace-task-edit-field"><span>Add individual</span><div class="split"><select data-workspace-task-assignee-person><option value="">Choose a person</option>${taskEligibleGuests.map((guest) => `<option value="guest:${escapeHtml(guest.name)}">${escapeHtml(guest.name)}</option>`).join("")}</select><button class="button button--icon" type="button" data-add-workspace-task-assignee aria-label="Add person" title="Add person"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button></div></label>
         <div class="workspace-task-group-list"><span>Groups</span><div>${taskAssignmentGroups.map((group) => `
           <label><input type="checkbox" value="guest-type:${escapeHtml(group)}" data-workspace-task-assignee-group><span>${escapeHtml(group)}</span></label>
         `).join("")}</div></div>
