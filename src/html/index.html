@@ -4656,11 +4656,20 @@
       }
 
       .workspace-calendar-view-header {
+        --workspace-calendar-controls-height: 4rem;
+        position: sticky;
+        top: var(--planner-desktop-header-height);
+        z-index: 10;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
-        margin-bottom: 1rem;
+        min-height: var(--workspace-calendar-controls-height);
+        margin: 0;
+        padding: 0.5rem 0 0.75rem;
+        box-sizing: border-box;
+        background: #fff;
+        box-shadow: 0 1px 0 rgba(89, 0, 0, 0.14);
       }
 
       .workspace-calendar-view-header h3 {
@@ -5053,7 +5062,7 @@
 
       .workspace-event-directory__month-heading {
         position: sticky;
-        top: calc(var(--planner-desktop-header-height) + 0.25rem);
+        top: calc(var(--planner-desktop-header-height) + 4rem + 0.25rem);
         z-index: 4;
         align-self: start;
         margin: 0.6rem 0 0;
@@ -5080,7 +5089,7 @@
         display: grid;
         place-items: start center;
         position: sticky;
-        top: calc(var(--planner-desktop-header-height) + 3.2rem);
+        top: calc(var(--planner-desktop-header-height) + 4rem + 3.2rem);
         z-index: 3;
         align-self: start;
         padding: 0.8rem 0.45rem;
