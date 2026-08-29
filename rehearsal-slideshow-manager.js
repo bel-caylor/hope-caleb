@@ -46,8 +46,8 @@ function renderSlides() {
   list.innerHTML = slides.map((slide, index) => `
     <article class="slide-item">
       <img src="${escapeHtml(displaySlideImage(slide))}" data-rehearsal-slide-image="${escapeHtml(slide.id)}" alt="Slideshow photo ${index + 1}">
-      <div><small>Slide ${index + 1}</small><p>${escapeHtml(slide.caption || "No caption")}</p></div>
-      <div class="slide-actions"><button type="button" data-move="${slide.id}" data-direction="-1" aria-label="Move slide up" ${index === 0 ? "disabled" : ""}>↑</button><button type="button" data-move="${slide.id}" data-direction="1" aria-label="Move slide down" ${index === slides.length - 1 ? "disabled" : ""}>↓</button><button class="delete" type="button" data-delete="${slide.id}">Delete</button></div>
+      <div><small>Slide ${index + 1}</small><label class="slide-caption-label">Caption<textarea data-caption="${escapeHtml(slide.id)}" rows="2" maxlength="280" placeholder="Add a caption…">${escapeHtml(slide.caption || "")}</textarea></label></div>
+      <div class="slide-actions"><button class="secondary" type="button" data-save-caption="${slide.id}">Save caption</button><button type="button" data-move="${slide.id}" data-direction="-1" aria-label="Move slide up" ${index === 0 ? "disabled" : ""}>↑</button><button type="button" data-move="${slide.id}" data-direction="1" aria-label="Move slide down" ${index === slides.length - 1 ? "disabled" : ""}>↓</button><button class="delete" type="button" data-delete="${slide.id}">Delete</button></div>
     </article>`).join("");
   void hydrateSlideImages();
 }
@@ -179,7 +179,19 @@ function durationToMilliseconds(value, fallback) { const match = String(value ||
 async function handleListAction(event) {
   const deleteButton = event.target.closest("[data-delete]");
   const moveButton = event.target.closest("[data-move]");
+  const saveCaptionButton = event.target.closest("[data-save-caption]");
   try {
+    if (saveCaptionButton) {
+      const slide = slides.find((item) => item.id === saveCaptionButton.dataset.saveCaption);
+      const input = list.querySelector(`[data-caption="${CSS.escape(String(slide?.id || ""))}"]`);
+      if (!slide || !input) return;
+      saveCaptionButton.disabled = true;
+      const saved = await request("saveRehearsalSlide", { id: slide.id, caption: input.value });
+      slide.caption = String(saved?.caption ?? input.value).trim();
+      setStatus("Caption saved.", "success");
+      saveCaptionButton.disabled = false;
+      return;
+    }
     if (deleteButton) {
       const slide = slides.find((item) => item.id === deleteButton.dataset.delete);
       if (!slide || !confirm("Delete this photo from the rehearsal slideshow?")) return;
