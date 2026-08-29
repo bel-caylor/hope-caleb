@@ -7052,7 +7052,14 @@
     };
     const canManageEvent = Boolean(viewerProfile.isAdmin);
     const viewerUserId = getCurrentWorkspaceViewerUserId();
+    const pendingWorkspaceListReorderSaves = new Map();
     const saveWorkspaceListItems = (list, items, completedItems) => {
+      const listId = String(list.id || "").trim();
+      const pendingReorderSave = pendingWorkspaceListReorderSaves.get(listId);
+      if (pendingReorderSave) {
+        window.clearTimeout(pendingReorderSave.timer);
+        pendingWorkspaceListReorderSaves.delete(listId);
+      }
       const previousList = { ...list };
       const optimisticList = {
         id: String(list.id || "").trim(),
@@ -7080,6 +7087,39 @@
         }
       })();
 
+      return optimisticList;
+    };
+    const queueWorkspaceListReorderSave = (list, items, completedItems) => {
+      const listId = String(list.id || "").trim();
+      const pendingReorderSave = pendingWorkspaceListReorderSaves.get(listId);
+      if (pendingReorderSave) window.clearTimeout(pendingReorderSave.timer);
+      const previousList = pendingReorderSave?.previousList || { ...list };
+      const optimisticList = {
+        id: listId,
+        eventId: String(list.eventId || event.id || "").trim(),
+        title: String(list.title || "").trim(),
+        items: items.join("\n"),
+        completedItems: [...completedItems].sort((left, right) => left - right),
+        notes: String(list.notes || "").trim()
+      };
+      upsertCachedWorkspaceList(optimisticList);
+      savePlannerSessionCache();
+      setStatus(workspaceStatusEl, "List reordered. Saving shortly…", "pending");
+      const timer = window.setTimeout(async () => {
+        pendingWorkspaceListReorderSaves.delete(listId);
+        try {
+          const savedList = await backendRequest("saveWorkspaceList", optimisticList);
+          upsertCachedWorkspaceList(savedList);
+          savePlannerSessionCache();
+          setStatus(workspaceStatusEl, "List saved.", "success");
+        } catch (error) {
+          upsertCachedWorkspaceList(previousList);
+          savePlannerSessionCache();
+          renderWorkspaceEventPage();
+          setStatus(workspaceStatusEl, error.message || "Unable to save the list order.", "error");
+        }
+      }, 650);
+      pendingWorkspaceListReorderSaves.set(listId, { previousList, timer });
       return optimisticList;
     };
     const eventDateTime = splitWorkspaceDateTime(event.startsAt);
@@ -7626,7 +7666,7 @@
                 const nextCompleted = new Set([...completedItems]
                   .filter((itemIndex) => itemIndex !== index)
                   .map((itemIndex) => itemIndex > index ? itemIndex - 1 : itemIndex));
-                const savedList = await saveWorkspaceListItems(currentList, nextItems, nextCompleted);
+                const savedList = await queueWorkspaceListReorderSave(currentList, nextItems, nextCompleted);
                 renderModalList(savedList);
               } catch (error) {
                 deleteButton.disabled = false;
