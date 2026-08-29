@@ -1998,6 +1998,7 @@
         ${filteredEvents.map((event) => {
           const dateLabel = formatEventDateShort(event.date);
           const relatedTodos = getTodosForEvent(event.id);
+          const noteChecklist = getEventNotesChecklist(event.notes);
           const shotCount = cachedShots.filter((shot) => String(shot.eventId || "").trim() === String(event.id || "").trim()).length;
           const completedTaskCount = relatedTodos.filter((todo) => Boolean(todo.isComplete)).length;
           return `
@@ -2055,7 +2056,22 @@
                   ${event.notes ? `
                     <div class="guest-card__field guest-card__field--full">
                       <span>Notes</span>
-                      <strong>${escapeHtml(event.notes)}</strong>
+                      ${noteChecklist.length ? `
+                        <div class="event-accordion__tasks event-accordion__tasks--notes" aria-label="Notes checklist">
+                          ${noteChecklist.map((item, index) => `
+                            <label class="event-accordion__task ${item.checked ? "is-complete" : ""}">
+                              <input
+                                type="checkbox"
+                                data-toggle-event-note-item="${escapeHtml(String(event.id || ""))}"
+                                data-event-note-item-index="${escapeHtml(String(index))}"
+                                ${item.checked ? "checked" : ""}
+                                aria-label="${item.checked ? "Mark incomplete" : "Mark complete"}: ${escapeHtml(item.label)}">
+                              <strong>${escapeHtml(item.label)}</strong>
+                              ${event.assignedTo ? `<span>— ${escapeHtml(event.assignedTo)}</span>` : ""}
+                            </label>
+                          `).join("")}
+                        </div>
+                      ` : `<strong>${escapeHtml(event.notes)}</strong>`}
                     </div>
                   ` : ""}
                 </div>
@@ -2141,11 +2157,19 @@
         }
 
         return {
-          label: item,
+          label: item.replace(/^(?:[-*•])\s+/, "").trim(),
           checked: false
         };
       })
       .filter((item) => item.label);
+  }
+
+  function getEventNotesChecklist(value) {
+    const lines = String(value || "").replace(/\r/g, "").split("\n").map((line) => line.trim()).filter(Boolean);
+    if (!lines.length || !lines.every((line) => /^(?:\[(?:x|X| )\]|[-*•])\s+/.test(line))) {
+      return [];
+    }
+    return parseEventListItems(lines.join("\n"));
   }
 
   function serializeEventListItems(items) {
@@ -3270,6 +3294,43 @@
       cachedTodos = previousTodos;
       rerenderTodoData();
       setStatus(eventDetailStatusEl, error.message || "Unable to update task.", "error");
+    }
+  }
+
+  async function toggleEventNoteChecklistItem(eventId, itemIndex) {
+    const eventItem = getEventById(eventId);
+    const index = Number(itemIndex);
+    const items = getEventNotesChecklist(eventItem?.notes);
+    if (!eventItem || !Number.isInteger(index) || !items[index]) return;
+
+    const previousEvents = cachedEvents;
+    const nextItems = items.map((item, itemPosition) => itemPosition === index ? { ...item, checked: !item.checked } : item);
+    const nextEvent = { ...eventItem, notes: serializeEventListItems(nextItems), updatedAt: new Date().toISOString() };
+
+    try {
+      requirePlannerAccess();
+      upsertCachedEvent(nextEvent);
+      const savedEvent = await backendRequest("saveEvent", {
+        id: eventItem.id,
+        title: eventItem.title,
+        main: eventItem.main,
+        date: eventItem.date,
+        startsAt: eventItem.startsAt,
+        endsAt: eventItem.endsAt,
+        location: eventItem.location,
+        assignedTo: eventItem.assignedTo,
+        assignedPeople: eventItem.assignedPeople,
+        reminderMinutes: eventItem.reminderMinutes,
+        messageTemplate: eventItem.messageTemplate,
+        notes: nextEvent.notes,
+        active: eventItem.active
+      });
+      upsertCachedEvent(savedEvent);
+      setStatus(eventStatusEl, "Checklist updated.", "success");
+    } catch (error) {
+      cachedEvents = previousEvents;
+      rerenderEventData();
+      setStatus(eventStatusEl, error.message || "Unable to update checklist.", "error");
     }
   }
 
@@ -10376,6 +10437,14 @@ function sortTables(items) {
   });
 
   eventsListEl.addEventListener("click", (event) => {
+    const noteCheckbox = event.target.closest("[data-toggle-event-note-item]");
+    if (noteCheckbox) {
+      event.preventDefault();
+      event.stopPropagation();
+      void toggleEventNoteChecklistItem(noteCheckbox.dataset.toggleEventNoteItem, noteCheckbox.dataset.eventNoteItemIndex);
+      return;
+    }
+
     const taskCheckbox = event.target.closest("[data-toggle-event-todo-complete]");
     if (taskCheckbox) {
       event.preventDefault();
