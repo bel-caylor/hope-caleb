@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <title>Rehearsal Slideshow | Hope &amp; Caleb</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="rehearsal-slideshow-manager.css">
+  </head>
+  <body>
+    <main class="manager">
+      <header class="manager__header">
+        <div><p class="eyebrow">Hope &amp; Caleb</p><h1>Rehearsal Slideshow</h1><p class="intro">Add photos and captions for the rehearsal dinner display.</p></div>
+        <a class="back" href="/dashboard.html?view=planner">Back to planner</a>
+      </header>
+      <section class="card" aria-labelledby="add-slide-heading">
+        <h2 id="add-slide-heading">Add a photo</h2>
+        <form id="slideForm">
+          <label>Picture<input id="slideImage" type="file" accept="image/*" required></label>
+          <label>Caption <span>(optional)</span><textarea id="slideCaption" rows="3" maxlength="280" placeholder="A favorite memory, date, or note..."></textarea></label>
+          <div class="preview" id="slidePreview" hidden></div>
+          <button type="submit">Save to slideshow</button>
+          <p class="status" id="slideStatus" role="status"></p>
+        </form>
+      </section>
+      <section class="card" aria-labelledby="organize-slides-heading">
+        <div class="section-heading"><div><h2 id="organize-slides-heading">Organize photos</h2><p>Use the arrows to set the display order. Deleting a photo removes it from the slideshow.</p></div><button class="secondary" id="refreshSlides" type="button">Refresh</button></div>
+        <div class="slides" id="slidesList" aria-live="polite"></div>
+      </section>
+    </main>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="rehearsal-slideshow-manager.js"></script>
+  </body>
+</html>

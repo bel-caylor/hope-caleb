@@ -1,6 +1,6 @@
 import { getGoogleClientId } from "./auth";
 import { listPublicFeed, lookupPublicRsvpGroups, savePublicSubmission, syncGroupsSheet, syncGroupsSheetForEditor, syncGuestSummarySheets } from "./features/feed";
-import { initializeBedsSheet } from "./features/planner";
+import { initializeBedsSheet, listPublicRehearsalSlides } from "./features/planner";
 import { rpc } from "./rpc";
 import { withSpreadsheetWriteLock } from "./util/sheets";
 import { PLANNER_BUILD_VERSION } from "./version";
@@ -30,6 +30,9 @@ export function doGet(e?: GoogleAppsScript.Events.DoGet) {
   }
 
   if (shouldServePublicFeed(e)) {
+    if (String(e?.parameter?.feed || "").trim().toLowerCase() === "rehearsal-slideshow") {
+      return publicFeedResponse({ slides: listPublicRehearsalSlides() }, e);
+    }
     return publicFeedResponse(listPublicFeed(), e);
   }
 
@@ -192,7 +195,7 @@ function isRpcRequest(e?: GoogleAppsScript.Events.DoPost) {
 function isWriteRpcMethod(method: string) {
   return new Set([
     "savePerson", "saveBed", "saveEvent", "saveShot", "deleteShot",
-    "saveTodo", "uploadTodoImage", "deleteTodo", "saveEventList", "deleteEventList",
+    "saveTodo", "uploadTodoImage", "deleteTodo", "uploadRehearsalSlideImage", "saveRehearsalSlide", "deleteRehearsalSlide", "saveEventList", "deleteEventList",
     "saveTable", "saveTableReservedOpenSeats", "saveGuestTableAssignment", "saveGuestTableAssignments",
     "saveGuestDetails", "syncGuestSummarySheets", "syncGroupsSheet", "savePlannerRsvpCorrection",
     "initializePlannerWorkspace", "saveWorkspaceUser", "importLegacyPeopleToWorkspaceUsers", "syncPlannerUsersToGuests",

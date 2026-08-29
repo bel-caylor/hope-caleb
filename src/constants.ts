@@ -6,6 +6,7 @@ export const BEDS_SHEET = "Beds";
 export const TABLES_SHEET = "Tables";
 export const TODO_SHEET = "Todo";
 export const EVENT_LISTS_SHEET = "Event Lists";
+export const REHEARSAL_SLIDES_SHEET = "Rehearsal Slides";
 export const PLANNER_USERS_SHEET = "Planner Users";
 export const PLANNER_V2_EVENTS_SHEET = "Planner V2 Events";
 export const PLANNER_V2_TASKS_SHEET = "Planner V2 Tasks";
@@ -118,6 +119,7 @@ export const EVENT_LIST_HEADERS = [
   "CreatedAt",
   "UpdatedAt"
 ];
+export const REHEARSAL_SLIDE_HEADERS = ["Id", "Caption", "ImageUrl", "DriveFileId", "SortOrder", "CreatedAt", "UpdatedAt"];
 export const PLANNER_USER_HEADERS = [
   "Id",
   "GuestId",

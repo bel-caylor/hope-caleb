@@ -1,6 +1,6 @@
 import { listPlannerDashboardFeed, savePlannerRsvpCorrection, syncGroupsSheet, syncGuestSummarySheets } from "./features/feed";
 import { getViewerProfile } from "./auth";
-import { deleteEventList, deleteShot, deleteTodo, listBeds, listEventLists, listEvents, listPeople, listShots, listTables, listTodos, saveBed, saveEvent, saveEventList, saveGuestDetails, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveShot, saveTable, saveTableReservedOpenSeats, saveTodo, uploadTodoImage } from "./features/planner";
+import { deleteEventList, deleteRehearsalSlide, deleteShot, deleteTodo, listBeds, listEventLists, listEvents, listPeople, listRehearsalSlides, listShots, listTables, listTodos, saveBed, saveEvent, saveEventList, saveGuestDetails, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveRehearsalSlide, saveShot, saveTable, saveTableReservedOpenSeats, saveTodo, uploadRehearsalSlideImage, uploadTodoImage } from "./features/planner";
 import { generateEventPlan } from "./util/ai";
 import { PLANNER_BUILD_VERSION } from "./version";
 import { archiveLegacyPlanningData, deleteWorkspaceAsset, deleteWorkspaceEvent, deleteWorkspaceList, deleteWorkspaceTask, getWorkspaceAssetImage, getWorkspaceProfile, importLegacyPeopleToWorkspaceUsers, initializePlannerWorkspace, listWorkspaceAssets, listWorkspaceEvents, listWorkspaceInvitees, listWorkspaceLists, listWorkspaceTasks, listWorkspaceUsers, saveWorkspaceAsset, saveWorkspaceEvent, saveWorkspaceList, saveWorkspaceTask, saveWorkspaceUser, setWorkspaceListItemCompleted, setWorkspaceTaskCompleted, syncPlannerUsersToGuests } from "./features/planner-v2";
@@ -43,6 +43,10 @@ export function rpc(input: { method: string; payload: unknown }) {
       return uploadTodoImage(payload as Parameters<typeof uploadTodoImage>[0]);
     case "deleteTodo":
       return deleteTodo(payload as Parameters<typeof deleteTodo>[0]);
+    case "listRehearsalSlides": return listRehearsalSlides();
+    case "uploadRehearsalSlideImage": return uploadRehearsalSlideImage(payload as Parameters<typeof uploadRehearsalSlideImage>[0]);
+    case "saveRehearsalSlide": return saveRehearsalSlide(payload as Parameters<typeof saveRehearsalSlide>[0]);
+    case "deleteRehearsalSlide": return deleteRehearsalSlide(payload as Parameters<typeof deleteRehearsalSlide>[0]);
     case "listEventLists":
       return listEventLists();
     case "saveEventList":

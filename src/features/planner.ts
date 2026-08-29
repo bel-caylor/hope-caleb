@@ -1,4 +1,4 @@
-import { BED_HEADERS, BEDS_SHEET, EVENT_HEADERS, EVENT_LIST_HEADERS, EVENT_LISTS_SHEET, EVENTS_SHEET, GUESTS_SHEET, PEOPLE_HEADERS, PEOPLE_SHEET, SHOT_HEADERS, SHOTS_SHEET, TABLE_HEADERS, TABLES_SHEET, TODO_HEADERS, TODO_SHEET } from "../constants";
+import { BED_HEADERS, BEDS_SHEET, EVENT_HEADERS, EVENT_LIST_HEADERS, EVENT_LISTS_SHEET, EVENTS_SHEET, GUESTS_SHEET, PEOPLE_HEADERS, PEOPLE_SHEET, REHEARSAL_SLIDE_HEADERS, REHEARSAL_SLIDES_SHEET, SHOT_HEADERS, SHOTS_SHEET, TABLE_HEADERS, TABLES_SHEET, TODO_HEADERS, TODO_SHEET } from "../constants";
 import { requirePlannerAccess } from "../auth";
 import { createId, deleteRowById, ensureSheet, getSheetByName, readRows, toIsoString, upsertRow } from "../util/sheets";
 
@@ -78,6 +78,9 @@ type UploadTodoImageInput = {
   fileName?: string;
   taskTitle?: string;
 };
+
+type SaveRehearsalSlideInput = { id?: string; caption?: string; imageUrl?: string; driveFileId?: string; sortOrder?: number | string; };
+type UploadRehearsalSlideImageInput = { data?: string; contentType?: string; fileName?: string; };
 
 type SaveEventListInput = {
   id?: string;
@@ -427,6 +430,18 @@ function mapTodoRow(row: Record<string, unknown>) {
     reminderDate: normalizeSheetDate(row.ReminderDate),
     category: String(row.Category || ""),
     tags: String(row.Tags || ""),
+    createdAt: toIsoString(row.CreatedAt),
+    updatedAt: toIsoString(row.UpdatedAt)
+  };
+}
+
+function mapRehearsalSlideRow(row: Record<string, unknown>) {
+  return {
+    id: String(row.Id || "").trim(),
+    caption: String(row.Caption || "").trim(),
+    imageUrl: String(row.ImageUrl || "").trim(),
+    driveFileId: String(row.DriveFileId || "").trim(),
+    sortOrder: Number(row.SortOrder || 0),
     createdAt: toIsoString(row.CreatedAt),
     updatedAt: toIsoString(row.UpdatedAt)
   };
@@ -941,6 +956,61 @@ export function listTodos() {
   return readRows(TODO_SHEET)
     .filter((row) => String(row.Title || row.Notes || row.AssignedTo || row.DueDate || "").trim())
     .map(mapTodoRow);
+}
+
+/** Public, read-only slideshow feed. Images are explicitly shared for display. */
+export function listPublicRehearsalSlides() {
+  ensureSheet(REHEARSAL_SLIDES_SHEET, REHEARSAL_SLIDE_HEADERS);
+  return readRows(REHEARSAL_SLIDES_SHEET)
+    .filter((row) => String(row.ImageUrl || "").trim())
+    .map(mapRehearsalSlideRow)
+    .sort((left, right) => left.sortOrder - right.sortOrder || left.createdAt.localeCompare(right.createdAt));
+}
+
+export function listRehearsalSlides() {
+  requirePlannerAccess();
+  return listPublicRehearsalSlides();
+}
+
+export function uploadRehearsalSlideImage(input: UploadRehearsalSlideImageInput) {
+  requirePlannerAccess();
+  const encoded = String(input.data || "").trim().replace(/^data:[^;]+;base64,/, "");
+  const contentType = String(input.contentType || "").trim().toLowerCase();
+  if (!encoded || !contentType.startsWith("image/")) throw new Error("Choose a valid image for the slideshow.");
+  let bytes: number[];
+  try { bytes = Utilities.base64Decode(encoded); } catch (_) { throw new Error("The selected photo could not be read."); }
+  if (bytes.length > 5 * 1024 * 1024) throw new Error("That photo is too large. Please choose a smaller image.");
+  const extension = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
+  const requestedName = String(input.fileName || "").trim().replace(/[^a-z0-9._-]+/gi, "-");
+  const file = getRehearsalSlideFolder().createFile(Utilities.newBlob(bytes, contentType, requestedName || `rehearsal-slide-${Date.now()}.${extension}`));
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return { fileId: file.getId(), imageUrl: `https://drive.usercontent.google.com/download?id=${encodeURIComponent(file.getId())}&export=view&authuser=0`, fileName: file.getName() };
+}
+
+function getRehearsalSlideFolder() {
+  const name = "Hope & Caleb Rehearsal Slideshow";
+  const folders = DriveApp.getFoldersByName(name);
+  return folders.hasNext() ? folders.next() : DriveApp.createFolder(name);
+}
+
+export function saveRehearsalSlide(input: SaveRehearsalSlideInput) {
+  requirePlannerAccess();
+  const id = String(input.id || "").trim() || createId("rehearsal_slide");
+  const existing = listPublicRehearsalSlides().find((slide) => slide.id === id);
+  const now = new Date().toISOString();
+  const savedRow = { Id: id, Caption: String(input.caption || "").trim(), ImageUrl: String(input.imageUrl || existing?.imageUrl || "").trim(), DriveFileId: String(input.driveFileId || existing?.driveFileId || "").trim(), SortOrder: Number(input.sortOrder ?? existing?.sortOrder ?? listPublicRehearsalSlides().length), CreatedAt: existing?.createdAt || now, UpdatedAt: now };
+  upsertRow(REHEARSAL_SLIDES_SHEET, REHEARSAL_SLIDE_HEADERS, id, savedRow);
+  return mapRehearsalSlideRow(savedRow);
+}
+
+export function deleteRehearsalSlide(input: { id?: string }) {
+  requirePlannerAccess();
+  const id = String(input?.id || "").trim();
+  const slide = listPublicRehearsalSlides().find((item) => item.id === id);
+  if (!slide) throw new Error("Slideshow photo not found.");
+  deleteRowById(REHEARSAL_SLIDES_SHEET, REHEARSAL_SLIDE_HEADERS, id);
+  if (slide.driveFileId) { try { DriveApp.getFileById(slide.driveFileId).setTrashed(true); } catch (_) {} }
+  return { ok: true, id };
 }
 
 export function deleteTodo(input: { id?: string }) {
