@@ -486,6 +486,9 @@ function saveGroupRsvpSubmission(data: PublicSubmissionParams, options: { sendNo
 
   validateGroupRsvpSubmission(groupsSheet, submission);
   const guestResult = updateGuestRowsForGroupRsvp(guestsSheet, submission);
+  // The person who found this invitation is the RSVP contact. Preserve the
+  // canonical guest-sheet name rather than a typed approximation.
+  submission.contactName = guestResult.lookupGuestName || submission.contactName;
   const groupResult = updateGroupRowForRsvp(groupsSheet, submission, guestResult);
   appendStructuredRsvpRow(submission, guestResult);
   if (options.sendNotification !== false) {
@@ -618,12 +621,14 @@ function updateGuestRowsForGroupRsvp(
   guestsSheet: GoogleAppsScript.Spreadsheet.Sheet,
   submission: ParsedGroupRsvpSubmission
 ) {
+  const contactColumns = ensureGuestRsvpContactColumns(guestsSheet);
   const values = guestsSheet.getDataRange().getDisplayValues();
   const headers = values[0].map((header) => String(header || "").trim());
   const rows = values.slice(1);
 
   const groupIndex = findHeaderIndex(headers, [/^group$/i, /group\s*(name|id)/i]);
   const nameIndex = findHeaderIndex(headers, [/^wedding\s*guest$/i, /^name$/i, /guest\s*name/i, /full\s*name/i]);
+  const lastNameIndex = findHeaderIndex(headers, [/^last\s*name$/i]);
   const rsvpIndex = findHeaderIndex(headers, [/^rsvp$/i, /^attending$/i, /attendance/i, /response/i], ["plus 1"]);
   const plusAllowedIndex = findHeaderIndex(headers, [/^#\s*of\s*plu/i, /plus\s*one/i], ["rsvp"]);
   const plusRsvpIndex = findHeaderIndex(headers, [/plus\s*1.*rsvp/i, /rsvp.*plus\s*1/i, /plus\s*one.*rsvp/i, /^plus\s*1$/i]);
@@ -648,6 +653,7 @@ function updateGuestRowsForGroupRsvp(
   let remainingPlusOnes = submission.plusOneCount;
   let weddingAttendingCount = 0;
   let matchedGuestCount = 0;
+  let lookupGuestName = "";
 
   rows.forEach((row, rowIndex) => {
     if (getCell(row, groupIndex) !== submission.groupName) {
@@ -665,6 +671,24 @@ function updateGuestRowsForGroupRsvp(
         : "Pending";
 
     guestsSheet.getRange(rowNumber, rsvpIndex + 1).setValue(guestRsvpValue);
+
+    const guestFirstName = normalizeLookupNamePart(extractFirstName(guestName));
+    const guestLastName = normalizeLookupNamePart(getCell(row, lastNameIndex) || extractLastName(guestName));
+    const isLookupGuest = guestFirstName === normalizeLookupNamePart(submission.lookupGuestFirstName)
+      && guestLastName === normalizeLookupNamePart(submission.lookupGuestLastName);
+    if (isLookupGuest) {
+      lookupGuestName = guestName;
+      if (submission.email) {
+        guestsSheet.getRange(rowNumber, contactColumns.email + 1).setValue(submission.email);
+      }
+      if (submission.mobile) {
+        guestsSheet.getRange(rowNumber, contactColumns.phone + 1).setValue(submission.mobile);
+      }
+      guestsSheet.getRange(rowNumber, contactColumns.smsOptedIn + 1).setValue(submission.smsOptedIn ? "TRUE" : "FALSE");
+      guestsSheet.getRange(rowNumber, contactColumns.smsConsentRecordedAt + 1).setValue(
+        submission.smsOptedIn ? submission.smsConsentRecordedAt : ""
+      );
+    }
 
     if (selectedAnswer === "attending") {
       weddingAttendingCount += 1;
@@ -687,9 +711,37 @@ function updateGuestRowsForGroupRsvp(
     throw new Error("Could not find that group in the Guests sheet.");
   }
 
+  if (!lookupGuestName) {
+    throw new Error("Could not find the guest who looked up this invitation.");
+  }
+
   return {
     weddingAttendingCount,
-    matchedGuestCount
+    matchedGuestCount,
+    lookupGuestName
+  };
+}
+
+function ensureGuestRsvpContactColumns(sheet: GoogleAppsScript.Spreadsheet.Sheet) {
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0]
+    .map((value) => String(value || "").trim());
+  const requiredHeaders = ["Email", "Phone Number", "SMS Opted In", "SMS Consent Recorded At"];
+
+  requiredHeaders.forEach((header) => {
+    if (headers.some((existing) => existing.toLowerCase() === header.toLowerCase())) {
+      return;
+    }
+    const column = sheet.getLastColumn() + 1;
+    sheet.getRange(1, column).setValue(header);
+    headers.push(header);
+  });
+
+  const index = (header: string) => headers.findIndex((existing) => existing.toLowerCase() === header.toLowerCase());
+  return {
+    email: index("Email"),
+    phone: index("Phone Number"),
+    smsOptedIn: index("SMS Opted In"),
+    smsConsentRecordedAt: index("SMS Consent Recorded At")
   };
 }
 
