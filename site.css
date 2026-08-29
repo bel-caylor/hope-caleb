@@ -2164,6 +2164,12 @@ main > .section:nth-of-type(even)::after {
   align-items: start;
 }
 
+.rsvp-layout .rsvp-card {
+  width: 100%;
+  max-width: 640px;
+  justify-self: center;
+}
+
 .rsvp-card h3,
 .rsvp-form-section h4 {
   font-family: Georgia, "Times New Roman", serif;
@@ -3105,14 +3111,6 @@ form[data-rsvp-response-form] {
 
   .rsvp-editor__header {
     flex-direction: column;
-  }
-}
-
-@media (min-width: 961px) {
-  .rsvp-layout .rsvp-card {
-    width: 100%;
-    max-width: 640px;
-    justify-self: center;
   }
 }
 
