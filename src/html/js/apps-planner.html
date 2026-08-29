@@ -172,7 +172,7 @@
   let activeWorkspaceEventTab = getRequestedWorkspaceEventTab() || String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceEventTab) || "details").trim() || "details";
   let selectedWorkspaceTaskId = getRequestedWorkspaceTaskId() || String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceTaskId) || "").trim();
   let activeWorkspaceHubView = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceHubView) || "create").trim() || "create";
-  let activeWorkspaceCalendarView = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarView) || "month").trim() || "month";
+  let activeWorkspaceCalendarView = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarView) || "list").trim() || "list";
   let selectedWorkspaceCalendarDate = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarDate) || "").trim();
   let workspaceCalendarListDateFilter = "";
   let workspaceCalendarMonth = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarMonth) || "").trim();
@@ -6297,7 +6297,7 @@
   }
 
   function setWorkspaceCalendarView(view) {
-    activeWorkspaceCalendarView = ["month", "list"].includes(view) ? view : "month";
+    activeWorkspaceCalendarView = ["month", "list"].includes(view) ? view : "list";
     window.sessionStorage.setItem(STORAGE_KEYS.workspaceCalendarView, activeWorkspaceCalendarView);
     workspaceCalendarViewTabsEl?.querySelectorAll("[data-workspace-calendar-view]").forEach((button) => {
       const active = button.dataset.workspaceCalendarView === activeWorkspaceCalendarView;
