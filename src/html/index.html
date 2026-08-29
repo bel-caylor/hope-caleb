@@ -5899,20 +5899,24 @@
       }
 
       .workspace-invitees__guest-list {
-        columns: 180px;
-        column-gap: 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
         margin: 0.55rem 0 0;
-        padding-left: 1.25rem;
+        padding: 0;
+        list-style: none;
       }
 
       .workspace-invitees__guest {
-        break-inside: avoid;
-        margin-bottom: 0.45rem;
-        padding-left: 0.1rem;
-      }
-
-      .workspace-invitees__guest--removable {
-        padding-right: 0.3rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.35rem 0.55rem 0.35rem 0.7rem;
+        border: 1px solid #829573;
+        border-radius: 0.45rem;
+        background: #dfe8d8;
+        color: #31402b;
+        font-weight: 700;
       }
 
       .workspace-invitees__remove {
@@ -5920,18 +5924,17 @@
         border: 0;
         padding: 0;
         background: transparent;
-        color: #8d1d1d;
+        color: #506544;
         font: inherit;
         font-size: 1.1rem;
         font-weight: 800;
         line-height: 1;
         cursor: pointer;
-        margin-left: 0.3rem;
       }
 
       .workspace-invitees__remove:hover,
       .workspace-invitees__remove:focus-visible {
-        color: #590000;
+        color: #26361f;
       }
 
       @media (max-width: 480px) {
