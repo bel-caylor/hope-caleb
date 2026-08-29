@@ -45,7 +45,7 @@ function renderSlides() {
   if (!slides.length) { list.innerHTML = '<p class="empty">No photos yet. Add the first one above.</p>'; return; }
   list.innerHTML = slides.map((slide, index) => `
     <article class="slide-item">
-      <img src="${escapeHtml(slide.imageUrl)}" alt="Slideshow photo ${index + 1}">
+      <img src="${escapeHtml(displaySlideImage(slide))}" alt="Slideshow photo ${index + 1}">
       <div><small>Slide ${index + 1}</small><p>${escapeHtml(slide.caption || "No caption")}</p></div>
       <div class="slide-actions"><button type="button" data-move="${slide.id}" data-direction="-1" aria-label="Move slide up" ${index === 0 ? "disabled" : ""}>↑</button><button type="button" data-move="${slide.id}" data-direction="1" aria-label="Move slide down" ${index === slides.length - 1 ? "disabled" : ""}>↓</button><button class="delete" type="button" data-delete="${slide.id}">Delete</button></div>
     </article>`).join("");
@@ -134,8 +134,8 @@ async function googlePhotosRequest(url, accessToken, options = {}) {
 }
 
 async function waitForPickedPhotos(session, accessToken) {
-  const interval = Math.max(2000, Number(String(session.pollingConfig?.pollInterval || "3s").replace("s", "")) * 1000);
-  const deadline = Date.now() + Math.max(60_000, Number(String(session.pollingConfig?.timeoutIn || "15m").replace("m", "")) * 60_000);
+  const interval = Math.max(2000, durationToMilliseconds(session.pollingConfig?.pollInterval, 3000));
+  const deadline = Date.now() + Math.max(60_000, durationToMilliseconds(session.pollingConfig?.timeoutIn, 15 * 60_000));
   while (Date.now() < deadline) {
     await delay(interval);
     const current = await googlePhotosRequest(`https://photospicker.googleapis.com/v1/sessions/${encodeURIComponent(session.id)}`, accessToken);
@@ -163,6 +163,7 @@ async function saveGooglePhotos(items, accessToken) {
 
 function delay(milliseconds) { return new Promise((resolve) => window.setTimeout(resolve, milliseconds)); }
 function withTimeout(promise, milliseconds, message) { return Promise.race([promise, new Promise((_, reject) => window.setTimeout(() => reject(new Error(message)), milliseconds))]); }
+function durationToMilliseconds(value, fallback) { const match = String(value || "").trim().match(/^(\d+(?:\.\d+)?)(ms|s|m|h)?$/i); if (!match) return fallback; const multiplier = { ms: 1, s: 1000, m: 60_000, h: 3_600_000 }[String(match[2] || "s").toLowerCase()] || 1000; return Number(match[1]) * multiplier; }
 
 async function handleListAction(event) {
   const deleteButton = event.target.closest("[data-delete]");
@@ -206,3 +207,4 @@ function loadImage(file) { return new Promise((resolve, reject) => { const image
 function blobToDataUrl(blob) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error("The selected photo could not be read.")); reader.readAsDataURL(blob); }); }
 function setStatus(message, kind = "") { statusEl.textContent = message; statusEl.className = `status ${kind}`; }
 function escapeHtml(value) { return String(value || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
+function displaySlideImage(slide) { return slide.driveFileId ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(slide.driveFileId)}&sz=w1600` : String(slide.imageUrl || ""); }
