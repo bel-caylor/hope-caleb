@@ -130,7 +130,16 @@ export function listPlannerDashboardFeed() {
         plusOneCount: String(row["Plus One Count"] || ""),
         plusOneName: String(row["Plus One Name"] || ""),
         childrenCount: String(row["Children Count"] || ""),
-        childrenNote: String(row["Children Note"] || "")
+        childrenNote: String(row["Children Note"] || ""),
+        mobile: String(row.Mobile || ""),
+        smsOptedIn: String(row["SMS Opted In"] || ""),
+        smsConsentRecordedAt: String(row["SMS Consent Recorded At"] || ""),
+        lodging: String(row.Lodging || ""),
+        airportTransportation: String(row["Airport Transportation"] || ""),
+        arrivalDetails: String(row["Arrival Details"] || ""),
+        departureDetails: String(row["Departure Details"] || ""),
+        travelHelpNote: String(row["Travel Help Note"] || ""),
+        volunteerRoles: String(row["Volunteer Roles"] || "")
       }))
       .reverse(),
     guests: readPlannerGuestRows()
@@ -462,6 +471,12 @@ type ParsedGroupRsvpSubmission = {
   mobile: string;
   smsOptedIn: boolean;
   smsConsentRecordedAt: string;
+  lodging: string;
+  airportTransportation: string;
+  arrivalDetails: string;
+  departureDetails: string;
+  travelHelpNote: string;
+  volunteerRoles: string[];
   rehearsalRsvp: string;
   openHouseRsvp: string;
   comment: string;
@@ -589,6 +604,12 @@ function parseGroupRsvpSubmission(data: PublicSubmissionParams): ParsedGroupRsvp
     smsConsentRecordedAt: smsOptedIn
       ? String(data.submittedAt || new Date().toISOString()).trim()
       : "",
+    lodging: String(data.lodging || "").trim(),
+    airportTransportation: String(data.airportTransportation || "").trim(),
+    arrivalDetails: String(data.arrivalDetails || "").trim(),
+    departureDetails: String(data.departureDetails || "").trim(),
+    travelHelpNote: String(data.travelHelpNote || "").trim(),
+    volunteerRoles: parseVolunteerRoles(data.volunteerRoles),
     rehearsalRsvp: normalizeRsvpAnswer(String(data.rehearsalRsvp || "")),
     openHouseRsvp: normalizeRsvpAnswer(String(data.openHouseRsvp || "")),
     comment: String(data.comment || "").trim()
@@ -614,6 +635,20 @@ function parseJsonRecord(rawValue: string | undefined) {
     }, {} as Record<string, string>);
   } catch (_) {
     throw new Error("Wedding selections could not be read.");
+  }
+}
+
+function parseVolunteerRoles(rawValue: string | undefined) {
+  const raw = String(rawValue || "").trim();
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return Array.from(new Set(parsed.map((value) => String(value || "").trim()).filter(Boolean)));
+  } catch (_) {
+    // This also supports simple values added through a spreadsheet import.
+    return Array.from(new Set(raw.split("|").map((value) => value.trim()).filter(Boolean)));
   }
 }
 
@@ -832,7 +867,13 @@ function appendStructuredRsvpRow(
     submission.childrenNote,
     submission.mobile,
     submission.smsOptedIn ? "TRUE" : "FALSE",
-    submission.smsConsentRecordedAt
+    submission.smsConsentRecordedAt,
+    submission.lodging,
+    submission.airportTransportation,
+    submission.arrivalDetails,
+    submission.departureDetails,
+    submission.travelHelpNote,
+    JSON.stringify(submission.volunteerRoles)
   ]);
 }
 
@@ -861,11 +902,44 @@ function buildGroupNotesSummary(
     parts.push(`Open house: ${formatRsvpLabel(submission.openHouseRsvp)}`);
   }
 
+  if (submission.lodging) {
+    parts.push(`Lodging: ${submission.lodging}`);
+  }
+
+  if (submission.airportTransportation) {
+    parts.push(`Airport transportation: ${formatAirportTransportation(submission.airportTransportation)}`);
+  }
+
+  if (submission.arrivalDetails) {
+    parts.push(`Arrival: ${submission.arrivalDetails}`);
+  }
+
+  if (submission.departureDetails) {
+    parts.push(`Departure: ${submission.departureDetails}`);
+  }
+
+  if (submission.travelHelpNote) {
+    parts.push(`Travel help: ${submission.travelHelpNote}`);
+  }
+
+  if (submission.volunteerRoles.length) {
+    parts.push(`Volunteer: ${submission.volunteerRoles.join(", ")}`);
+  }
+
   if (submission.comment) {
     parts.push(`Note: ${submission.comment}`);
   }
 
   return parts.join(" | ");
+}
+
+function formatAirportTransportation(value: string) {
+  const labels: Record<string, string> = {
+    "no-help-needed": "Transportation covered",
+    "airport-ride-needed": "May need an airport ride",
+    "coordination-help-needed": "Would like transportation coordination"
+  };
+  return labels[value] || value;
 }
 
 function buildGroupRsvpNotificationComment(
@@ -1145,7 +1219,12 @@ function readLatestGroupRsvpMap() {
       savedPlusOneCount: String(row["Plus One Count"] || "").trim(),
       savedPlusOneName: String(row["Plus One Name"] || "").trim(),
       savedChildrenCount: String(row["Children Count"] || "").trim(),
-      savedChildrenNote: String(row["Children Note"] || "").trim()
+      savedChildrenNote: String(row["Children Note"] || "").trim(),
+      savedLodging: String(row.Lodging || "").trim(),
+      savedAirportTransportation: String(row["Airport Transportation"] || "").trim(),
+      savedArrivalDetails: String(row["Arrival Details"] || "").trim(),
+      savedDepartureDetails: String(row["Departure Details"] || "").trim(),
+      savedTravelHelpNote: String(row["Travel Help Note"] || "").trim()
     });
   });
 

@@ -13,7 +13,7 @@ const HONEYMOON_OPTIONS = {
 };
 
 const HOME_RSVP = {
-  scriptUrl: "https://script.google.com/macros/s/AKfycbz-dZqBo6k6-ico95ULkxYmNxu007C6SMLnwPLo4TF8vXTigVEPX7QzPLzKMAbO1ijm/exec",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbxun2uYu8XXp3AMnKRi0GbWZKyhCLlNBjZXnB8oLljOKSQiP-Jc2bx0LALFivqmuCK3/exec",
   lookupUrl: "https://hope-caleb-wedding-planner-proxy.belinda-caylor.workers.dev/rsvp-lookup",
   deadlineLabel: "Please reply by December 1, 2026."
 };
@@ -38,6 +38,13 @@ const rsvpMembers = document.querySelector("[data-rsvp-members]");
 const rsvpRehearsalSection = document.querySelector("[data-rsvp-rehearsal-section]");
 const rsvpOpenHouseSection = document.querySelector("[data-rsvp-open-house-section]");
 const rsvpOutOfTownSection = document.querySelector("[data-rsvp-out-of-town-section]");
+const rsvpOutOfTownGatheringsCopy = document.querySelector("[data-rsvp-out-of-town-gatherings-copy]");
+const rsvpTravelDetails = document.querySelector("[data-rsvp-travel-details]");
+const rsvpLodging = document.querySelector("[data-rsvp-lodging]");
+const rsvpAirportTransportation = document.querySelector("[data-rsvp-airport-transportation]");
+const rsvpArrivalDetails = document.querySelector("[data-rsvp-arrival-details]");
+const rsvpDepartureDetails = document.querySelector("[data-rsvp-departure-details]");
+const rsvpTravelHelpNote = document.querySelector("[data-rsvp-travel-help-note]");
 const rsvpGuestExtras = document.querySelector("[data-rsvp-guest-extras]");
 const rsvpPlusOneSection = document.querySelector("[data-rsvp-plus-one-section]");
 const rsvpChildrenSection = document.querySelector("[data-rsvp-children-section]");
@@ -507,6 +514,9 @@ if (rsvpLookupForm && rsvpResponseForm) {
       payload.set("lookupFirstName", rsvpState.lookupFirstName);
       payload.set("lookupLastName", rsvpState.lookupLastName);
       payload.set("weddingSelections", JSON.stringify(weddingSelections));
+      payload.set("volunteerRoles", JSON.stringify(Array.from(rsvpResponseForm.querySelectorAll("[data-rsvp-volunteer-help]:checked"))
+        .map((input) => String(input.value || "").trim())
+        .filter(Boolean)));
 
       await fetch(HOME_RSVP.scriptUrl, {
         method: "POST",
@@ -911,7 +921,25 @@ function renderRsvpEditor(group) {
   }
 
   if (rsvpOutOfTownSection) {
-    rsvpOutOfTownSection.hidden = rsvpRehearsalSection.hidden && rsvpOpenHouseSection.hidden;
+    const isOutOfTownGroup = members.some((member) => isOutOfTownGuest(member));
+    rsvpTravelDetails.hidden = !isOutOfTownGroup;
+    rsvpOutOfTownSection.hidden = rsvpRehearsalSection.hidden && rsvpOpenHouseSection.hidden && !isOutOfTownGroup;
+    if (rsvpOutOfTownGatheringsCopy) {
+      rsvpOutOfTownGatheringsCopy.hidden = rsvpRehearsalSection.hidden && rsvpOpenHouseSection.hidden;
+    }
+    if (isOutOfTownGroup) {
+      rsvpLodging.value = group.savedLodging || "";
+      rsvpAirportTransportation.value = group.savedAirportTransportation || "";
+      rsvpArrivalDetails.value = group.savedArrivalDetails || "";
+      rsvpDepartureDetails.value = group.savedDepartureDetails || "";
+      rsvpTravelHelpNote.value = group.savedTravelHelpNote || "";
+    } else {
+      rsvpLodging.value = "";
+      rsvpAirportTransportation.value = "";
+      rsvpArrivalDetails.value = "";
+      rsvpDepartureDetails.value = "";
+      rsvpTravelHelpNote.value = "";
+    }
   }
 
   if (maxPlusOnes > 0) {
@@ -953,6 +981,12 @@ function isChurchMember(member) {
   return String(member?.type || "")
     .split(/[,|/]/)
     .some((type) => type.trim().toLowerCase() === "church");
+}
+
+function isOutOfTownGuest(member) {
+  return String(member?.type || "")
+    .split(/[,|/]/)
+    .some((type) => type.trim().toLowerCase() === "ott");
 }
 
 function hideRsvpEditor() {

@@ -199,7 +199,13 @@ export const RSVP_HEADERS = [
   "Children Note",
   "Mobile",
   "SMS Opted In",
-  "SMS Consent Recorded At"
+  "SMS Consent Recorded At",
+  "Lodging",
+  "Airport Transportation",
+  "Arrival Details",
+  "Departure Details",
+  "Travel Help Note",
+  "Volunteer Roles"
 ];
 export const COMMENT_HEADERS = ["Submitted At", "Name", "Comment", "Media Url", "Media Type", "Media Name", "Media Error"];
 export const GROUP_HEADERS = [

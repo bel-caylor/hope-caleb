@@ -1,6 +1,6 @@
 import { listPlannerDashboardFeed, savePlannerRsvpCorrection, syncGroupsSheet, syncGuestSummarySheets } from "./features/feed";
 import { getViewerProfile } from "./auth";
-import { deleteEventList, deleteRehearsalSlide, deleteShot, deleteTodo, listBeds, listEventLists, listEvents, listPeople, listRehearsalSlides, listShots, listTables, listTodos, saveBed, saveEvent, saveEventList, saveGuestDetails, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveRehearsalSlide, saveShot, saveTable, saveTableReservedOpenSeats, saveTodo, uploadRehearsalSlideImage, uploadTodoImage } from "./features/planner";
+import { deleteEventList, deleteRehearsalSlide, deleteShot, deleteTodo, getRehearsalSlideImage, listBeds, listEventLists, listEvents, listPeople, listRehearsalSlides, listShots, listTables, listTodos, saveBed, saveEvent, saveEventList, saveGuestDetails, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveRehearsalSlide, saveShot, saveTable, saveTableReservedOpenSeats, saveTodo, uploadRehearsalSlideImage, uploadTodoImage } from "./features/planner";
 import { generateEventPlan } from "./util/ai";
 import { PLANNER_BUILD_VERSION } from "./version";
 import { archiveLegacyPlanningData, deleteWorkspaceAsset, deleteWorkspaceEvent, deleteWorkspaceList, deleteWorkspaceTask, getWorkspaceAssetImage, getWorkspaceProfile, importLegacyPeopleToWorkspaceUsers, initializePlannerWorkspace, listWorkspaceAssets, listWorkspaceEvents, listWorkspaceInvitees, listWorkspaceLists, listWorkspaceTasks, listWorkspaceUsers, saveWorkspaceAsset, saveWorkspaceEvent, saveWorkspaceList, saveWorkspaceTask, saveWorkspaceUser, setWorkspaceListItemCompleted, setWorkspaceTaskCompleted, syncPlannerUsersToGuests } from "./features/planner-v2";
@@ -44,6 +44,7 @@ export function rpc(input: { method: string; payload: unknown }) {
     case "deleteTodo":
       return deleteTodo(payload as Parameters<typeof deleteTodo>[0]);
     case "listRehearsalSlides": return listRehearsalSlides();
+    case "getRehearsalSlideImage": return getRehearsalSlideImage(payload as Parameters<typeof getRehearsalSlideImage>[0]);
     case "uploadRehearsalSlideImage": return uploadRehearsalSlideImage(payload as Parameters<typeof uploadRehearsalSlideImage>[0]);
     case "saveRehearsalSlide": return saveRehearsalSlide(payload as Parameters<typeof saveRehearsalSlide>[0]);
     case "deleteRehearsalSlide": return deleteRehearsalSlide(payload as Parameters<typeof deleteRehearsalSlide>[0]);

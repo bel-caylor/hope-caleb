@@ -41,6 +41,7 @@
   const plannerSignOutButton = document.querySelector("#plannerSignOut");
   const plannerVersionInfoEl = document.querySelector("#plannerVersionInfo");
   const rsvpListEl = document.querySelector("#rsvpList");
+  const volunteersListEl = document.querySelector("#volunteersList");
   const personModal = document.querySelector("#personModal");
   const openPersonModalButton = document.querySelector("#openPersonModal");
   const eventModal = document.querySelector("#eventModal");
@@ -155,6 +156,14 @@
   let cachedEventLists = [];
   let cachedRsvps = [];
   let cachedGuests = [];
+  const RSVP_VOLUNTEER_OPTIONS = [
+    "Food setup — Friday, 3 p.m.",
+    "Serving — Friday, 6 p.m.",
+    "Cleanup — Friday, 6:45 p.m.",
+    "Last-minute errands — Friday",
+    "Prayer support",
+    "Transportation for out-of-town guests — Thursday or Friday"
+  ];
   let cachedWorkspaceUsers = [];
   let cachedWorkspaceEvents = [];
   let cachedWorkspaceTasks = [];
@@ -642,6 +651,7 @@
         calendar: "Event Calendar",
         home: "Home",
         rsvps: "RSVP",
+        volunteers: "Volunteers",
         guests: "Guests",
         tables: "Tables",
         people: "People & Vendors",
@@ -668,6 +678,7 @@
     if (nextPanel === "event-detail" && plannerDataReady) renderEventDetail();
     if (nextPanel === "todos") renderTodos();
     if (nextPanel === "home") renderSummary();
+    if (nextPanel === "volunteers") renderVolunteers();
     if (nextPanel === "planner-users") renderPlannerUsers();
   }
 
@@ -4656,6 +4667,67 @@
     return commitBedInputValue(input, input.value);
   }
 
+  function getVolunteerRoles(rsvp) {
+    const raw = String(rsvp?.volunteerRoles || "").trim();
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed)
+        ? Array.from(new Set(parsed.map((value) => String(value || "").trim()).filter(Boolean)))
+        : [];
+    } catch (_) {
+      return Array.from(new Set(raw.split("|").map((value) => value.trim()).filter(Boolean)));
+    }
+  }
+
+  function getLatestGroupRsvps() {
+    const latestByGroup = new Map();
+    getRsvpSubmissions()
+      .map((rsvp, index) => ({ rsvp, index, timestamp: new Date(rsvp.submittedAt || "").getTime() }))
+      .sort((left, right) => {
+        const leftTime = Number.isNaN(left.timestamp) ? Number.NEGATIVE_INFINITY : left.timestamp;
+        const rightTime = Number.isNaN(right.timestamp) ? Number.NEGATIVE_INFINITY : right.timestamp;
+        return rightTime - leftTime || left.index - right.index;
+      })
+      .forEach(({ rsvp }) => {
+        const key = String(rsvp.group || rsvp.name || "Guest").trim() || "Guest";
+        if (!latestByGroup.has(key)) latestByGroup.set(key, rsvp);
+      });
+    return Array.from(latestByGroup.entries()).map(([group, rsvp]) => ({ group, rsvp }));
+  }
+
+  function renderVolunteers() {
+    if (!volunteersListEl) return;
+    const roles = new Map();
+    getLatestGroupRsvps().forEach(({ group, rsvp }) => {
+      getVolunteerRoles(rsvp).forEach((role) => {
+        const volunteers = roles.get(role) || [];
+        volunteers.push({ group, name: String(rsvp.name || group).trim() || group });
+        roles.set(role, volunteers);
+      });
+    });
+
+    if (!roles.size) {
+      volunteersListEl.innerHTML = '<div class="rsvp-section-header"><h3>Volunteers</h3><span>Volunteer count · 0</span></div><p class="meta">No one has volunteered yet.</p>';
+      return;
+    }
+
+    const volunteerGroups = new Set();
+    roles.forEach((volunteers) => volunteers.forEach((volunteer) => volunteerGroups.add(volunteer.group)));
+    const uniqueVolunteerCount = volunteerGroups.size;
+    volunteersListEl.innerHTML = `
+      <div class="rsvp-section-header"><h3>Volunteers</h3><span>Volunteer count · ${uniqueVolunteerCount}</span></div>
+      <div class="guest-accordion">
+        ${Array.from(roles.entries()).sort(([left], [right]) => left.localeCompare(right)).map(([role, volunteers]) => `
+          <details class="guest-card guest-card--attending" open>
+            <summary><span class="accordion-summary__main"><span class="accordion-toggle" aria-hidden="true"></span><span class="accordion-title">${escapeHtml(role)}</span><span class="rsvp-submission-count">${volunteers.length} volunteer${volunteers.length === 1 ? "" : "s"}</span></span></summary>
+            <div class="guest-card__body"><ul class="rsvp-member-responses">${volunteers.map((volunteer) => `<li class="rsvp-member-response"><strong>${escapeHtml(volunteer.name)}</strong></li>`).join("")}</ul></div>
+          </details>
+        `).join("")}
+      </div>
+    `;
+  }
+
   function renderRsvps() {
     const submissions = getRsvpSubmissions();
     const dashboardRsvps = getDashboardRsvps();
@@ -4719,6 +4791,7 @@
       return total + (Number.isNaN(guestCount) ? 0 : guestCount);
     }, 0);
     const totalGuestsAttending = cachedGuests.filter((guest) => getRsvpGroup(getGuestRsvpLabel(guest)) === "yes").length;
+    const volunteerCount = latestSubmissions.filter(({ latest }) => getVolunteerRoles(latest).length).length;
     const getEventAttendingCount = (field) => latestSubmissions.reduce((total, { latest }) => {
       if (getRsvpGroup(latest[field]) !== "yes") return total;
       const guestCount = Number.parseInt(getSubmissionGuestCount(latest), 10);
@@ -4734,6 +4807,9 @@
         ["Guests attending", getSubmissionGuestCount(current), getSubmissionGuestCount(previous)],
         ["Wedding party", current.groupMembers, previous.groupMembers],
         ["Contact email", current.email, previous.email],
+        ["Mobile number", current.mobile, previous.mobile],
+        ["Text-message updates", current.smsOptedIn, previous.smsOptedIn],
+        ["Volunteer roles", getVolunteerRoles(current).join(", "), getVolunteerRoles(previous).join(", ")],
         ["Note", current.comment, previous.comment],
         ["Plus one", `${current.plusOneCount || "0"}${current.plusOneName ? ` (${current.plusOneName})` : ""}`, `${previous.plusOneCount || "0"}${previous.plusOneName ? ` (${previous.plusOneName})` : ""}`],
         ["Children", `${current.childrenCount || "0"}${current.childrenNote ? ` (${current.childrenNote})` : ""}`, `${previous.childrenCount || "0"}${previous.childrenNote ? ` (${previous.childrenNote})` : ""}`]
@@ -4766,6 +4842,9 @@
         ["Rehearsal dinner", rsvp.rehearsalRsvp],
         ["Open house", rsvp.openHouseRsvp],
         ["Contact email", rsvp.email],
+        ["Mobile number", rsvp.mobile],
+        ["Text-message updates", /^(true|yes)$/i.test(rsvp.smsOptedIn) ? "Opted in" : "Not opted in"],
+        ["Volunteer roles", getVolunteerRoles(rsvp).join(", ")],
         ["Submitted", formatSubmissionTime(rsvp)]
       ].filter(([, value]) => String(value || "").trim());
       const memberResponses = renderMemberResponses(rsvp.groupMembers);
@@ -4799,6 +4878,7 @@
         <div class="rsvp-section-heading">
           <h3>Group RSVPs</h3>
           <span>Online RSVP count · ${totalAttendingGuests}</span>
+          <span>Volunteer count · ${volunteerCount}</span>
         </div>
         <div class="rsvp-section-counts">
           <span>Total attending · ${totalGuestsAttending}</span>
@@ -4809,6 +4889,13 @@
       ${submissionMarkup}
       ${viewerProfile.isAdmin ? `<section class="modal" id="rsvpEditModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-rsvp-edit-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="rsvpEditModalTitle"><button class="modal__close" type="button" data-close-rsvp-edit-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="rsvpEditModalTitle">Edit RSVP response</h3><p class="meta">Saving records a corrected response and keeps the previous submission in its history.</p></div></div><form id="rsvpEditForm"><input name="group" type="hidden"><input name="contactName" type="hidden"><label>Contact email <input name="email" type="email"></label><fieldset class="type-options"><legend>Wedding party</legend><div class="rsvp-edit-members" data-rsvp-edit-members></div></fieldset><div class="split"><label>Rehearsal dinner <select name="rehearsalRsvp"><option value="">No response</option><option value="attending">Attending</option><option value="not-attending">Not attending</option></select></label><label>Open house <select name="openHouseRsvp"><option value="">No response</option><option value="attending">Attending</option><option value="not-attending">Not attending</option></select></label></div><div class="split"><label>Plus ones <input name="plusOneCount" type="number" min="0" step="1"></label><label>Plus-one name <input name="plusOneName"></label></div><div class="split"><label>Children <input name="childrenCount" type="number" min="0" step="1"></label><label>Children note <input name="childrenNote"></label></div><label>Note <textarea name="comment"></textarea></label><div class="toolbar"><button class="button" type="submit">Save corrected response</button><button class="button button--light" type="button" data-close-rsvp-edit-modal>Cancel</button></div><p class="status" id="rsvpEditStatus"></p></form></div></section>` : ""}
     `;
+  }
+
+  function addRsvpContactEditorFields(form) {
+    if (!form || form.querySelector("[data-rsvp-contact-fields]")) return;
+    const emailLabel = form.querySelector('input[name="email"]')?.closest("label");
+    if (!emailLabel) return;
+    emailLabel.insertAdjacentHTML("afterend", `<div class="split" data-rsvp-contact-fields><label>Mobile number <input name="mobile" type="tel"></label><label class="checkbox-label"><input name="smsOptIn" type="checkbox" value="yes"> This contact opted in to text-message updates</label></div><fieldset class="type-options" data-rsvp-volunteer-fields><legend>Volunteer help</legend><div class="rsvp-edit-members">${RSVP_VOLUNTEER_OPTIONS.map((role) => `<label class="checkbox-label"><input type="checkbox" data-rsvp-edit-volunteer value="${escapeHtml(role)}"> ${escapeHtml(role)}</label>`).join("")}</div></fieldset>`);
   }
 
   function renderGuests() {
@@ -8879,6 +8966,9 @@
       submittedAt: String(item.submittedAt || ""),
       name: String(item.name || ""),
       email: String(item.email || ""),
+      mobile: String(item.mobile || ""),
+      smsOptedIn: String(item.smsOptedIn || ""),
+      smsConsentRecordedAt: String(item.smsConsentRecordedAt || ""),
       attending: String(item.attending || ""),
       guests: String(item.guests || ""),
       comment: String(item.comment || ""),
@@ -8890,7 +8980,8 @@
       plusOneCount: String(item.plusOneCount || ""),
       plusOneName: String(item.plusOneName || ""),
       childrenCount: String(item.childrenCount || ""),
-      childrenNote: String(item.childrenNote || "")
+      childrenNote: String(item.childrenNote || ""),
+      volunteerRoles: String(item.volunteerRoles || "")
     }));
   }
 
@@ -9556,6 +9647,7 @@ function sortTables(items) {
       cachedGuests = normalizeGuests(payload);
       if (workspaceDraftState) renderWorkspaceDraft();
       renderRsvps();
+      renderVolunteers();
       renderGuests();
       renderTables();
       renderTableTypeOptions();
@@ -9953,6 +10045,7 @@ function sortTables(items) {
     const modal = rsvpListEl?.querySelector("#rsvpEditModal");
     const form = modal?.querySelector("#rsvpEditForm");
     if (!modal || !form) return;
+    addRsvpContactEditorFields(form);
     const rsvp = getRsvpSubmissions()
       .filter((item) => String(item.group || item.name || "").trim() === group)
       .sort((left, right) => new Date(right.submittedAt || 0).getTime() - new Date(left.submittedAt || 0).getTime())[0];
@@ -9962,6 +10055,7 @@ function sortTables(items) {
       group: rsvp.group || group,
       contactName: rsvp.name || group,
       email: rsvp.email,
+      mobile: rsvp.mobile,
       rehearsalRsvp: getRsvpEditAnswer(rsvp.rehearsalRsvp),
       openHouseRsvp: getRsvpEditAnswer(rsvp.openHouseRsvp),
       plusOneCount: rsvp.plusOneCount || "0",
@@ -9969,6 +10063,12 @@ function sortTables(items) {
       childrenCount: rsvp.childrenCount || "0",
       childrenNote: rsvp.childrenNote,
       comment: rsvp.comment
+    });
+    const smsOptInField = form.elements.namedItem("smsOptIn");
+    if (smsOptInField) smsOptInField.checked = /^(true|yes)$/i.test(String(rsvp.smsOptedIn || ""));
+    const selectedVolunteerRoles = new Set(getVolunteerRoles(rsvp));
+    form.querySelectorAll("[data-rsvp-edit-volunteer]").forEach((input) => {
+      input.checked = selectedVolunteerRoles.has(String(input.value || ""));
     });
     const membersEl = form.querySelector("[data-rsvp-edit-members]");
     membersEl.innerHTML = getRsvpEditMembers(rsvp).map((member) => `
@@ -10019,6 +10119,9 @@ function sortTables(items) {
       const weddingSelections = Object.fromEntries(Array.from(form.querySelectorAll("[data-rsvp-edit-member]")).map((input) => [
         String(input.dataset.rsvpEditMember || ""), String(input.value || "")
       ]));
+      data.volunteerRoles = JSON.stringify(Array.from(form.querySelectorAll("[data-rsvp-edit-volunteer]:checked"))
+        .map((input) => String(input.value || "").trim())
+        .filter(Boolean));
       if (!Object.keys(weddingSelections).length) throw new Error("This RSVP does not include any wedding guests to edit.");
       setStatus(form.querySelector("#rsvpEditStatus"), "Saving corrected response...", "pending");
       await backendRequest("savePlannerRsvpCorrection", { ...data, weddingSelections: JSON.stringify(weddingSelections) });

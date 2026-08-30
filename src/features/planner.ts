@@ -972,6 +972,21 @@ export function listRehearsalSlides() {
   return listPublicRehearsalSlides();
 }
 
+export function getPublicRehearsalSlideImage(input: { id?: string }) {
+  const id = String(input?.id || "").trim();
+  const slide = listPublicRehearsalSlides().find((item) => item.id === id);
+  if (!slide?.driveFileId) throw new Error("Slideshow photo was not found.");
+  const blob = DriveApp.getFileById(slide.driveFileId).getBlob();
+  const contentType = String(blob.getContentType() || "image/jpeg").toLowerCase();
+  if (!contentType.startsWith("image/")) throw new Error("Slideshow file is not an image.");
+  return { dataUrl: `data:${contentType};base64,${Utilities.base64Encode(blob.getBytes())}` };
+}
+
+export function getRehearsalSlideImage(input: { id?: string }) {
+  requirePlannerAccess();
+  return getPublicRehearsalSlideImage(input);
+}
+
 export function uploadRehearsalSlideImage(input: UploadRehearsalSlideImageInput) {
   requirePlannerAccess();
   const encoded = String(input.data || "").trim().replace(/^data:[^;]+;base64,/, "");

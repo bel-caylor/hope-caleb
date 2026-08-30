@@ -1,6 +1,6 @@
 import { getGoogleClientId } from "./auth";
 import { listPublicFeed, lookupPublicRsvpGroups, savePublicSubmission, syncGroupsSheet, syncGroupsSheetForEditor, syncGuestSummarySheets } from "./features/feed";
-import { initializeBedsSheet, listPublicRehearsalSlides } from "./features/planner";
+import { getPublicRehearsalSlideImage, initializeBedsSheet, listPublicRehearsalSlides } from "./features/planner";
 import { rpc } from "./rpc";
 import { withSpreadsheetWriteLock } from "./util/sheets";
 import { PLANNER_BUILD_VERSION } from "./version";
@@ -32,6 +32,9 @@ export function doGet(e?: GoogleAppsScript.Events.DoGet) {
   if (shouldServePublicFeed(e)) {
     if (String(e?.parameter?.feed || "").trim().toLowerCase() === "rehearsal-slideshow") {
       return publicFeedResponse({ slides: listPublicRehearsalSlides() }, e);
+    }
+    if (String(e?.parameter?.feed || "").trim().toLowerCase() === "rehearsal-slideshow-image") {
+      return publicFeedResponse(getPublicRehearsalSlideImage({ id: e?.parameter?.id }), e);
     }
     return publicFeedResponse(listPublicFeed(), e);
   }
@@ -152,7 +155,7 @@ function shouldServePublicFeed(e?: GoogleAppsScript.Events.DoGet) {
   const format = String(e?.parameter?.format || "").trim().toLowerCase();
   const feed = String(e?.parameter?.feed || "").trim().toLowerCase();
 
-  return Boolean(callback) || format === "json" || feed === "public";
+  return Boolean(callback) || format === "json" || feed === "public" || feed === "rehearsal-slideshow" || feed === "rehearsal-slideshow-image";
 }
 
 function isPublicLookupRequest(e?: GoogleAppsScript.Events.DoGet) {

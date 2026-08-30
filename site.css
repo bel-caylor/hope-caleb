@@ -2276,6 +2276,32 @@ form[data-rsvp-response-form] {
   padding-bottom: 0.45rem;
 }
 
+.rsvp-plus-one-fields {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 541px) {
+  .rsvp-plus-one-fields {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .rsvp-field--plus-one-count {
+    width: 7.25rem;
+  }
+
+  .rsvp-field--plus-one-count span {
+    font-size: 0.78rem;
+    line-height: 1.25;
+  }
+
+  .rsvp-field--plus-one-count select {
+    min-height: 2.6rem;
+    padding: 0.45rem 0.65rem;
+  }
+}
+
 .rsvp-field span {
   color: var(--wine-soft);
   font-size: 0.84rem;
@@ -2550,8 +2576,8 @@ h4#rsvp-volunteer-heading {
   transform: translateY(-50%);
   background: linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0.78),
-    rgba(95, 111, 91, 0.07)
+    rgb(248 248 244),
+    rgb(236 237 231)
   );
   color: #5f6f5b;
   font-family: inherit;
@@ -2625,6 +2651,26 @@ h4#rsvp-volunteer-heading {
 
 .rsvp-out-of-town-card .rsvp-field {
   gap: 0;
+}
+
+.rsvp-travel-details {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid rgba(89, 0, 0, 0.08);
+  border-radius: 1rem;
+  background: rgba(206, 170, 168, 0.1);
+}
+
+.rsvp-travel-details h5 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+  color: var(--wine-soft);
+}
+
+.rsvp-travel-details .meta {
+  margin: 0;
 }
 
 @media (max-width: 640px) {
