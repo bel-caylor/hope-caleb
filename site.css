@@ -2248,10 +2248,9 @@ form[data-rsvp-response-form] {
 }
 
 .rsvp-field--inline-select {
-  grid-template-columns: auto auto;
+  grid-template-columns: minmax(0, 1fr) 4.5rem;
   align-items: center;
   column-gap: 1rem;
-  justify-content: start;
 }
 
 .rsvp-field--inline-input {
@@ -2269,8 +2268,8 @@ form[data-rsvp-response-form] {
 }
 
 .rsvp-field--inline-select select {
-  width: 5rem;
-  min-width: 5rem;
+  width: 4.5rem;
+  min-width: 4.5rem;
   min-height: 2.6rem;
   padding-top: 0.45rem;
   padding-bottom: 0.45rem;
@@ -2288,12 +2287,12 @@ form[data-rsvp-response-form] {
   }
 
   .rsvp-field--plus-one-count {
-    width: 7.25rem;
+    width: auto;
   }
 
   .rsvp-field--plus-one-count span {
-    font-size: 0.78rem;
-    line-height: 1.25;
+    font-size: 0.84rem;
+    line-height: normal;
   }
 
   .rsvp-field--plus-one-count select {
@@ -2692,15 +2691,6 @@ h4#rsvp-volunteer-heading {
     flex-wrap: wrap;
   }
 
-  .rsvp-field--inline-select {
-    grid-template-columns: 1fr;
-    row-gap: 0.65rem;
-  }
-
-  .rsvp-field--inline-select select {
-    width: 100%;
-    min-width: 0;
-  }
 }
 
 @media (min-width: 541px) {
