@@ -139,7 +139,9 @@ export function listPlannerDashboardFeed() {
         arrivalDetails: String(row["Arrival Details"] || ""),
         departureDetails: String(row["Departure Details"] || ""),
         travelHelpNote: String(row["Travel Help Note"] || ""),
-        volunteerRoles: String(row["Volunteer Roles"] || "")
+        volunteerRoles: String(row["Volunteer Roles"] || ""),
+        riverWalkInterest: String(row["River Walk Interest"] || ""),
+        riverWalkCount: String(row["River Walk Count"] || "")
       }))
       .reverse(),
     guests: readPlannerGuestRows()
@@ -477,6 +479,8 @@ type ParsedGroupRsvpSubmission = {
   departureDetails: string;
   travelHelpNote: string;
   volunteerRoles: string[];
+  riverWalkInterest: string;
+  riverWalkCount: number;
   rehearsalRsvp: string;
   openHouseRsvp: string;
   comment: string;
@@ -610,6 +614,8 @@ function parseGroupRsvpSubmission(data: PublicSubmissionParams): ParsedGroupRsvp
     departureDetails: String(data.departureDetails || "").trim(),
     travelHelpNote: String(data.travelHelpNote || "").trim(),
     volunteerRoles: parseVolunteerRoles(data.volunteerRoles),
+    riverWalkInterest: normalizeRiverWalkInterest(data.riverWalkInterest),
+    riverWalkCount: normalizeWholeNumber(String(data.riverWalkCount || "")),
     rehearsalRsvp: normalizeRsvpAnswer(String(data.rehearsalRsvp || "")),
     openHouseRsvp: normalizeRsvpAnswer(String(data.openHouseRsvp || "")),
     comment: String(data.comment || "").trim()
@@ -873,7 +879,9 @@ function appendStructuredRsvpRow(
     submission.arrivalDetails,
     submission.departureDetails,
     submission.travelHelpNote,
-    JSON.stringify(submission.volunteerRoles)
+    JSON.stringify(submission.volunteerRoles),
+    submission.riverWalkInterest,
+    String(submission.riverWalkCount)
   ]);
 }
 
@@ -926,6 +934,10 @@ function buildGroupNotesSummary(
     parts.push(`Volunteer: ${submission.volunteerRoles.join(", ")}`);
   }
 
+  if (submission.riverWalkInterest) {
+    parts.push(`River Walk cruise: ${submission.riverWalkInterest === "interested" ? "Interested" : "Not interested"}${submission.riverWalkInterest === "interested" ? ` (${submission.riverWalkCount} may attend)` : ""}`);
+  }
+
   if (submission.comment) {
     parts.push(`Note: ${submission.comment}`);
   }
@@ -940,6 +952,11 @@ function formatAirportTransportation(value: string) {
     "coordination-help-needed": "Would like transportation coordination"
   };
   return labels[value] || value;
+}
+
+function normalizeRiverWalkInterest(value: string | undefined) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return ["interested", "not-interested"].includes(normalized) ? normalized : "";
 }
 
 function buildGroupRsvpNotificationComment(
@@ -1224,7 +1241,9 @@ function readLatestGroupRsvpMap() {
       savedAirportTransportation: String(row["Airport Transportation"] || "").trim(),
       savedArrivalDetails: String(row["Arrival Details"] || "").trim(),
       savedDepartureDetails: String(row["Departure Details"] || "").trim(),
-      savedTravelHelpNote: String(row["Travel Help Note"] || "").trim()
+      savedTravelHelpNote: String(row["Travel Help Note"] || "").trim(),
+      savedRiverWalkInterest: String(row["River Walk Interest"] || "").trim(),
+      savedRiverWalkCount: String(row["River Walk Count"] || "").trim()
     });
   });
 

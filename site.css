@@ -2621,7 +2621,7 @@ h4#rsvp-volunteer-heading {
 .rsvp-out-of-town-grid {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .rsvp-out-of-town-card {
@@ -2670,6 +2670,12 @@ h4#rsvp-volunteer-heading {
 
 .rsvp-travel-details .meta {
   margin: 0;
+}
+
+@media (max-width: 900px) {
+  .rsvp-out-of-town-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {

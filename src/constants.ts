@@ -205,7 +205,9 @@ export const RSVP_HEADERS = [
   "Arrival Details",
   "Departure Details",
   "Travel Help Note",
-  "Volunteer Roles"
+  "Volunteer Roles",
+  "River Walk Interest",
+  "River Walk Count"
 ];
 export const COMMENT_HEADERS = ["Submitted At", "Name", "Comment", "Media Url", "Media Type", "Media Name", "Media Error"];
 export const GROUP_HEADERS = [

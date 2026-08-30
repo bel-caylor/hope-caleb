@@ -13,7 +13,7 @@ const HONEYMOON_OPTIONS = {
 };
 
 const HOME_RSVP = {
-  scriptUrl: "https://script.google.com/macros/s/AKfycbxun2uYu8XXp3AMnKRi0GbWZKyhCLlNBjZXnB8oLljOKSQiP-Jc2bx0LALFivqmuCK3/exec",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbyBRbXFvFcRys_3O6bihS_GIx9fB5HRwAkmbSQKZh0UZ3OYUsYxRUt0G6jlWRvuLfM/exec",
   lookupUrl: "https://hope-caleb-wedding-planner-proxy.belinda-caylor.workers.dev/rsvp-lookup",
   deadlineLabel: "Please reply by December 1, 2026."
 };
@@ -37,6 +37,9 @@ const rsvpResponseForm = document.querySelector("[data-rsvp-response-form]");
 const rsvpMembers = document.querySelector("[data-rsvp-members]");
 const rsvpRehearsalSection = document.querySelector("[data-rsvp-rehearsal-section]");
 const rsvpOpenHouseSection = document.querySelector("[data-rsvp-open-house-section]");
+const rsvpRiverWalkSection = document.querySelector("[data-rsvp-river-walk-section]");
+const rsvpRiverWalkInterest = document.querySelector("[data-rsvp-river-walk-interest]");
+const rsvpRiverWalkCount = document.querySelector("[data-rsvp-river-walk-count]");
 const rsvpOutOfTownSection = document.querySelector("[data-rsvp-out-of-town-section]");
 const rsvpOutOfTownGatheringsCopy = document.querySelector("[data-rsvp-out-of-town-gatherings-copy]");
 const rsvpTravelDetails = document.querySelector("[data-rsvp-travel-details]");
@@ -785,6 +788,8 @@ function normalizeLookupGroup(item) {
     hasRecordedWeddingResponse: Boolean(savedWeddingResponse),
     rehearsalRsvp: normalizeLookupAnswer(item?.rehearsalRsvp || item?.savedRehearsalRsvp),
     openHouseRsvp: normalizeLookupAnswer(item?.openHouseRsvp || item?.savedOpenHouseRsvp),
+    savedRiverWalkInterest: String(item?.savedRiverWalkInterest || "").trim(),
+    savedRiverWalkCount: normalizeWholeNumber(item?.savedRiverWalkCount),
     savedEmail: String(item?.savedEmail || item?.email || "").trim(),
     savedComment: String(item?.savedComment || "").trim(),
     savedPlusOneCount: normalizeWholeNumber(item?.savedPlusOneCount),
@@ -922,18 +927,24 @@ function renderRsvpEditor(group) {
 
   if (rsvpOutOfTownSection) {
     const isOutOfTownGroup = members.some((member) => isOutOfTownGuest(member));
+    rsvpRiverWalkSection.hidden = !isOutOfTownGroup;
     rsvpTravelDetails.hidden = !isOutOfTownGroup;
-    rsvpOutOfTownSection.hidden = rsvpRehearsalSection.hidden && rsvpOpenHouseSection.hidden && !isOutOfTownGroup;
+    rsvpOutOfTownSection.hidden = rsvpRehearsalSection.hidden && rsvpRiverWalkSection.hidden && rsvpOpenHouseSection.hidden && !isOutOfTownGroup;
     if (rsvpOutOfTownGatheringsCopy) {
       rsvpOutOfTownGatheringsCopy.hidden = rsvpRehearsalSection.hidden && rsvpOpenHouseSection.hidden;
     }
     if (isOutOfTownGroup) {
+      fillCountSelect(rsvpRiverWalkCount, members.length + maxPlusOnes + childAllowance);
+      rsvpRiverWalkInterest.value = group.savedRiverWalkInterest || "";
+      rsvpRiverWalkCount.value = String(Math.min(group.savedRiverWalkCount || 0, members.length + maxPlusOnes + childAllowance));
       rsvpLodging.value = group.savedLodging || "";
       rsvpAirportTransportation.value = group.savedAirportTransportation || "";
       rsvpArrivalDetails.value = group.savedArrivalDetails || "";
       rsvpDepartureDetails.value = group.savedDepartureDetails || "";
       rsvpTravelHelpNote.value = group.savedTravelHelpNote || "";
     } else {
+      fillCountSelect(rsvpRiverWalkCount, 0);
+      rsvpRiverWalkInterest.value = "";
       rsvpLodging.value = "";
       rsvpAirportTransportation.value = "";
       rsvpArrivalDetails.value = "";

@@ -329,67 +329,6 @@
               <p class="meta">If you can’t make the ceremony, please still join us for dinner and the celebration—<br>we would love to celebrate with you.</p>
               <div class="rsvp-party-members" data-rsvp-members></div>
             </div>
-            <div class="rsvp-form-section rsvp-form-section--details rsvp-form-section--out-of-town" data-rsvp-out-of-town-section hidden>
-              <h4>Out-of-Town Details</h4>
-              <p class="meta" data-rsvp-out-of-town-gatherings-copy>We are excited to spend more time with our out-of-town guests, so we are inviting this group to the rehearsal dinner and open house.</p>
-              <div class="rsvp-out-of-town-grid">
-                <div class="rsvp-out-of-town-card" data-rsvp-rehearsal-section hidden>
-                  <h5>Rehearsal Dinner</h5>
-                  <p class="meta">Thursday, January 7th, 6 p.m. at <span class="rsvp-nowrap">@MoonShadowHaven</span>.</p>
-                  <label class="rsvp-field">
-                    <select name="rehearsalRsvp" data-rsvp-rehearsal-select>
-                      <option value="">Select one</option>
-                      <option value="attending">Attending</option>
-                      <option value="not-attending">Not attending</option>
-                    </select>
-                  </label>
-                </div>
-                <div class="rsvp-out-of-town-card" data-rsvp-open-house-section hidden>
-                  <h5>Caylor Open House</h5>
-                  <p class="meta">Sunday, January 10th, 3 p.m. at <span class="rsvp-nowrap">@18-915LaVerita</span>.</p>
-                  <label class="rsvp-field">
-                    <select name="openHouseRsvp" data-rsvp-open-house-select>
-                      <option value="">Select one</option>
-                      <option value="attending">Attending</option>
-                      <option value="not-attending">Not attending</option>
-                    </select>
-                  </label>
-                </div>
-              </div>
-              <div class="rsvp-travel-details" data-rsvp-travel-details hidden>
-                <h5>Travel &amp; Stay</h5>
-                <p class="meta">These optional details help us welcome you well and coordinate rides if needed.</p>
-                <div class="rsvp-form-grid">
-                  <label class="rsvp-field">
-                    <span>Where are you staying?</span>
-                    <input type="text" name="lodging" data-rsvp-lodging placeholder="Hotel, rental, or area">
-                  </label>
-                  <label class="rsvp-field">
-                    <span>Airport transportation</span>
-                    <select name="airportTransportation" data-rsvp-airport-transportation>
-                      <option value="">Select one (optional)</option>
-                      <option value="no-help-needed">I have transportation covered</option>
-                      <option value="airport-ride-needed">I may need a ride to or from the airport</option>
-                      <option value="coordination-help-needed">I would like help coordinating transportation</option>
-                    </select>
-                  </label>
-                </div>
-                <div class="rsvp-form-grid">
-                  <label class="rsvp-field">
-                    <span>Arrival plans</span>
-                    <input type="text" name="arrivalDetails" data-rsvp-arrival-details placeholder="Optional — date, time, and airport">
-                  </label>
-                  <label class="rsvp-field">
-                    <span>Departure plans</span>
-                    <input type="text" name="departureDetails" data-rsvp-departure-details placeholder="Optional — date, time, and airport">
-                  </label>
-                </div>
-                <label class="rsvp-field">
-                  <span>Anything else that would make travel easier?</span>
-                  <textarea name="travelHelpNote" data-rsvp-travel-help-note rows="3" placeholder="Optional — accessibility, carpooling, or other travel help"></textarea>
-                </label>
-              </div>
-            </div>
             <div class="rsvp-form-grid" data-rsvp-guest-extras>
               <div class="rsvp-form-section rsvp-form-section--details" data-rsvp-plus-one-section hidden>
                 <h4>Plus One</h4>
@@ -413,6 +352,42 @@
                   <span>Children's name(s)</span>
                   <input type="text" name="childrenNote" data-rsvp-children-name placeholder="Optional">
                 </label>
+              </div>
+            </div>
+            <div class="rsvp-form-section rsvp-form-section--details rsvp-form-section--out-of-town" data-rsvp-out-of-town-section hidden>
+              <h4>Out-of-Town Details</h4>
+              <p class="meta" data-rsvp-out-of-town-gatherings-copy>We are excited to spend more time with our out-of-town guests, so we are inviting this group to the rehearsal dinner and open house.</p>
+              <div class="rsvp-out-of-town-grid">
+                <div class="rsvp-out-of-town-card" data-rsvp-rehearsal-section hidden>
+                  <h5>Rehearsal Dinner</h5>
+                  <p class="meta">Thursday, January 7th, 6 p.m.<br>at <span class="rsvp-nowrap">@MoonShadowHaven</span>.</p>
+                  <label class="rsvp-field"><select name="rehearsalRsvp" data-rsvp-rehearsal-select><option value="">Select one</option><option value="attending">Attending</option><option value="not-attending">Not attending</option></select></label>
+                </div>
+                <div class="rsvp-out-of-town-card" data-rsvp-river-walk-section hidden>
+                  <h5>River Walk Cruise</h5>
+                  <p class="meta">Saturday, January 9th, 3 p.m.</p>
+                  <p class="meta">We’re considering a group tour and would love to know whether there’s enough interest to arrange one. This is an interest check, not a reservation.</p>
+                  <label class="rsvp-field"><span>Would your group be interested?</span><select name="riverWalkInterest" data-rsvp-river-walk-interest><option value="">Select one (optional)</option><option value="interested">Interested</option><option value="not-interested">Not interested</option></select></label>
+                  <label class="rsvp-field rsvp-field--inline-select"><span>Number who may attend</span><select name="riverWalkCount" data-rsvp-river-walk-count></select></label>
+                </div>
+                <div class="rsvp-out-of-town-card" data-rsvp-open-house-section hidden>
+                  <h5>Caylor Open House</h5>
+                  <p class="meta">Sunday, January 10th, 3 p.m.<br>at <span class="rsvp-nowrap">@18-915LaVerita</span>.</p>
+                  <label class="rsvp-field"><select name="openHouseRsvp" data-rsvp-open-house-select><option value="">Select one</option><option value="attending">Attending</option><option value="not-attending">Not attending</option></select></label>
+                </div>
+              </div>
+              <div class="rsvp-travel-details" data-rsvp-travel-details hidden>
+                <h5>Travel &amp; Stay</h5>
+                <p class="meta">These optional details help us welcome you well and coordinate rides if needed.</p>
+                <div class="rsvp-form-grid">
+                  <label class="rsvp-field"><span>Where are you staying?</span><input type="text" name="lodging" data-rsvp-lodging placeholder="Hotel, rental, or area"></label>
+                  <label class="rsvp-field"><span>Airport transportation</span><select name="airportTransportation" data-rsvp-airport-transportation><option value="">Select one (optional)</option><option value="no-help-needed">I have transportation covered</option><option value="airport-ride-needed">I may need a ride to or from the airport</option><option value="coordination-help-needed">I would like help coordinating transportation</option></select></label>
+                </div>
+                <div class="rsvp-form-grid">
+                  <label class="rsvp-field"><span>Arrival plans</span><input type="text" name="arrivalDetails" data-rsvp-arrival-details placeholder="Optional — date, time, and airport"></label>
+                  <label class="rsvp-field"><span>Departure plans</span><input type="text" name="departureDetails" data-rsvp-departure-details placeholder="Optional — date, time, and airport"></label>
+                </div>
+                <label class="rsvp-field"><span>Anything else that would make travel easier?</span><textarea name="travelHelpNote" data-rsvp-travel-help-note rows="3" placeholder="Optional — accessibility, carpooling, or other travel help"></textarea></label>
               </div>
             </div>
             <section class="rsvp-form-section rsvp-form-section--details rsvp-volunteer-section" data-rsvp-volunteer-section hidden aria-labelledby="rsvp-volunteer-heading">
