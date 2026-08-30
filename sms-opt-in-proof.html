@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Public verification of the Hope and Caleb Wedding SMS consent flow.">
+    <title>SMS Opt-In Verification | Hope &amp; Caleb</title>
+    <link rel="stylesheet" href="site.css">
+  </head>
+  <body>
+    <main class="section" style="max-width: 52rem; margin: 0 auto;">
+      <p class="eyebrow">Hope &amp; Caleb Wedding</p>
+      <h1>SMS Opt-In Verification</h1>
+      <p>This page documents the consent step used for the Hope &amp; Caleb Wedding SMS program. The live RSVP is invitation-gated to protect guest information, so the consent control appears after a guest has found their own invitation.</p>
+
+      <section class="content-block" aria-labelledby="journey-title">
+        <h2 id="journey-title">Guest consent journey</h2>
+        <ol>
+          <li>A guest visits <a href="index.html#rsvp">the RSVP page</a> and enters the first and last name of an invited guest.</li>
+          <li>After the invitation group is found, the guest completes their RSVP.</li>
+          <li>The guest may optionally enter a mobile number and separately select the unchecked SMS consent box shown below.</li>
+        </ol>
+        <p>Entering a mobile number and consenting to texts are never required to RSVP.</p>
+      </section>
+
+      <section class="content-block rsvp-card" aria-labelledby="consent-title">
+        <p class="eyebrow">RSVP form excerpt</p>
+        <h2 id="consent-title">Optional wedding text updates</h2>
+        <div class="rsvp-form-grid rsvp-form-grid--single">
+          <label class="rsvp-field rsvp-field--inline-input">
+            <span>Mobile number <small>(optional)</small></span>
+            <input type="tel" placeholder="(555) 555-5555" disabled aria-label="Example optional mobile number field">
+          </label>
+        </div>
+        <label class="rsvp-sms-consent">
+          <input type="checkbox" disabled aria-label="Example unchecked SMS consent checkbox">
+          <span>I agree to receive up to 4 wedding-planning text messages per month from Hope &amp; Caleb Wedding at the number above. Message and data rates may apply. Reply <strong>STOP</strong> to opt out and <strong>HELP</strong> for help. Consent is not required to RSVP. See our <a href="privacy-policy.html">Privacy Policy</a> and <a href="terms-and-conditions.html">Terms &amp; Conditions</a>.</span>
+        </label>
+      </section>
+
+      <section class="content-block" aria-labelledby="records-title">
+        <h2 id="records-title">Consent records</h2>
+        <p>When a guest actively selects this checkbox, the RSVP system records the mobile number, opt-in status, and consent timestamp. Only consented contacts are eligible for program messages.</p>
+      </section>
+
+      <p><a href="index.html">Return to the wedding site</a></p>
+    </main>
+  </body>
+</html>

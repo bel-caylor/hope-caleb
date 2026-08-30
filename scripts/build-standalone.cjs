@@ -12,6 +12,7 @@ const INCLUDE_FILES = ["util", "apps-planner"];
 const LEGACY_FILES = [
   "index.html",
   "privacy-policy.html",
+  "sms-opt-in-proof.html",
   "story.html",
   "terms-and-conditions.html",
   "travel.html",
