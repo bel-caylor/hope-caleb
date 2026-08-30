@@ -986,7 +986,7 @@ function isChurchMember(member) {
 function isOutOfTownGuest(member) {
   return String(member?.type || "")
     .split(/[,|/]/)
-    .some((type) => type.trim().toLowerCase() === "ott");
+    .some((type) => /^(oot|ott)(\s|$)/i.test(type.trim()) || /out[-\s]?of[-\s]?town/i.test(type));
 }
 
 function hideRsvpEditor() {
