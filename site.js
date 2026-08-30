@@ -934,9 +934,9 @@ function renderRsvpEditor(group) {
       rsvpOutOfTownGatheringsCopy.hidden = rsvpRehearsalSection.hidden && rsvpOpenHouseSection.hidden;
     }
     if (isOutOfTownGroup) {
-      fillCountSelect(rsvpRiverWalkCount, members.length + maxPlusOnes + childAllowance);
+      fillCountSelect(rsvpRiverWalkCount, 20);
       rsvpRiverWalkInterest.value = group.savedRiverWalkInterest || "";
-      rsvpRiverWalkCount.value = String(Math.min(group.savedRiverWalkCount || 0, members.length + maxPlusOnes + childAllowance));
+      rsvpRiverWalkCount.value = String(Math.min(group.savedRiverWalkCount || 0, 20));
       rsvpLodging.value = group.savedLodging || "";
       rsvpAirportTransportation.value = group.savedAirportTransportation || "";
       rsvpArrivalDetails.value = group.savedArrivalDetails || "";
