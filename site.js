@@ -575,7 +575,7 @@ async function runRsvpLookup(firstName, lastName, options = {}) {
     if (!matches.length) {
       showRsvpLookupCard();
       hideGroupPicker();
-      setRsvpStatus(rsvpLookupStatus, "We couldn't find a matching invitation. Double-check the spelling and try again.", "error");
+      setRsvpStatus(rsvpLookupStatus, "We couldn't find a matching invitation. Double-check the spelling and try again. If it still doesn't work, please contact Hope, Caleb, or Belinda with a screenshot of this message.", "error");
       return;
     }
 
@@ -588,7 +588,8 @@ async function runRsvpLookup(firstName, lastName, options = {}) {
     renderGroupPicker(matches);
     setRsvpStatus(rsvpLookupStatus, "We found more than one possible invitation. Choose your party below.", "success");
   } catch (error) {
-    setRsvpStatus(rsvpLookupStatus, error.message || "Unable to load the RSVP lookup right now.", "error");
+    const lookupError = error.message || "Unable to load the RSVP lookup right now.";
+    setRsvpStatus(rsvpLookupStatus, `${lookupError} Please contact Hope, Caleb, or Belinda with a screenshot of this message.`, "error");
   }
 }
 
