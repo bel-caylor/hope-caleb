@@ -2182,6 +2182,8 @@ main > .section:nth-of-type(even)::after {
 
 .rsvp-card--editor {
   padding-top: 1rem;
+  max-width: 800px;
+  margin: auto;
 }
 
 .rsvp-lookup-form,
