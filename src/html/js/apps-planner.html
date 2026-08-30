@@ -4895,7 +4895,25 @@
     if (!form || form.querySelector("[data-rsvp-contact-fields]")) return;
     const emailLabel = form.querySelector('input[name="email"]')?.closest("label");
     if (!emailLabel) return;
-    emailLabel.insertAdjacentHTML("afterend", `<div class="split" data-rsvp-contact-fields><label>Mobile number <input name="mobile" type="tel"></label><label class="checkbox-label"><input name="smsOptIn" type="checkbox" value="yes"> This contact opted in to text-message updates</label></div><fieldset class="type-options" data-rsvp-volunteer-fields><legend>Volunteer help</legend><div class="rsvp-edit-members">${RSVP_VOLUNTEER_OPTIONS.map((role) => `<label class="checkbox-label"><input type="checkbox" data-rsvp-edit-volunteer value="${escapeHtml(role)}"> ${escapeHtml(role)}</label>`).join("")}</div></fieldset>`);
+    emailLabel.insertAdjacentHTML("afterend", `<div class="split" data-rsvp-contact-fields><label>Mobile number <input name="mobile" type="tel"></label><label class="checkbox-label"><input name="smsOptIn" type="checkbox" value="yes"> This contact opted in to text-message updates</label></div><fieldset class="type-options rsvp-edit-section" data-rsvp-volunteer-fields><legend>Volunteer help</legend><div class="rsvp-volunteer-options">${RSVP_VOLUNTEER_OPTIONS.map((role) => `<label class="checkbox-label"><input type="checkbox" data-rsvp-edit-volunteer value="${escapeHtml(role)}"><span>${escapeHtml(role)}</span></label>`).join("")}</div></fieldset>`);
+  }
+
+  function isChurchRsvp(rsvp) {
+    const memberNames = new Set(getRsvpEditMembers(rsvp).map((member) => member.name.toLowerCase()));
+    return cachedGuests.some((guest) => (
+      memberNames.has(getGuestDisplayName(guest).toLowerCase())
+      && getTypeTokens(getGuestTypeValue(guest)).some((type) => type.toLowerCase() === "church")
+    ));
+  }
+
+  function setRsvpVolunteerHelpVisibility(form, rsvp) {
+    const volunteerFields = form?.querySelector("[data-rsvp-volunteer-fields]");
+    if (!volunteerFields) return;
+    const showVolunteerHelp = isChurchRsvp(rsvp);
+    volunteerFields.hidden = !showVolunteerHelp;
+    volunteerFields.querySelectorAll("[data-rsvp-edit-volunteer]").forEach((input) => {
+      input.disabled = !showVolunteerHelp;
+    });
   }
 
   function renderGuests() {
@@ -10045,11 +10063,13 @@ function sortTables(items) {
     const modal = rsvpListEl?.querySelector("#rsvpEditModal");
     const form = modal?.querySelector("#rsvpEditForm");
     if (!modal || !form) return;
-    addRsvpContactEditorFields(form);
     const rsvp = getRsvpSubmissions()
       .filter((item) => String(item.group || item.name || "").trim() === group)
       .sort((left, right) => new Date(right.submittedAt || 0).getTime() - new Date(left.submittedAt || 0).getTime())[0];
     if (!rsvp) return;
+    addRsvpContactEditorFields(form);
+    form.querySelector("[data-rsvp-edit-members]")?.closest("fieldset")?.classList.add("rsvp-edit-section");
+    setRsvpVolunteerHelpVisibility(form, rsvp);
 
     fillForm(form, {
       group: rsvp.group || group,
@@ -10119,7 +10139,7 @@ function sortTables(items) {
       const weddingSelections = Object.fromEntries(Array.from(form.querySelectorAll("[data-rsvp-edit-member]")).map((input) => [
         String(input.dataset.rsvpEditMember || ""), String(input.value || "")
       ]));
-      data.volunteerRoles = JSON.stringify(Array.from(form.querySelectorAll("[data-rsvp-edit-volunteer]:checked"))
+      data.volunteerRoles = JSON.stringify(Array.from(form.querySelectorAll("[data-rsvp-edit-volunteer]:checked:not(:disabled)"))
         .map((input) => String(input.value || "").trim())
         .filter(Boolean));
       if (!Object.keys(weddingSelections).length) throw new Error("This RSVP does not include any wedding guests to edit.");
