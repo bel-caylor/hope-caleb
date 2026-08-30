@@ -859,7 +859,7 @@ function renderRsvpEditor(group) {
         <div class="rsvp-choice-pills">
           <label>
             <input type="radio" name="member-${escapeForId(member.name)}" value="attending" data-rsvp-member-select data-guest-name="${escapeHtml(member.name)}">
-            <span>Attending</span>
+            <span>Attending dinner</span>
           </label>
           <label>
             <input type="radio" name="member-${escapeForId(member.name)}" value="not-attending" data-rsvp-member-select data-guest-name="${escapeHtml(member.name)}">
