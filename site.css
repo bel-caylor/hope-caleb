@@ -2543,10 +2543,10 @@ form[data-rsvp-response-form] {
   margin: 0;
   padding: 0 0.45rem;
   transform: translateY(-50%);
-  background: #f8faf6;
+  background: transparent;
   color: #5f6f5b;
   font-family: inherit;
-  font-size: 1rem;
+  font-size: clamp(1.3rem, 3vw, 1.65rem);
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1.2;
