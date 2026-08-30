@@ -46,6 +46,7 @@ const rsvpPlusOneCount = document.querySelector("[data-rsvp-plus-one-count]");
 const rsvpPlusOneName = document.querySelector("[data-rsvp-plus-one-name]");
 const rsvpChildrenCount = document.querySelector("[data-rsvp-children-count]");
 const rsvpChildrenName = document.querySelector("[data-rsvp-children-name]");
+const rsvpVolunteerSection = document.querySelector("[data-rsvp-volunteer-section]");
 const rsvpContactName = document.querySelector("[data-rsvp-contact-name]");
 const rsvpEmail = document.querySelector("[data-rsvp-email]");
 const rsvpSubmitStatus = document.querySelector("[data-rsvp-submit-status]");
@@ -936,11 +937,21 @@ function renderRsvpEditor(group) {
     rsvpChildrenName.value = "";
   }
 
+  if (rsvpVolunteerSection) {
+    rsvpVolunteerSection.hidden = !members.some((member) => isChurchMember(member));
+  }
+
   syncRsvpGuestExtrasLayout();
 
   setRsvpStatus(rsvpSubmitStatus, "", "");
   rsvpEditor.hidden = false;
   rsvpEditor.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function isChurchMember(member) {
+  return String(member?.type || "")
+    .split(/[,|/]/)
+    .some((type) => type.trim().toLowerCase() === "church");
 }
 
 function hideRsvpEditor() {

@@ -2325,6 +2325,30 @@ form[data-rsvp-response-form] {
   text-underline-offset: 0.18em;
 }
 
+.rsvp-volunteer-section {
+  gap: 0.8rem;
+}
+
+.rsvp-volunteer-options {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.rsvp-volunteer-options label {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.rsvp-volunteer-options input {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  margin: 0.2rem 0 0;
+}
+
 .rsvp-field input:focus,
 .rsvp-field select:focus,
 .rsvp-field textarea:focus {
