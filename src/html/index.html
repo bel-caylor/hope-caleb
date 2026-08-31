@@ -3083,6 +3083,7 @@
       .table-layout-choice__diagram {
         display: grid;
         gap: 0.18rem;
+        grid-auto-rows: minmax(0, 1fr);
         width: 2.65rem;
         height: 2.65rem;
         padding: 0.18rem;
@@ -3093,6 +3094,8 @@
 
       .table-layout-choice__diagram i {
         display: block;
+        min-width: 0;
+        min-height: 0;
         border-radius: 2px;
         background: var(--planner-accent);
       }
@@ -3106,6 +3109,19 @@
       .table-layout-choice__diagram--quadrants { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
       .table-layout-choice__diagram--front-four { grid-template-columns: repeat(4, 1fr); }
       .table-layout-choice__diagram--front-four i:first-child { grid-column: 1 / -1; }
+
+      #tableLayoutForm > label[data-table-section-name] {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        min-width: 0;
+      }
+
+      #tableLayoutForm > label[data-table-section-name] input {
+        flex: 0 0 100px;
+        width: 100px;
+        min-width: 0;
+      }
 
       .table-side-group {
         display: grid;
@@ -7493,11 +7509,11 @@
                 <label class="table-layout-choice" data-layout-choice="front-four"><input type="radio" name="roomLayout" value="front-four"><span class="table-layout-choice__diagram table-layout-choice__diagram--front-four" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span>Front + four</span></label>
               </div>
             </fieldset>
-            <label data-table-section-name>Section 1 <input name="section1" required></label>
-            <label data-table-section-name>Section 2 <input name="section2"></label>
-            <label data-table-section-name>Section 3 <input name="section3"></label>
-            <label data-table-section-name>Section 4 <input name="section4"></label>
-            <label data-table-section-name>Section 5 <input name="section5"></label>
+            <label data-table-section-name><span>Section 1</span><input name="section1" required></label>
+            <label data-table-section-name><span>Section 2</span><input name="section2"></label>
+            <label data-table-section-name><span>Section 3</span><input name="section3"></label>
+            <label data-table-section-name><span>Section 4</span><input name="section4"></label>
+            <label data-table-section-name><span>Section 5</span><input name="section5"></label>
             <div class="toolbar"><button class="button button--light" type="submit">Save table setup</button></div>
           </form>
           <div class="list" id="tablesList">
