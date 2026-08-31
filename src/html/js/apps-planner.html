@@ -108,8 +108,12 @@
   const rsvpStatusEl = document.querySelector("#rsvpStatus");
   const guestsListEl = document.querySelector("#guestsList");
   const guestsStatusEl = document.querySelector("#guestsStatus");
+  const textsStatusEl = document.querySelector("#textsStatus");
   const guestMessagingBodyEl = document.querySelector("#guestMessagingBody");
   const guestMessagingSummaryEl = document.querySelector("#guestMessagingSummary");
+  const textGroupPickerEl = document.querySelector("#textGroupPicker");
+  const textGroupPillsEl = document.querySelector("#textGroupPills");
+  const textGuestListEl = document.querySelector("#textGuestList");
   const selectFilteredTextGuestsButton = document.querySelector("#selectFilteredTextGuests");
   const startGroupTextButton = document.querySelector("#startGroupText");
   const startPrivateTextButton = document.querySelector("#startPrivateText");
@@ -164,6 +168,7 @@
   let cachedRsvps = [];
   let cachedGuests = [];
   let selectedTextGuestRowNumbers = new Set();
+  let selectedTextGroups = new Set();
   let privateTextPosition = 0;
   const RSVP_VOLUNTEER_OPTIONS = [
     "Food setup — Friday, 3 p.m.",
@@ -662,6 +667,7 @@
         rsvps: "RSVP",
         volunteers: "Volunteers",
         guests: "Guests",
+        texts: "Texts",
         tables: "Tables",
         people: "People & Vendors",
         "planner-users": "Users",
@@ -691,6 +697,7 @@
     if (nextPanel === "home") renderSummary();
     if (nextPanel === "volunteers") renderVolunteers();
     if (nextPanel === "planner-users") renderPlannerUsers();
+    if (nextPanel === "texts") renderTextGuests();
   }
 
   function syncPlannerSidebar() {
@@ -5001,7 +5008,7 @@
       ? visibleGuests.filter((guest) => getTypeTokens(guest.type).some((type) => selectedGuestTypeLookup.has(type.toLowerCase())))
       : visibleGuests;
 
-    renderGuestMessagingSummary();
+    renderTextGuests();
 
     if (!filteredGuests.length) {
       guestsListEl.innerHTML = selectedGuestTypes.length
@@ -5050,7 +5057,6 @@
                 `;
                 }).join("")}
               </div>
-              ${renderGuestTextChoice(guest.rowNumber)}
             </div>
           </details>
         `;
@@ -5184,7 +5190,7 @@
   }
 
   function getFilteredTextEligibleGuests() {
-    const selectedTypes = new Set(selectedGuestTypes.map((type) => String(type || "").toLowerCase()));
+    const selectedTypes = new Set(selectedTextGroups);
     return getTextEligibleGuests().filter((guest) => {
       if (!selectedTypes.size) return true;
       const row = cachedGuests.find((candidate) => getGuestRowNumber(candidate) === guest.rowNumber);
@@ -5218,15 +5224,67 @@
     return `<label class="guest-card__text-choice"><input type="checkbox" data-text-recipient="${escapeHtml(String(rowNumber))}" ${selected ? "checked" : ""}> Include in text</label>`;
   }
 
+  function getTextGuestsForSelectedGroups() {
+    const selectedTypes = new Set(selectedTextGroups);
+    if (!selectedTypes.size) return [];
+    return cachedGuests
+      .filter((guest) => getGuestRowNumber(guest))
+      .filter((guest) => getTypeTokens(getGuestTypeValue(guest)).some((type) => selectedTypes.has(type.toLowerCase())))
+      .map((guest) => ({
+        rowNumber: getGuestRowNumber(guest),
+        name: getGuestDisplayName(guest) || "Unnamed guest",
+        phone: normalizeTextPhone(getGuestPhone(guest)),
+        rawPhone: getGuestPhone(guest),
+        optedIn: isGuestSmsOptedIn(guest)
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  function renderTextGuests() {
+    if (!textGroupPickerEl || !textGroupPillsEl || !textGuestListEl) return;
+    const groups = collectGuestTypes(cachedGuests.map((guest) => ({ type: getGuestTypeValue(guest) })));
+    const availableGroups = new Set(groups.map((group) => group.toLowerCase()));
+    selectedTextGroups = new Set([...selectedTextGroups].filter((group) => availableGroups.has(group)));
+
+    textGroupPickerEl.innerHTML = groups.length
+      ? groups.map((group) => {
+        const key = group.toLowerCase();
+        return `<label><input type="checkbox" data-text-group="${escapeHtml(group)}" ${selectedTextGroups.has(key) ? "checked" : ""}> ${escapeHtml(group)}</label>`;
+      }).join("")
+      : '<p class="meta">Guest groups will appear here once the guest list loads.</p>';
+
+    const selectedGroupNames = groups.filter((group) => selectedTextGroups.has(group.toLowerCase()));
+    textGroupPillsEl.innerHTML = selectedGroupNames.map((group) => `
+      <span class="text-group-pill">${escapeHtml(group)} <button type="button" data-remove-text-group="${escapeHtml(group)}" aria-label="Remove ${escapeHtml(group)} from selected groups">×</button></span>
+    `).join("");
+
+    const guests = getTextGuestsForSelectedGroups();
+    textGuestListEl.innerHTML = !selectedGroupNames.length
+      ? '<p class="meta">Select a group above to see its guests.</p>'
+      : !guests.length
+        ? '<p class="meta">No guests are assigned to the selected groups.</p>'
+        : guests.map((guest) => {
+          const selected = selectedTextGuestRowNumbers.has(guest.rowNumber);
+          const phoneCopy = guest.phone ? guest.phone : "No working cell number";
+          const selection = guest.phone && guest.optedIn
+            ? `<label class="text-recipient-card__choice"><input type="checkbox" data-text-recipient="${escapeHtml(String(guest.rowNumber))}" ${selected ? "checked" : ""}> Include</label>`
+            : `<span class="meta">${guest.phone ? "Not opted in" : "Cannot text"}</span>`;
+          return `<article class="text-recipient-card text-recipient-card--${guest.phone ? "ready" : "missing"}">
+            <div><strong>${escapeHtml(guest.name)}</strong><p>${escapeHtml(phoneCopy)}</p></div>${selection}
+          </article>`;
+        }).join("");
+    renderGuestMessagingSummary();
+  }
+
   function renderGuestMessagingSummary() {
     if (!guestMessagingSummaryEl) return;
     const selectedCount = getSelectedTextGuests().length;
-    const filteredCount = getFilteredTextEligibleGuests().length;
+    const filteredCount = getTextGuestsForSelectedGroups().length;
     guestMessagingSummaryEl.textContent = selectedCount
       ? `${selectedCount} opted-in ${selectedCount === 1 ? "guest is" : "guests are"} selected.`
       : filteredCount
-        ? `${filteredCount} opted-in ${filteredCount === 1 ? "guest" : "guests"} match the current filter.`
-        : "No opted-in guests with usable mobile numbers match this filter.";
+        ? `${filteredCount} ${filteredCount === 1 ? "guest is" : "guests are"} in the selected groups. Green has a working cell number; red does not.`
+        : "Select one or more groups to choose recipients.";
   }
 
   function getTextMessageBody() {
@@ -10620,16 +10678,50 @@ function sortTables(items) {
     selectedTextGuestRowNumbers = new Set(recipients.map((guest) => guest.rowNumber));
     privateTextPosition = 0;
     renderGuests();
-    setStatus(guestsStatusEl, recipients.length
+    setStatus(textsStatusEl, recipients.length
       ? `Selected ${recipients.length} opted-in ${recipients.length === 1 ? "guest" : "guests"}.`
-      : "No opted-in guests with usable mobile numbers match the current filter.", recipients.length ? "success" : "pending");
+      : "No opted-in guests with usable mobile numbers are in the selected groups.", recipients.length ? "success" : "pending");
   });
 
   clearTextGuestsButton?.addEventListener("click", () => {
     selectedTextGuestRowNumbers.clear();
     privateTextPosition = 0;
     renderGuests();
-    setStatus(guestsStatusEl, "Text recipient selection cleared.", "success");
+    setStatus(textsStatusEl, "Text recipient selection cleared.", "success");
+  });
+
+  textGroupPickerEl?.addEventListener("change", (event) => {
+    const checkbox = event.target.closest("[data-text-group]");
+    if (!checkbox) return;
+    const group = String(checkbox.dataset.textGroup || "").trim().toLowerCase();
+    if (checkbox.checked) {
+      selectedTextGroups.add(group);
+    } else {
+      selectedTextGroups.delete(group);
+    }
+    privateTextPosition = 0;
+    renderTextGuests();
+  });
+
+  textGroupPillsEl?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-text-group]");
+    if (!button) return;
+    selectedTextGroups.delete(String(button.dataset.removeTextGroup || "").trim().toLowerCase());
+    privateTextPosition = 0;
+    renderTextGuests();
+  });
+
+  textGuestListEl?.addEventListener("change", (event) => {
+    const textRecipient = event.target.closest("[data-text-recipient]");
+    if (!textRecipient) return;
+    const rowNumber = Number(textRecipient.dataset.textRecipient || 0);
+    if (textRecipient.checked) {
+      selectedTextGuestRowNumbers.add(rowNumber);
+    } else {
+      selectedTextGuestRowNumbers.delete(rowNumber);
+    }
+    privateTextPosition = 0;
+    renderGuestMessagingSummary();
   });
 
   startGroupTextButton?.addEventListener("click", () => {
@@ -10642,9 +10734,9 @@ function sortTables(items) {
       const confirmed = window.confirm(`Open a group text for ${recipients.length} guests? Everyone in the group can see the other recipients’ numbers and replies.`);
       if (!confirmed) return;
       openSmsComposer(recipients, message);
-      setStatus(guestsStatusEl, "Your phone’s group-text draft is ready to review and send.", "success");
+      setStatus(textsStatusEl, "Your phone’s group-text draft is ready to review and send.", "success");
     } catch (error) {
-      setStatus(guestsStatusEl, error.message || "Unable to open the group text.", "error");
+      setStatus(textsStatusEl, error.message || "Unable to open the group text.", "error");
     }
   });
 
@@ -10659,26 +10751,13 @@ function sortTables(items) {
       privateTextPosition = (privateTextPosition + 1) % recipients.length;
       openSmsComposer([recipient], message);
       const nextName = recipients[privateTextPosition]?.name;
-      setStatus(guestsStatusEl, `Opened a private text for ${recipient.name}. ${nextName ? `Return here and tap again for ${nextName}.` : ""}`, "success");
+      setStatus(textsStatusEl, `Opened a private text for ${recipient.name}. ${nextName ? `Return here and tap again for ${nextName}.` : ""}`, "success");
     } catch (error) {
-      setStatus(guestsStatusEl, error.message || "Unable to open the private text.", "error");
+      setStatus(textsStatusEl, error.message || "Unable to open the private text.", "error");
     }
   });
 
   guestsListEl?.addEventListener("click", async (event) => {
-    const textRecipient = event.target.closest("[data-text-recipient]");
-    if (textRecipient) {
-      const rowNumber = Number(textRecipient.dataset.textRecipient || 0);
-      if (textRecipient.checked) {
-        selectedTextGuestRowNumbers.add(rowNumber);
-      } else {
-        selectedTextGuestRowNumbers.delete(rowNumber);
-      }
-      privateTextPosition = 0;
-      renderGuestMessagingSummary();
-      return;
-    }
-
     const typeButton = event.target.closest("[data-edit-guest-type]");
     if (typeButton) {
       event.preventDefault();
