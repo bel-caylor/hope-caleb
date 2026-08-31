@@ -5243,7 +5243,19 @@
   }
 
   function getTextGuestsForSelectedGroups() {
-    return selectedTextGroups.size ? getFilteredTextEligibleGuests() : [];
+    const selectedTypes = new Set(selectedTextGroups);
+    if (!selectedTypes.size) return [];
+    return cachedGuests
+      .filter((guest) => getGuestRowNumber(guest))
+      .filter((guest) => getTypeTokens(getGuestTypeValue(guest)).some((type) => selectedTypes.has(type.toLowerCase())))
+      .filter((guest) => !dismissedTextGuestRowNumbers.has(getGuestRowNumber(guest)))
+      .map((guest) => ({
+        rowNumber: getGuestRowNumber(guest),
+        name: getGuestDisplayName(guest) || "Unnamed guest",
+        phone: normalizeTextPhone(getGuestPhone(guest)),
+        optedIn: isGuestSmsOptedIn(guest)
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name));
   }
 
   function renderTextGuests() {
@@ -5265,12 +5277,18 @@
     textGuestListEl.innerHTML = !selectedGroupNames.length
       ? '<p class="meta">Select a group above to see its guests.</p>'
       : !guests.length
-        ? '<p class="meta">No opted-in guests with working mobile numbers are in the selected groups.</p>'
+        ? '<p class="meta">No guests are assigned to the selected groups.</p>'
         : guests.map((guest) => {
-          const phoneCopy = guest.phone;
+          const isReady = Boolean(guest.phone && guest.optedIn);
+          const phoneCopy = guest.phone || "No working cell number";
           const dismiss = `<button class="text-recipient-card__dismiss" type="button" data-dismiss-text-guest="${escapeHtml(String(guest.rowNumber))}" aria-label="Remove ${escapeHtml(guest.name)} from this message" title="Remove from this message">×</button>`;
-          return `<article class="text-recipient-card text-recipient-card--ready">
-            <div><strong>${escapeHtml(guest.name)}</strong><p>${escapeHtml(phoneCopy)}</p></div>${dismiss}
+          const needsPhone = !guest.phone;
+          const edit = needsPhone
+            ? `<button class="button button--icon button--light" type="button" data-edit-text-contact="${escapeHtml(String(guest.rowNumber))}" aria-label="Add a mobile number for ${escapeHtml(guest.name)}" title="Add mobile number"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>`
+            : "";
+          const status = isReady ? "" : `<p class="meta">${needsPhone ? "Add a working mobile number to include." : "Not opted in for texts."}</p>`;
+          return `<article class="text-recipient-card text-recipient-card--${isReady ? "ready" : "missing"}">
+            <div><strong>${escapeHtml(guest.name)}</strong><p>${escapeHtml(phoneCopy)}</p>${status}</div>${dismiss}${edit}
           </article>`;
         }).join("");
     renderGuestMessagingSummary();
