@@ -5288,7 +5288,7 @@
             : "";
           const status = !isReady && !needsPhone ? '<p class="meta">Not opted in for texts.</p>' : "";
           return `<article class="text-recipient-card text-recipient-card--${isReady ? "ready" : "missing"}">
-            <div><div class="text-recipient-card__identity">${dismiss}<strong>${escapeHtml(guest.name)}</strong></div><p>${escapeHtml(phoneCopy)}</p>${status}</div>${edit}
+            <div class="text-recipient-card__identity">${dismiss}<div class="text-recipient-card__details"><strong>${escapeHtml(guest.name)}</strong><p>${escapeHtml(phoneCopy)}</p>${status}</div></div>${edit}
           </article>`;
         }).join("");
     renderGuestMessagingSummary();
