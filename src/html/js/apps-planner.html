@@ -10510,7 +10510,7 @@ function sortTables(items) {
   todoGroupToggleButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const groupBy = String(button.dataset.todoGroupBy || "due");
-      todoGroupBy = ["due", "event", "project"].includes(groupBy) ? groupBy : "due";
+      todoGroupBy = ["due", "event"].includes(groupBy) ? groupBy : "due";
       syncTodoGroupToggle();
       renderTodos();
     });

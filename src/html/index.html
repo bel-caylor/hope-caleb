@@ -1277,8 +1277,16 @@
       }
 
       .planner-panel[data-planner-panel="todos"] .planner-filter-row {
-        grid-template-columns: minmax(0, 1fr) auto auto;
+        grid-template-columns: minmax(14rem, 18rem) auto;
         align-items: center;
+      }
+
+      .todo-filter-actions {
+        display: inline-flex;
+        align-items: center;
+        justify-self: end;
+        gap: 0.65rem;
+        white-space: nowrap;
       }
 
       .planner-panel__title--mobile-only {
@@ -4786,6 +4794,11 @@
           border-radius: 6px;
         }
 
+        .planner-panel[data-planner-panel="todos"] .todo-filter-actions {
+          justify-self: start;
+          gap: 0.45rem;
+        }
+
         .planner-panel[data-planner-panel="todos"] .todo-group-toggle__button {
           padding: 0.3rem 0.45rem;
           line-height: 1.1;
@@ -7394,14 +7407,15 @@
                 <option value="__unassigned__">Unassigned</option>
               </select>
             </div>
-            <label class="todo-complete-filter">
-              <input id="todoHideCompletedFilter" type="checkbox">
-              <span>Hide completed</span>
-            </label>
-            <div class="todo-group-toggle" role="group" aria-label="Group to-dos by">
-              <button class="todo-group-toggle__button is-active" type="button" data-todo-group-by="due" aria-pressed="true">By date</button>
-              <button class="todo-group-toggle__button" type="button" data-todo-group-by="event" aria-pressed="false">Event</button>
-              <button class="todo-group-toggle__button" type="button" data-todo-group-by="project" aria-pressed="false">Projects</button>
+            <div class="todo-filter-actions">
+              <label class="todo-complete-filter">
+                <input id="todoHideCompletedFilter" type="checkbox">
+                <span>Hide completed</span>
+              </label>
+              <div class="todo-group-toggle" role="group" aria-label="Group to-dos by">
+                <button class="todo-group-toggle__button is-active" type="button" data-todo-group-by="due" aria-pressed="true">By date</button>
+                <button class="todo-group-toggle__button" type="button" data-todo-group-by="event" aria-pressed="false">Event</button>
+              </div>
             </div>
           </div>
           <div class="list" id="todosList">
