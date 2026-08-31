@@ -11,6 +11,9 @@
   function setStatus(element, message, tone) {
     if (!element) return;
     const nextMessage = String(message || "").trim();
+    const contactMessage = tone === "error" && nextMessage && !/please contact hope, caleb, or belinda/i.test(nextMessage)
+      ? " Please contact Hope, Caleb, or Belinda."
+      : "";
     const placeholder = element.__statusPlaceholder || null;
 
     if (!nextMessage) {
@@ -38,7 +41,7 @@
     }
 
     element.__statusParent = element.parentNode || element.__statusParent || null;
-    element.textContent = nextMessage;
+    element.textContent = `${nextMessage}${contactMessage}`;
     element.className = `status ${tone || ""}`.trim();
     if (tone) {
       element.dataset.tone = tone;
