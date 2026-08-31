@@ -2418,6 +2418,8 @@ h4#rsvp-volunteer-heading {
 
 .rsvp-status[data-tone="error"] {
   color: #8c1d18;
+  font-size: 1.12rem;
+  font-weight: 700;
 }
 
 .rsvp-status[data-tone="success"] {
