@@ -3020,6 +3020,93 @@
         align-content: start;
       }
 
+      .table-layout-picker {
+        display: grid;
+        gap: 0.65rem;
+        margin: 0;
+        padding: 0;
+        border: 0;
+      }
+
+      .table-layout-picker legend {
+        padding: 0;
+        color: #6f1d2a;
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .table-layout-picker .meta {
+        margin: 0;
+      }
+
+      .table-layout-picker__choices {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(122px, 1fr));
+        gap: 0.55rem;
+      }
+
+      .table-layout-choice {
+        display: grid;
+        grid-template-columns: 2.7rem minmax(0, 1fr);
+        align-items: center;
+        gap: 0.55rem;
+        min-height: 4.2rem;
+        padding: 0.55rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 10px;
+        color: var(--planner-ink);
+        background: #fffdf9;
+        font-size: 0.82rem;
+        font-weight: 750;
+        line-height: 1.15;
+        cursor: pointer;
+      }
+
+      .table-layout-choice:hover,
+      .table-layout-choice:focus-within,
+      .table-layout-choice.is-selected {
+        border-color: var(--planner-accent);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--planner-accent) 16%, transparent);
+        background: color-mix(in srgb, #fffdf9 92%, var(--planner-accent));
+      }
+
+      .table-layout-choice input {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .table-layout-choice__diagram {
+        display: grid;
+        gap: 0.18rem;
+        width: 2.65rem;
+        height: 2.65rem;
+        padding: 0.18rem;
+        border: 1px solid color-mix(in srgb, var(--planner-accent) 30%, var(--planner-border));
+        border-radius: 5px;
+        background: color-mix(in srgb, #fffdf9 88%, var(--planner-accent));
+      }
+
+      .table-layout-choice__diagram i {
+        display: block;
+        border-radius: 2px;
+        background: var(--planner-accent);
+      }
+
+      .table-layout-choice__diagram--single { grid-template-columns: 1fr; }
+      .table-layout-choice__diagram--columns-2 { grid-template-columns: repeat(2, 1fr); }
+      .table-layout-choice__diagram--columns-3 { grid-template-columns: repeat(3, 1fr); }
+      .table-layout-choice__diagram--columns-4 { grid-template-columns: repeat(4, 1fr); }
+      .table-layout-choice__diagram--front-two { grid-template-columns: repeat(2, 1fr); }
+      .table-layout-choice__diagram--front-two i:first-child { grid-column: 1 / -1; }
+      .table-layout-choice__diagram--quadrants { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+      .table-layout-choice__diagram--front-four { grid-template-columns: repeat(4, 1fr); }
+      .table-layout-choice__diagram--front-four i:first-child { grid-column: 1 / -1; }
+
       .table-side-group {
         display: grid;
         gap: 0.8rem;
@@ -3048,6 +3135,17 @@
         display: grid;
         gap: 1rem;
         align-content: start;
+      }
+
+      @media (min-width: 900px) {
+        #tablesList[data-room-layout="columns-2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        #tablesList[data-room-layout="front-two"],
+        #tablesList[data-room-layout="quadrants"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        #tablesList[data-room-layout="columns-3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        #tablesList[data-room-layout="columns-4"],
+        #tablesList[data-room-layout="front-four"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        #tablesList[data-room-layout="front-two"] .table-side-group:first-child { grid-column: 1 / -1; }
+        #tablesList[data-room-layout="front-four"] .table-side-group:first-child { grid-column: 1 / -1; }
       }
 
       .planner-panel[data-planner-panel="guests"] #guestsList {
@@ -4955,7 +5053,7 @@
       }
 
       @media (min-width: 1201px) {
-        #tablesList {
+        #tablesList:not([data-room-layout]) {
           grid-template-columns: repeat(3, minmax(0, 1fr));
           align-items: start;
         }
@@ -7379,13 +7477,27 @@
           <form id="tableLayoutForm" class="guest-filter" aria-label="Table section setup">
             <label>Sections
               <select name="sectionCount" id="tableSectionCount">
-                <option value="1">1 section</option><option value="2">2 sections</option><option value="3">3 sections</option><option value="4">4 sections</option>
+                <option value="1">1 section</option><option value="2">2 sections</option><option value="3">3 sections</option><option value="4">4 sections</option><option value="5">5 sections</option>
               </select>
             </label>
+            <fieldset class="table-layout-picker">
+              <legend>Room arrangement</legend>
+              <p class="meta">Choose the shape that best matches the room. The labels below name each area.</p>
+              <div class="table-layout-picker__choices" role="radiogroup" aria-label="Room arrangement">
+                <label class="table-layout-choice" data-layout-choice="single"><input type="radio" name="roomLayout" value="single"><span class="table-layout-choice__diagram table-layout-choice__diagram--single" aria-hidden="true"><i></i></span><span>One area</span></label>
+                <label class="table-layout-choice" data-layout-choice="columns-2"><input type="radio" name="roomLayout" value="columns-2"><span class="table-layout-choice__diagram table-layout-choice__diagram--columns-2" aria-hidden="true"><i></i><i></i></span><span>Two columns</span></label>
+                <label class="table-layout-choice" data-layout-choice="front-two"><input type="radio" name="roomLayout" value="front-two"><span class="table-layout-choice__diagram table-layout-choice__diagram--front-two" aria-hidden="true"><i></i><i></i><i></i></span><span>Front + two</span></label>
+                <label class="table-layout-choice" data-layout-choice="columns-3"><input type="radio" name="roomLayout" value="columns-3"><span class="table-layout-choice__diagram table-layout-choice__diagram--columns-3" aria-hidden="true"><i></i><i></i><i></i></span><span>Three columns</span></label>
+                <label class="table-layout-choice" data-layout-choice="quadrants"><input type="radio" name="roomLayout" value="quadrants"><span class="table-layout-choice__diagram table-layout-choice__diagram--quadrants" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Four quadrants</span></label>
+                <label class="table-layout-choice" data-layout-choice="columns-4"><input type="radio" name="roomLayout" value="columns-4"><span class="table-layout-choice__diagram table-layout-choice__diagram--columns-4" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Four columns</span></label>
+                <label class="table-layout-choice" data-layout-choice="front-four"><input type="radio" name="roomLayout" value="front-four"><span class="table-layout-choice__diagram table-layout-choice__diagram--front-four" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span>Front + four</span></label>
+              </div>
+            </fieldset>
             <label data-table-section-name>Section 1 <input name="section1" required></label>
             <label data-table-section-name>Section 2 <input name="section2"></label>
             <label data-table-section-name>Section 3 <input name="section3"></label>
             <label data-table-section-name>Section 4 <input name="section4"></label>
+            <label data-table-section-name>Section 5 <input name="section5"></label>
             <div class="toolbar"><button class="button button--light" type="submit">Save table setup</button></div>
           </form>
           <div class="list" id="tablesList">

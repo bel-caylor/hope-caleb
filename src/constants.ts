@@ -90,7 +90,7 @@ export const TABLE_HEADERS = [
   "CreatedAt",
   "UpdatedAt"
 ];
-export const TABLE_LAYOUT_HEADERS = ["Id", "Section Count", "Section 1", "Section 2", "Section 3", "Section 4", "UpdatedAt"];
+export const TABLE_LAYOUT_HEADERS = ["Id", "Section Count", "Room Layout", "Section 1", "Section 2", "Section 3", "Section 4", "Section 5", "UpdatedAt"];
 export const TODO_HEADERS = [
   "Id",
   "EventId",

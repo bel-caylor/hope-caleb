@@ -100,7 +100,7 @@ type SaveTableInput = {
   count?: number | string;
 };
 
-type SaveTableLayoutInput = { sectionCount?: number | string; sections?: string[]; };
+type SaveTableLayoutInput = { sectionCount?: number | string; roomLayout?: string; sections?: string[]; };
 
 type SaveTableReservedOpenSeatsInput = {
   id?: string;
@@ -670,30 +670,45 @@ function normalizeTablesSheet() {
   return sheet;
 }
 
-const DEFAULT_TABLE_SECTIONS = ["Head", "Food Side", "Bar Side"];
+const DEFAULT_TABLE_SECTIONS = ["Head", "Food Side", "Bar Side", "Section 4", "Section 5"];
+const DEFAULT_TABLE_ROOM_LAYOUT = "front-two";
+
+function normalizeTableRoomLayout(value: unknown, count: number) {
+  const requested = String(value || "").trim();
+  const layoutsByCount: Record<number, string[]> = {
+    1: ["single"],
+    2: ["columns-2"],
+    3: ["front-two", "columns-3"],
+    4: ["quadrants", "columns-4"],
+    5: ["front-four"]
+  };
+  const options = layoutsByCount[count] || ["single"];
+  return options.includes(requested) ? requested : (count === 3 ? DEFAULT_TABLE_ROOM_LAYOUT : options[0]);
+}
 
 export function getTableLayout() {
   requirePlannerAccess();
   ensureSheet(TABLE_LAYOUT_SHEET, TABLE_LAYOUT_HEADERS);
   const row = readRows(TABLE_LAYOUT_SHEET)[0] || {};
-  const count = Math.min(4, Math.max(1, Number(row["Section Count"] || DEFAULT_TABLE_SECTIONS.length)));
+  const count = Math.min(5, Math.max(1, Number(row["Section Count"] || 3)));
   const sections = Array.from({ length: count }, (_, index) => String(row[`Section ${index + 1}`] || DEFAULT_TABLE_SECTIONS[index] || `Section ${index + 1}`).trim() || `Section ${index + 1}`);
-  return { sectionCount: count, sections };
+  return { sectionCount: count, roomLayout: normalizeTableRoomLayout(row["Room Layout"], count), sections };
 }
 
 export function saveTableLayout(input: SaveTableLayoutInput) {
   requirePlannerAccess();
-  const count = Math.min(4, Math.max(1, Number(input.sectionCount || DEFAULT_TABLE_SECTIONS.length)));
+  const count = Math.min(5, Math.max(1, Number(input.sectionCount || 3)));
   const requested = Array.isArray(input.sections) ? input.sections : [];
-  const sections = Array.from({ length: 4 }, (_, index) => {
+  const sections = Array.from({ length: 5 }, (_, index) => {
     if (index >= count) return "";
     return String(requested[index] || DEFAULT_TABLE_SECTIONS[index] || `Section ${index + 1}`).trim() || `Section ${index + 1}`;
   });
   const now = new Date().toISOString();
+  const roomLayout = normalizeTableRoomLayout(input.roomLayout, count);
   upsertRow(TABLE_LAYOUT_SHEET, TABLE_LAYOUT_HEADERS, "layout", {
-    Id: "layout", "Section Count": count, "Section 1": sections[0], "Section 2": sections[1], "Section 3": sections[2], "Section 4": sections[3], UpdatedAt: now
+    Id: "layout", "Section Count": count, "Room Layout": roomLayout, "Section 1": sections[0], "Section 2": sections[1], "Section 3": sections[2], "Section 4": sections[3], "Section 5": sections[4], UpdatedAt: now
   });
-  return { sectionCount: count, sections: sections.slice(0, count), updatedAt: now };
+  return { sectionCount: count, roomLayout, sections: sections.slice(0, count), updatedAt: now };
 }
 
 const RESERVED_OPEN_SEAT_POSITIONS_HEADER = "Reserved Open Seat Positions";

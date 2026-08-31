@@ -175,7 +175,7 @@
   let cachedShots = [];
   let cachedBeds = [];
   let cachedTables = [];
-  let cachedTableLayout = { sectionCount: 3, sections: ["Head", "Food Side", "Bar Side"] };
+  let cachedTableLayout = { sectionCount: 3, roomLayout: "front-two", sections: ["Head", "Food Side", "Bar Side"] };
   let cachedTodos = [];
   let cachedEventLists = [];
   let cachedRsvps = [];
@@ -5151,6 +5151,7 @@
 
   function renderTables() {
     renderTableLayoutForm();
+    tablesListEl.dataset.roomLayout = getTableRoomLayout();
     if (tablesUnseatedCountEl) {
       const unseatedCount = countUnseatedPeople();
       tablesUnseatedCountEl.textContent = unseatedCount
@@ -6075,6 +6076,14 @@
     if (!tableLayoutForm || !tableSectionCountEl) return;
     const sections = getTableSections();
     tableSectionCountEl.value = String(sections.length);
+    const roomLayout = getTableRoomLayout();
+    tableLayoutForm.querySelectorAll("[data-layout-choice]").forEach((choice) => {
+      const input = choice.querySelector('input[name="roomLayout"]');
+      const selected = String(input?.value || "") === roomLayout;
+      choice.hidden = !isTableRoomLayoutAvailable(String(input?.value || ""), sections.length);
+      choice.classList.toggle("is-selected", selected);
+      if (input) input.checked = selected;
+    });
     tableLayoutForm.querySelectorAll("[data-table-section-name]").forEach((field, index) => {
       const active = index < sections.length;
       field.hidden = !active;
@@ -6137,8 +6146,22 @@
 
   function getTableSections() {
     const requested = Array.isArray(cachedTableLayout?.sections) ? cachedTableLayout.sections : [];
-    const count = Math.min(4, Math.max(1, Number(cachedTableLayout?.sectionCount || requested.length || 3)));
+    const count = Math.min(5, Math.max(1, Number(cachedTableLayout?.sectionCount || requested.length || 3)));
     return Array.from({ length: count }, (_, index) => String(requested[index] || `Section ${index + 1}`).trim() || `Section ${index + 1}`);
+  }
+
+  function isTableRoomLayoutAvailable(roomLayout, count) {
+    return ({ single: count === 1, "columns-2": count === 2, "front-two": count === 3, "columns-3": count === 3, quadrants: count === 4, "columns-4": count === 4, "front-four": count === 5 })[roomLayout] === true;
+  }
+
+  function getDefaultTableRoomLayout(count) {
+    return ({ 1: "single", 2: "columns-2", 3: "front-two", 4: "quadrants", 5: "front-four" })[count] || "single";
+  }
+
+  function getTableRoomLayout() {
+    const count = getTableSections().length;
+    const requested = String(cachedTableLayout?.roomLayout || "").trim();
+    return isTableRoomLayoutAvailable(requested, count) ? requested : getDefaultTableRoomLayout(count);
   }
 
   function isTableLayoutSideToken(value) {
@@ -10446,7 +10469,8 @@ function sortTables(items) {
   }
 
   function getRsvpEventAttendeeNames(rsvp) {
-    const names = getRsvpEditMembers(rsvp)
+    const members = getRsvpEditMembers(rsvp);
+    const names = members
       .filter((member) => getRsvpGroup(member.response) === "yes")
       .map((member) => member.name);
     const plusOneCount = Math.max(0, Number.parseInt(rsvp.plusOneCount || "0", 10) || 0);
@@ -10464,8 +10488,11 @@ function sortTables(items) {
       names.push(index === 0 && childrenNote ? `Child — ${childrenNote}` : `Child${childrenCount > 1 ? ` ${index + 1}` : ""}`);
     }
 
-    const count = Number.parseInt(getSubmissionGuestCount(rsvp), 10);
-    if (Number.isNaN(count) || count < 1) return [];
+    const savedGuestCount = Number.parseInt(rsvp.guests || "", 10);
+    const count = members.length
+      ? names.length + plusOneCount + childrenCount
+      : Number.isNaN(savedGuestCount) ? names.length : savedGuestCount;
+    if (count < 1) return [];
     while (names.length < count) names.push("Guest (name not recorded)");
     return names.slice(0, count);
   }
@@ -10722,8 +10749,19 @@ function sortTables(items) {
   });
 
   tableSectionCountEl?.addEventListener("change", () => {
-    const count = Math.min(4, Math.max(1, Number(tableSectionCountEl.value || 1)));
-    cachedTableLayout = { ...cachedTableLayout, sectionCount: count };
+    const count = Math.min(5, Math.max(1, Number(tableSectionCountEl.value || 1)));
+    cachedTableLayout = { ...cachedTableLayout, sectionCount: count, roomLayout: getDefaultTableRoomLayout(count) };
+    renderTableLayoutForm();
+  });
+
+  tableLayoutForm?.addEventListener("change", (event) => {
+    const input = event.target.closest('input[name="roomLayout"]');
+    if (!input?.checked) return;
+    const selectedLayout = String(input.value || "");
+    const counts = { single: 1, "columns-2": 2, "front-two": 3, "columns-3": 3, quadrants: 4, "columns-4": 4, "front-four": 5 };
+    const count = counts[selectedLayout];
+    if (!count) return;
+    cachedTableLayout = { ...cachedTableLayout, sectionCount: count, roomLayout: selectedLayout };
     renderTableLayoutForm();
   });
 
@@ -10732,13 +10770,14 @@ function sortTables(items) {
     try {
       requirePlannerAccess();
       const data = new FormData(tableLayoutForm);
-      const sectionCount = Math.min(4, Math.max(1, Number(data.get("sectionCount") || 1)));
+      const sectionCount = Math.min(5, Math.max(1, Number(data.get("sectionCount") || 1)));
+      const roomLayout = String(data.get("roomLayout") || getDefaultTableRoomLayout(sectionCount));
       const sections = Array.from({ length: sectionCount }, (_, index) => String(data.get(`section${index + 1}`) || "").trim());
       if (sections.some((section) => !section)) throw new Error("Name every active section.");
       if (new Set(sections.map((section) => section.toLowerCase())).size !== sections.length) throw new Error("Each section needs a different name.");
       setStatus(tableStatusEl, "Saving table setup...", "pending");
       const previousSections = getTableSections();
-      const savedLayout = await backendRequest("saveTableLayout", { sectionCount, sections });
+      const savedLayout = await backendRequest("saveTableLayout", { sectionCount, roomLayout, sections });
       cachedTableLayout = savedLayout;
       const updatedTables = await Promise.all(cachedTables.map(async (table) => {
         const oldIndex = previousSections.findIndex((section) => section.toLowerCase() === String(table.location || "").trim().toLowerCase());
