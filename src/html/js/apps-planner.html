@@ -5286,7 +5286,7 @@
       ? '<p class="meta">No guests with text contacts are assigned to this task.</p>'
       : activeTaskTextRecipients.map((recipient) => {
         const ready = Boolean(recipient.phone && recipient.optedIn);
-        return `<label class="text-recipient-card text-recipient-card--${ready ? "ready" : "missing"}"><input type="checkbox" data-task-text-recipient="${escapeHtml(recipient.key)}" ${selectedTaskTextRecipientKeys.has(recipient.key) && ready ? "checked" : ""} ${ready ? "" : "disabled"}><span><strong>${escapeHtml(recipient.name)}</strong><p>${escapeHtml(ready ? recipient.phone : recipient.phone ? "Not opted in for texts" : "Needs attention")}</p></span></label>`;
+        return `<label class="text-recipient-card text-recipient-card--${ready ? "ready" : "missing"}"><span class="text-recipient-card__identity"><input type="checkbox" data-task-text-recipient="${escapeHtml(recipient.key)}" ${selectedTaskTextRecipientKeys.has(recipient.key) && ready ? "checked" : ""} ${ready ? "" : "disabled"}><span class="text-recipient-card__details"><strong>${escapeHtml(recipient.name)}</strong><p>${escapeHtml(ready ? recipient.phone : recipient.phone ? "Not opted in for texts" : "Needs attention")}</p></span></span></label>`;
       }).join("");
   }
 
