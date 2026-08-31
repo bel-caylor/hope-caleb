@@ -7662,6 +7662,30 @@
           </div>
         </section>
 
+        <section class="modal" id="taskTextModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-task-text-modal></div>
+          <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="taskTextModalTitle">
+            <button class="modal__close" type="button" data-close-task-text-modal aria-label="Close dialog">X</button>
+            <div class="modal__header">
+              <div>
+                <h3 id="taskTextModalTitle">Send task text</h3>
+                <p class="meta" id="taskTextModalNotes"></p>
+              </div>
+            </div>
+            <div class="guest-messaging__section">
+              <h4 class="guest-messaging__section-heading">Recipients</h4>
+              <p class="meta guest-messaging__section-copy">Uncheck anyone who should not receive this message.</p>
+              <div class="text-recipient-list" id="taskTextRecipientList"></div>
+            </div>
+            <label>Message <textarea id="taskTextMessage" placeholder="Write a task reminder..."></textarea></label>
+            <div class="guest-messaging__actions">
+              <button class="button" type="button" id="sendTaskGroupText">Open group-text draft</button>
+              <button class="button button--light" type="button" data-close-task-text-modal>Cancel</button>
+            </div>
+            <p class="status" id="taskTextStatus"></p>
+          </div>
+        </section>
+
         <section class="modal" id="eventListModal" hidden aria-hidden="true">
           <div class="modal__backdrop" data-close-event-list-modal></div>
           <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="eventListModalTitle">

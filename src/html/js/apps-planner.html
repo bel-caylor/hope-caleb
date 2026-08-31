@@ -53,6 +53,13 @@
   const openShotModalButton = document.querySelector("#openShotModal");
   const bedModal = document.querySelector("#bedModal");
   const todoModal = document.querySelector("#todoModal");
+  const taskTextModal = document.querySelector("#taskTextModal");
+  const taskTextModalTitleEl = document.querySelector("#taskTextModalTitle");
+  const taskTextModalNotesEl = document.querySelector("#taskTextModalNotes");
+  const taskTextRecipientListEl = document.querySelector("#taskTextRecipientList");
+  const taskTextMessageEl = document.querySelector("#taskTextMessage");
+  const taskTextStatusEl = document.querySelector("#taskTextStatus");
+  const sendTaskGroupTextButton = document.querySelector("#sendTaskGroupText");
   const eventListModal = document.querySelector("#eventListModal");
   const tableModal = document.querySelector("#tableModal");
   const guestTypeModal = document.querySelector("#guestTypeModal");
@@ -170,6 +177,8 @@
   let cachedGuests = [];
   let selectedTextGroups = new Set();
   let dismissedTextGuestRowNumbers = new Set();
+  let activeTaskTextRecipients = [];
+  let selectedTaskTextRecipientKeys = new Set();
   let privateTextPosition = 0;
   const RSVP_VOLUNTEER_OPTIONS = [
     "Food setup — Friday, 3 p.m.",
@@ -4483,6 +4492,7 @@
                     </div>
                   ` : ""}
                   ${renderWorkspaceTodoSnapshots(todo)}
+                  ${renderTaskTextButton(todo)}
                 </div>
               </div>
             </details>
@@ -4550,6 +4560,7 @@
             </div>
             ${todo.notes ? `<div class="guest-card__field ${hasChecklist ? "todo-task-notes" : "guest-card__field--full"}"><span>Notes</span><strong>${renderTaskNotes(todo.notes)}</strong></div>` : ""}
             ${renderWorkspaceTodoSnapshots(todo)}
+            ${renderTaskTextButton(todo)}
           </div>
         </div>
       </details>
@@ -5240,6 +5251,67 @@
     if (digits.length === 10) return `+1${digits}`;
     if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
     return "";
+  }
+
+  function getTaskTextRecipients(task) {
+    const assignments = (Array.isArray(task?.assignedUserIds) ? task.assignedUserIds : [task?.assignedUserId])
+      .flatMap((value) => String(value || "").split(/[\n,;]+/)).map((value) => value.trim()).filter(Boolean);
+    const recipients = [];
+    const addGuest = (guest) => {
+      const key = `guest:${getGuestRowNumber(guest) || getGuestDisplayName(guest)}`;
+      if (!key || recipients.some((recipient) => recipient.key === key)) return;
+      recipients.push({ key, name: getGuestDisplayName(guest) || "Unnamed guest", phone: normalizeTextPhone(getGuestPhone(guest)), optedIn: isGuestSmsOptedIn(guest) });
+    };
+    assignments.forEach((assignment) => {
+      const key = assignment.toLowerCase();
+      if (key.startsWith("guest-type:")) {
+        const type = key.slice("guest-type:".length).trim();
+        cachedGuests.filter((guest) => getTypeTokens(getGuestTypeValue(guest)).some((item) => item.toLowerCase() === type)).forEach(addGuest);
+        return;
+      }
+      const id = key.startsWith("guest:") ? key.slice("guest:".length).trim() : key;
+      const guest = cachedGuests.find((item) => String(item.id || "").trim().toLowerCase() === id || getGuestDisplayName(item).toLowerCase() === id)
+        || (() => {
+          const user = cachedWorkspaceUsers.find((item) => String(item.id || "").trim().toLowerCase() === id);
+          return user ? cachedGuests.find((item) => String(item.id || "").trim().toLowerCase() === String(user.guestId || "").trim().toLowerCase() || getGuestDisplayName(item).toLowerCase() === String(user.name || "").trim().toLowerCase()) : null;
+        })();
+      if (guest) addGuest(guest);
+    });
+    return recipients.sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  function renderTaskTextRecipients() {
+    if (!taskTextRecipientListEl) return;
+    taskTextRecipientListEl.innerHTML = !activeTaskTextRecipients.length
+      ? '<p class="meta">No guests with text contacts are assigned to this task.</p>'
+      : activeTaskTextRecipients.map((recipient) => {
+        const ready = Boolean(recipient.phone && recipient.optedIn);
+        return `<label class="text-recipient-card text-recipient-card--${ready ? "ready" : "missing"}"><input type="checkbox" data-task-text-recipient="${escapeHtml(recipient.key)}" ${selectedTaskTextRecipientKeys.has(recipient.key) && ready ? "checked" : ""} ${ready ? "" : "disabled"}><span><strong>${escapeHtml(recipient.name)}</strong><p>${escapeHtml(ready ? recipient.phone : recipient.phone ? "Not opted in for texts" : "Needs attention")}</p></span></label>`;
+      }).join("");
+  }
+
+  function openTaskTextModal(task) {
+    if (!taskTextModal) return;
+    activeTaskTextRecipients = getTaskTextRecipients(task);
+    selectedTaskTextRecipientKeys = new Set(activeTaskTextRecipients.filter((recipient) => recipient.phone && recipient.optedIn).map((recipient) => recipient.key));
+    taskTextModalTitleEl.textContent = String(task.title || "Task reminder");
+    taskTextModalNotesEl.textContent = String(task.notes || "").trim() || "No task notes provided.";
+    taskTextMessageEl.value = [String(task.title || "").trim(), String(task.notes || "").trim()].filter(Boolean).join("\n\n");
+    setStatus(taskTextStatusEl, "", "");
+    renderTaskTextRecipients();
+    taskTextModal.hidden = false;
+    taskTextModal.setAttribute("aria-hidden", "false");
+    window.setTimeout(() => taskTextMessageEl.focus(), 0);
+  }
+
+  function closeTaskTextModal() {
+    if (!taskTextModal) return;
+    taskTextModal.hidden = true;
+    taskTextModal.setAttribute("aria-hidden", "true");
+  }
+
+  function renderTaskTextButton(task) {
+    return `<div class="guest-card__field guest-card__field--full"><button class="button button--light" type="button" data-send-workspace-task-text="${escapeHtml(String(task.id || ""))}">Send text</button></div>`;
   }
 
   function getTextGuestsForSelectedGroups() {
@@ -11048,6 +11120,15 @@ function sortTables(items) {
       return;
     }
 
+    const textButton = event.target.closest("[data-send-workspace-task-text]");
+    if (textButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      const task = cachedWorkspaceTasks.find((item) => String(item.id || "") === String(textButton.dataset.sendWorkspaceTaskText || ""));
+      if (task) openTaskTextModal(task);
+      return;
+    }
+
     const taskButton = event.target.closest("[data-edit-workspace-todo]");
     if (taskButton) {
       event.preventDefault();
@@ -11111,6 +11192,32 @@ function sortTables(items) {
       rerenderTodoData();
       setStatus(todoStatusEl, error.message || "Unable to delete task.", "error");
     }
+  });
+
+  document.querySelectorAll("[data-close-task-text-modal]").forEach((button) => button.addEventListener("click", closeTaskTextModal));
+
+  taskTextRecipientListEl?.addEventListener("change", (event) => {
+    const checkbox = event.target.closest("[data-task-text-recipient]");
+    if (!checkbox) return;
+    const key = String(checkbox.dataset.taskTextRecipient || "");
+    if (checkbox.checked) selectedTaskTextRecipientKeys.add(key);
+    else selectedTaskTextRecipientKeys.delete(key);
+  });
+
+  sendTaskGroupTextButton?.addEventListener("click", () => {
+    const recipients = activeTaskTextRecipients.filter((recipient) => selectedTaskTextRecipientKeys.has(recipient.key) && recipient.phone && recipient.optedIn);
+    const message = String(taskTextMessageEl?.value || "").trim();
+    if (recipients.length < 2) {
+      setStatus(taskTextStatusEl, "Choose at least two text-ready recipients for a group text.", "pending");
+      return;
+    }
+    if (!message) {
+      setStatus(taskTextStatusEl, "Add a message before sending.", "pending");
+      return;
+    }
+    if (!window.confirm(`Open a group text for ${recipients.length} recipients? Everyone can see the other recipients’ numbers and replies.`)) return;
+    openSmsComposer(recipients, message);
+    setStatus(taskTextStatusEl, "Your phone’s group-text draft is ready to review and send.", "success");
   });
 
   todosListEl.addEventListener("change", async (event) => {
