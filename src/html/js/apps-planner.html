@@ -5256,26 +5256,35 @@
   }
 
   function getTaskTextRecipients(task) {
-    const assignments = (Array.isArray(task?.assignedUserIds) ? task.assignedUserIds : [task?.assignedUserId])
+    const assignmentValues = Array.isArray(task?.assignedUserIds)
+      ? task.assignedUserIds
+      : task?.assignedUserIds || task?.assignedUserId;
+    const assignments = (Array.isArray(assignmentValues) ? assignmentValues : [assignmentValues])
       .flatMap((value) => String(value || "").split(/[\n,;]+/)).map((value) => value.trim()).filter(Boolean);
+    const workspaceGuests = Array.isArray(cachedWorkspaceInvitees?.guests) ? cachedWorkspaceInvitees.guests : [];
     const recipients = [];
     const addGuest = (guest) => {
-      const key = `guest:${getGuestRowNumber(guest) || getGuestDisplayName(guest)}`;
+      const guestId = String(guest?.id || "").trim();
+      const key = `guest:${guestId || getGuestRowNumber(guest) || getGuestDisplayName(guest)}`;
       if (!key || recipients.some((recipient) => recipient.key === key)) return;
-      recipients.push({ key, name: getGuestDisplayName(guest) || "Unnamed guest", phone: normalizeTextPhone(getGuestPhone(guest)), optedIn: isGuestSmsOptedIn(guest) });
+      const name = String(guest?.name || getGuestDisplayName(guest) || "Unnamed guest").trim();
+      const phone = normalizeTextPhone(guest?.phone || getGuestPhone(guest));
+      const optedIn = typeof guest?.smsOptedIn === "boolean" ? guest.smsOptedIn : isGuestSmsOptedIn(guest);
+      recipients.push({ key, name, phone, optedIn });
     };
     assignments.forEach((assignment) => {
       const key = assignment.toLowerCase();
       if (key.startsWith("guest-type:")) {
         const type = key.slice("guest-type:".length).trim();
-        cachedGuests.filter((guest) => getTypeTokens(getGuestTypeValue(guest)).some((item) => item.toLowerCase() === type)).forEach(addGuest);
+        workspaceGuests.filter((guest) => (guest?.types || []).some((item) => String(item || "").toLowerCase() === type)).forEach(addGuest);
         return;
       }
       const id = key.startsWith("guest:") ? key.slice("guest:".length).trim() : key;
-      const guest = cachedGuests.find((item) => String(item.id || "").trim().toLowerCase() === id || getGuestDisplayName(item).toLowerCase() === id)
+      const guest = workspaceGuests.find((item) => String(item?.id || "").trim().toLowerCase() === id || String(item?.name || "").trim().toLowerCase() === id)
+        || cachedGuests.find((item) => String(item.id || "").trim().toLowerCase() === id || getGuestDisplayName(item).toLowerCase() === id)
         || (() => {
           const user = cachedWorkspaceUsers.find((item) => String(item.id || "").trim().toLowerCase() === id);
-          return user ? cachedGuests.find((item) => String(item.id || "").trim().toLowerCase() === String(user.guestId || "").trim().toLowerCase() || getGuestDisplayName(item).toLowerCase() === String(user.name || "").trim().toLowerCase()) : null;
+          return user ? workspaceGuests.find((item) => String(item?.id || "").trim().toLowerCase() === String(user.guestId || "").trim().toLowerCase() || String(item?.name || "").trim().toLowerCase() === String(user.name || "").trim().toLowerCase()) : null;
         })();
       if (guest) addGuest(guest);
     });
@@ -5296,9 +5305,13 @@
     if (!taskTextModal) return;
     activeTaskTextRecipients = getTaskTextRecipients(task);
     selectedTaskTextRecipientKeys = new Set(activeTaskTextRecipients.filter((recipient) => recipient.phone && recipient.optedIn).map((recipient) => recipient.key));
-    taskTextModalTitleEl.textContent = String(task.title || "Task reminder");
+    const taskTitle = String(task.title || "Task reminder").trim() || "Task reminder";
+    taskTextModalTitleEl.textContent = `Send Text For ${taskTitle}`;
     taskTextModalNotesEl.textContent = String(task.notes || "").trim() || "No task notes provided.";
-    taskTextMessageEl.value = [String(task.title || "").trim(), String(task.notes || "").trim()].filter(Boolean).join("\n\n");
+    taskTextMessageEl.value = [
+      `Agency Wedding Task\n${taskTitle}`,
+      String(task.notes || "").trim()
+    ].filter(Boolean).join("\n\n");
     setStatus(taskTextStatusEl, "", "");
     renderTaskTextRecipients();
     taskTextModal.hidden = false;
