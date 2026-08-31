@@ -3015,21 +3015,15 @@
       }
 
       .text-group-picker {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.55rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+        gap: 0.35rem 1rem;
       }
 
-      .text-group-picker label,
-      .text-group-pill {
-        display: inline-flex;
+      .text-group-picker label {
+        display: flex;
         align-items: center;
         gap: 0.45rem;
-        min-height: 2.3rem;
-        padding: 0.45rem 0.7rem;
-        border: 1px solid var(--planner-border);
-        border-radius: 999px;
-        background: #fffdf9;
         color: var(--ink);
         font-weight: 700;
       }
@@ -3039,34 +3033,11 @@
         height: 1rem;
       }
 
-      .text-group-pills {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.45rem;
-      }
-
-      .text-group-pill {
-        border-color: color-mix(in srgb, var(--planner-accent) 40%, var(--planner-border));
-        background: color-mix(in srgb, var(--planner-accent) 12%, #fffdf9);
-      }
-
-      .text-group-pill button {
-        display: inline-grid;
-        width: 1.2rem;
-        height: 1.2rem;
-        padding: 0;
-        border: 0;
-        border-radius: 50%;
-        background: transparent;
-        color: inherit;
-        font: inherit;
-        font-weight: 900;
-        cursor: pointer;
-      }
-
       .text-recipient-list {
         display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
         gap: 0.6rem;
+        align-items: start;
       }
 
       .text-recipient-card {
@@ -3093,6 +3064,21 @@
       .text-recipient-card p {
         display: block;
         margin: 0;
+      }
+
+      .text-recipient-card__dismiss {
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: #8d2222;
+        font: inherit;
+        font-size: 1.4rem;
+        font-weight: 900;
+        line-height: 1;
+        cursor: pointer;
       }
 
       .guest-messaging textarea {
@@ -7197,7 +7183,6 @@
               <strong>Select groups</strong>
               <div class="text-group-picker" id="textGroupPicker"><p class="meta">Guest groups will appear here.</p></div>
             </div>
-            <div class="text-group-pills" id="textGroupPills" aria-label="Selected groups"></div>
             <div class="text-recipient-list" id="textGuestList"><p class="meta">Select a group to see its guests.</p></div>
             <button class="button button--light" type="button" id="selectFilteredTextGuests">Select eligible guests in groups</button>
             <label>Message <textarea id="guestMessagingBody" placeholder="Example: We can’t wait to celebrate with you! Please arrive by 4:30 p.m."></textarea></label>

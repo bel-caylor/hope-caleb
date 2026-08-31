@@ -112,7 +112,6 @@
   const guestMessagingBodyEl = document.querySelector("#guestMessagingBody");
   const guestMessagingSummaryEl = document.querySelector("#guestMessagingSummary");
   const textGroupPickerEl = document.querySelector("#textGroupPicker");
-  const textGroupPillsEl = document.querySelector("#textGroupPills");
   const textGuestListEl = document.querySelector("#textGuestList");
   const selectFilteredTextGuestsButton = document.querySelector("#selectFilteredTextGuests");
   const startGroupTextButton = document.querySelector("#startGroupText");
@@ -169,6 +168,7 @@
   let cachedGuests = [];
   let selectedTextGuestRowNumbers = new Set();
   let selectedTextGroups = new Set();
+  let dismissedTextGuestRowNumbers = new Set();
   let privateTextPosition = 0;
   const RSVP_VOLUNTEER_OPTIONS = [
     "Food setup — Friday, 3 p.m.",
@@ -5213,23 +5213,13 @@
     return "";
   }
 
-  function renderGuestTextChoice(rowNumber) {
-    const guest = cachedGuests.find((candidate) => getGuestRowNumber(candidate) === Number(rowNumber));
-    if (!guest) return "";
-    const phone = normalizeTextPhone(getGuestPhone(guest));
-    const optedIn = isGuestSmsOptedIn(guest);
-    if (!phone) return '<p class="guest-card__text-choice">No usable mobile number</p>';
-    if (!optedIn) return '<p class="guest-card__text-choice">Not opted in to text updates</p>';
-    const selected = selectedTextGuestRowNumbers.has(Number(rowNumber));
-    return `<label class="guest-card__text-choice"><input type="checkbox" data-text-recipient="${escapeHtml(String(rowNumber))}" ${selected ? "checked" : ""}> Include in text</label>`;
-  }
-
   function getTextGuestsForSelectedGroups() {
     const selectedTypes = new Set(selectedTextGroups);
     if (!selectedTypes.size) return [];
     return cachedGuests
       .filter((guest) => getGuestRowNumber(guest))
       .filter((guest) => getTypeTokens(getGuestTypeValue(guest)).some((type) => selectedTypes.has(type.toLowerCase())))
+      .filter((guest) => !dismissedTextGuestRowNumbers.has(getGuestRowNumber(guest)))
       .map((guest) => ({
         rowNumber: getGuestRowNumber(guest),
         name: getGuestDisplayName(guest) || "Unnamed guest",
@@ -5241,7 +5231,7 @@
   }
 
   function renderTextGuests() {
-    if (!textGroupPickerEl || !textGroupPillsEl || !textGuestListEl) return;
+    if (!textGroupPickerEl || !textGuestListEl) return;
     const groups = collectGuestTypes(cachedGuests.map((guest) => ({ type: getGuestTypeValue(guest) })));
     const availableGroups = new Set(groups.map((group) => group.toLowerCase()));
     selectedTextGroups = new Set([...selectedTextGroups].filter((group) => availableGroups.has(group)));
@@ -5254,9 +5244,6 @@
       : '<p class="meta">Guest groups will appear here once the guest list loads.</p>';
 
     const selectedGroupNames = groups.filter((group) => selectedTextGroups.has(group.toLowerCase()));
-    textGroupPillsEl.innerHTML = selectedGroupNames.map((group) => `
-      <span class="text-group-pill">${escapeHtml(group)} <button type="button" data-remove-text-group="${escapeHtml(group)}" aria-label="Remove ${escapeHtml(group)} from selected groups">×</button></span>
-    `).join("");
 
     const guests = getTextGuestsForSelectedGroups();
     textGuestListEl.innerHTML = !selectedGroupNames.length
@@ -5269,8 +5256,11 @@
           const selection = guest.phone && guest.optedIn
             ? `<label class="text-recipient-card__choice"><input type="checkbox" data-text-recipient="${escapeHtml(String(guest.rowNumber))}" ${selected ? "checked" : ""}> Include</label>`
             : `<span class="meta">${guest.phone ? "Not opted in" : "Cannot text"}</span>`;
+          const dismiss = !guest.phone
+            ? `<button class="text-recipient-card__dismiss" type="button" data-dismiss-text-guest="${escapeHtml(String(guest.rowNumber))}" aria-label="Hide ${escapeHtml(guest.name)} from this text list" title="Hide from this text list">×</button>`
+            : "";
           return `<article class="text-recipient-card text-recipient-card--${guest.phone ? "ready" : "missing"}">
-            <div><strong>${escapeHtml(guest.name)}</strong><p>${escapeHtml(phoneCopy)}</p></div>${selection}
+            <div><strong>${escapeHtml(guest.name)}</strong><p>${escapeHtml(phoneCopy)}</p></div>${selection}${dismiss}
           </article>`;
         }).join("");
     renderGuestMessagingSummary();
@@ -10685,6 +10675,7 @@ function sortTables(items) {
 
   clearTextGuestsButton?.addEventListener("click", () => {
     selectedTextGuestRowNumbers.clear();
+    dismissedTextGuestRowNumbers.clear();
     privateTextPosition = 0;
     renderGuests();
     setStatus(textsStatusEl, "Text recipient selection cleared.", "success");
@@ -10703,14 +10694,6 @@ function sortTables(items) {
     renderTextGuests();
   });
 
-  textGroupPillsEl?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-remove-text-group]");
-    if (!button) return;
-    selectedTextGroups.delete(String(button.dataset.removeTextGroup || "").trim().toLowerCase());
-    privateTextPosition = 0;
-    renderTextGuests();
-  });
-
   textGuestListEl?.addEventListener("change", (event) => {
     const textRecipient = event.target.closest("[data-text-recipient]");
     if (!textRecipient) return;
@@ -10722,6 +10705,16 @@ function sortTables(items) {
     }
     privateTextPosition = 0;
     renderGuestMessagingSummary();
+  });
+
+  textGuestListEl?.addEventListener("click", (event) => {
+    const dismissButton = event.target.closest("[data-dismiss-text-guest]");
+    if (!dismissButton) return;
+    const rowNumber = Number(dismissButton.dataset.dismissTextGuest || 0);
+    dismissedTextGuestRowNumbers.add(rowNumber);
+    selectedTextGuestRowNumbers.delete(rowNumber);
+    privateTextPosition = 0;
+    renderTextGuests();
   });
 
   startGroupTextButton?.addEventListener("click", () => {
