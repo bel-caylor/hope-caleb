@@ -23,6 +23,9 @@ export default {
     const allowedOrigin = getAllowedOrigin(origin, env);
     if (!allowedOrigin) return jsonResponse({ ok: false, error: "This planner endpoint is not available from this site." }, defaultOrigin(env), 403);
     if (request.method === "OPTIONS") return new Response("", { headers: cors(allowedOrigin) });
+    if (request.method === "POST" && url.pathname === "/rsvp-submit") {
+      return proxyPublicRsvpSubmission(request, env, allowedOrigin);
+    }
     if (request.method === "GET") {
       if (url.pathname === "/rsvp-lookup") {
         return proxyPublicRsvpLookup(url, env, allowedOrigin);
@@ -111,6 +114,61 @@ async function proxyPublicRsvpLookup(requestUrl: URL, env: Env, origin: string) 
     if (!upstream.ok) return jsonResponse({ ok: false, error: `The RSVP service returned ${upstream.status}.` }, origin, 502);
     const payload = JSON.parse(text);
     return jsonResponse(payload, origin);
+  } catch (_) {
+    return jsonResponse({ ok: false, error: "The RSVP service could not be reached." }, origin, 502);
+  }
+}
+
+/**
+ * Submits a public RSVP through the Worker so the browser can receive the
+ * Apps Script validation result. Direct browser posts use no-cors and cannot
+ * distinguish an accepted RSVP from a rejected one.
+ */
+async function proxyPublicRsvpSubmission(request: Request, env: Env, origin: string) {
+  const appsScriptBase = normalizeAppsScriptBase(env.APPS_SCRIPT_BASE || DEFAULT_APPS_SCRIPT_BASE);
+  if (!appsScriptBase) return jsonResponse({ ok: false, error: "The RSVP service is not configured." }, origin, 500);
+
+  let payload: Record<string, unknown>;
+  try {
+    const parsed = await request.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid RSVP payload.");
+    payload = parsed as Record<string, unknown>;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid RSVP payload.";
+    return jsonResponse({ ok: false, error: message }, origin, 400);
+  }
+
+  if (String(payload.formType || "").trim().toLowerCase() !== "group-rsvp") {
+    return jsonResponse({ ok: false, error: "Invalid RSVP submission." }, origin, 400);
+  }
+  if (!String(payload.group || "").trim()) {
+    return jsonResponse({ ok: false, error: "Missing group name." }, origin, 400);
+  }
+
+  const form = new URLSearchParams();
+  Object.entries(payload).forEach(([key, value]) => form.set(key, String(value ?? "")));
+
+  try {
+    const initialUpstream = await fetch(`${appsScriptBase}/exec`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+      body: form.toString(),
+      redirect: "manual"
+    });
+    const redirectLocation = initialUpstream.headers.get("Location");
+    const upstream = initialUpstream.status >= 300 && initialUpstream.status < 400 && redirectLocation
+      ? await fetch(new URL(redirectLocation, appsScriptBase).toString(), { method: "GET" })
+      : initialUpstream;
+    const text = await upstream.text();
+    if (!upstream.ok) return jsonResponse({ ok: false, error: `The RSVP service returned ${upstream.status}.` }, origin, 502);
+
+    let responsePayload: unknown;
+    try {
+      responsePayload = JSON.parse(text);
+    } catch (_) {
+      return jsonResponse({ ok: false, error: "The RSVP service returned an unreadable response." }, origin, 502);
+    }
+    return jsonResponse(responsePayload, origin);
   } catch (_) {
     return jsonResponse({ ok: false, error: "The RSVP service could not be reached." }, origin, 502);
   }

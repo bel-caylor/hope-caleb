@@ -57,7 +57,12 @@ export function doGet(e?: GoogleAppsScript.Events.DoGet) {
 
 export function doPost(e?: GoogleAppsScript.Events.DoPost) {
   if (!isRpcRequest(e)) {
-    return jsonResponse(savePublicSubmission(e?.parameter), e);
+    try {
+      return jsonResponse(savePublicSubmission(e?.parameter), e);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return jsonResponse({ ok: false, error: message }, e);
+    }
   }
 
   const body = e?.postData?.contents || "";

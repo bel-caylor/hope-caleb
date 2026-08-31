@@ -13,8 +13,9 @@ const HONEYMOON_OPTIONS = {
 };
 
 const HOME_RSVP = {
-  scriptUrl: "https://script.google.com/macros/s/AKfycbzUJCHN_Y8ez7f_J2yeeYvjLvjhSvjseCzHRb3uMQQvY0P9ECKJ-Ln_so1S41uL9K7C/exec",
+  scriptUrl: "https://script.google.com/macros/s/AKfycby0g84nFvz33HLVRrxMOerpJ9rZMAZyYzbhq9wQYLSWpvzEN4C0RIqs6ZsQ3ny86aYA/exec",
   lookupUrl: "https://hope-caleb-wedding-planner-proxy.belinda-caylor.workers.dev/rsvp-lookup",
+  submitUrl: "https://hope-caleb-wedding-planner-proxy.belinda-caylor.workers.dev/rsvp-submit",
   deadlineLabel: "Please reply by December 1, 2026."
 };
 
@@ -454,8 +455,8 @@ if (rsvpLookupForm && rsvpResponseForm) {
   rsvpResponseForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    if (!HOME_RSVP.scriptUrl) {
-      setRsvpStatus(rsvpSubmitStatus, "Add your Apps Script URL in site.js before publishing the RSVP form.", "error");
+    if (!HOME_RSVP.submitUrl) {
+      setRsvpStatus(rsvpSubmitStatus, "The RSVP service is not configured yet. Please try again later.", "error");
       return;
     }
 
@@ -521,11 +522,15 @@ if (rsvpLookupForm && rsvpResponseForm) {
         .map((input) => String(input.value || "").trim())
         .filter(Boolean)));
 
-      await fetch(HOME_RSVP.scriptUrl, {
+      const response = await fetch(HOME_RSVP.submitUrl, {
         method: "POST",
-        mode: "no-cors",
-        body: payload
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.fromEntries(payload.entries()))
       });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.error || "Your RSVP could not be saved.");
+      }
 
       setRsvpStatus(rsvpSubmitStatus, "Thank you. Your RSVP has been sent.", "success");
       submitButton.textContent = "Sent";
@@ -536,7 +541,7 @@ if (rsvpLookupForm && rsvpResponseForm) {
     } catch (error) {
       submitButton.textContent = "Send RSVP";
       submitButton.disabled = false;
-      setRsvpStatus(rsvpSubmitStatus, "Something went wrong sending the RSVP. Please try again.", "error");
+      setRsvpStatus(rsvpSubmitStatus, error.message || "Something went wrong sending the RSVP. Please try again.", "error");
     }
   });
 
