@@ -3043,7 +3043,8 @@
 
       .table-layout-picker__choices {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(122px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(160px, 200px));
+        justify-content: start;
         gap: 0.55rem;
       }
 
@@ -3130,6 +3131,17 @@
         flex: 0 0 100px;
         width: 100px;
         min-width: 0;
+      }
+
+      #tableLayoutForm > label:not([data-table-section-name]) {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+      }
+
+      #tableLayoutForm > label:not([data-table-section-name]) select {
+        flex: 0 0 160px;
+        width: 160px;
       }
 
       .table-side-group {
