@@ -678,7 +678,8 @@
         top: 0;
         right: 0;
         left: 0;
-        z-index: 30;
+        /* Keep the version popover readable when the mobile sidebar is open. */
+        z-index: 50;
         min-height: var(--planner-desktop-header-height);
         margin-bottom: 0.25rem;
         padding: 0 1rem;
