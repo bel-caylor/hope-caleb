@@ -929,7 +929,7 @@ function renderRsvpEditor(group) {
     const isOutOfTownGroup = members.some((member) => isOutOfTownGuest(member));
     rsvpRiverWalkSection.hidden = !isOutOfTownGroup;
     rsvpTravelDetails.hidden = !isOutOfTownGroup;
-    rsvpOutOfTownSection.hidden = rsvpRehearsalSection.hidden && rsvpRiverWalkSection.hidden && rsvpOpenHouseSection.hidden && !isOutOfTownGroup;
+    rsvpOutOfTownSection.hidden = !isOutOfTownGroup;
     if (rsvpOutOfTownGatheringsCopy) {
       rsvpOutOfTownGatheringsCopy.hidden = rsvpRehearsalSection.hidden && rsvpOpenHouseSection.hidden;
     }
@@ -997,7 +997,7 @@ function isChurchMember(member) {
 function isOutOfTownGuest(member) {
   return String(member?.type || "")
     .split(/[,|/]/)
-    .some((type) => /^(oot|ott)(\s|$)/i.test(type.trim()) || /out[-\s]?of[-\s]?town/i.test(type));
+    .some((type) => type.trim().toLowerCase() === "oot caylor");
 }
 
 function hideRsvpEditor() {

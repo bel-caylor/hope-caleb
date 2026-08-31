@@ -5489,6 +5489,64 @@
         font-weight: 400;
       }
 
+      .projects-list {
+        display: grid;
+        gap: 0.75rem;
+        align-content: start;
+      }
+
+      .projects-accordion {
+        border: 1px solid var(--planner-border);
+        border-radius: 0.75rem;
+        background: var(--white);
+        overflow: hidden;
+      }
+
+      .projects-accordion > summary {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.8rem 1rem;
+        cursor: pointer;
+        font-weight: 800;
+      }
+
+      .projects-accordion > summary::marker { color: var(--wine); }
+
+      .projects-accordion__title { flex: 1; }
+
+      .projects-accordion__add { margin-left: auto; }
+
+      .projects-accordion__content {
+        display: grid;
+        gap: 0.45rem;
+        padding: 0.8rem 1rem 1rem;
+        border-top: 1px solid var(--planner-border);
+      }
+
+      .project-task-row {
+        display: grid;
+        grid-template-columns: auto minmax(10rem, 1fr) minmax(9rem, 0.45fr) minmax(8rem, 0.35fr) auto;
+        gap: 0.6rem;
+        align-items: center;
+        padding: 0.55rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 0.45rem;
+      }
+
+      .project-task-row.is-complete { background: #e6e7e8; color: #74777b; }
+      .project-task-row.is-complete .project-task-row__title { text-decoration: line-through; }
+      .project-task-row select { width: 100%; min-width: 0; }
+      .project-task-row__edit { white-space: nowrap; }
+
+      @media (max-width: 700px) {
+        .project-task-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+        .project-task-row select { grid-column: span 1; }
+        .project-task-row__assigned { grid-column: 2; }
+        .project-task-row__due { grid-column: 3; }
+        .project-task-row__edit { grid-column: 3; grid-row: 1; }
+      }
+
       .workspace-task-table input,
       .workspace-task-table select {
         width: 100%;
@@ -6785,6 +6843,10 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-4"></path><path d="M21 12c0 4.97-4.03 9-9 9S3 16.97 3 12 7.03 3 12 3c1.74 0 3.37.49 4.75 1.34"></path></svg>
                   <strong>To-Dos</strong>
                 </button>
+                <button class="planner-section-button" type="button" data-planner-section="projects">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v9A2.5 2.5 0 0 1 18.5 21h-13A2.5 2.5 0 0 1 3 18.5z"></path></svg>
+                  <strong>Projects</strong>
+                </button>
                 <button class="planner-section-button" type="button" data-planner-section="rsvps">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"></path><path d="m4 7 8 6 8-6"></path></svg>
                   <strong>RSVP</strong>
@@ -7026,6 +7088,18 @@
           <div class="list" id="todosList">
             <p class="meta">No tasks loaded yet.</p>
           </div>
+            </section>
+
+            <section class="panel planner-panel" data-planner-panel="projects" hidden>
+              <div class="list-header">
+                <div class="list-header__copy">
+                  <h3>Projects</h3>
+                  <p class="meta">Keep planning work together, with its tasks in one place.</p>
+                </div>
+              </div>
+              <div class="list projects-list" id="projectsList">
+                <p class="meta">No projects loaded yet.</p>
+              </div>
             </section>
           </section>
         </div>

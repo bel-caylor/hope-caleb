@@ -2665,7 +2665,7 @@ h4#rsvp-volunteer-heading {
   padding: 1rem;
   border: 1px solid rgba(89, 0, 0, 0.08);
   border-radius: 1rem;
-  background: rgba(206, 170, 168, 0.1);
+  background: rgb(129 13 11 / 20%);
 }
 
 .rsvp-travel-details h5 {
