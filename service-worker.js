@@ -1,4 +1,4 @@
-const CACHE_NAME = "hope-caleb-dashboard-v5";
+const CACHE_NAME = "hope-caleb-dashboard-v6";
 const APP_SHELL = [
   "/dashboard.html",
   "/Dashboard.html",
