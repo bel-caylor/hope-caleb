@@ -3,7 +3,7 @@ import { getViewerProfile } from "./auth";
 import { deleteEventList, deleteRehearsalSlide, deleteShot, deleteTodo, getRehearsalSlideImage, listBeds, listEventLists, listEvents, listPeople, listRehearsalSlides, listShots, listTables, listTodos, saveBed, saveEvent, saveEventList, saveGuestDetails, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveRehearsalSlide, saveShot, saveTable, saveTableReservedOpenSeats, saveTodo, uploadRehearsalSlideImage, uploadTodoImage } from "./features/planner";
 import { generateEventPlan } from "./util/ai";
 import { PLANNER_BUILD_VERSION } from "./version";
-import { archiveLegacyPlanningData, deleteWorkspaceAsset, deleteWorkspaceEvent, deleteWorkspaceList, deleteWorkspaceTask, getWorkspaceAssetImage, getWorkspaceProfile, importLegacyPeopleToWorkspaceUsers, initializePlannerWorkspace, listWorkspaceAssets, listWorkspaceEvents, listWorkspaceInvitees, listWorkspaceLists, listWorkspaceTasks, listWorkspaceUsers, saveWorkspaceAsset, saveWorkspaceEvent, saveWorkspaceList, saveWorkspaceTask, saveWorkspaceUser, setWorkspaceListItemCompleted, setWorkspaceTaskCompleted, syncPlannerUsersToGuests } from "./features/planner-v2";
+import { archiveLegacyPlanningData, deleteWorkspaceAsset, deleteWorkspaceEvent, deleteWorkspaceList, deleteWorkspaceTask, getWorkspaceAssetImage, getWorkspaceProfile, importLegacyPeopleToWorkspaceUsers, initializePlannerWorkspace, listWorkspaceAssets, listWorkspaceEvents, listWorkspaceInvitees, listWorkspaceLists, listWorkspaceTasks, listWorkspaceUsers, normalizeWorkspaceTaskAssignments, saveWorkspaceAsset, saveWorkspaceEvent, saveWorkspaceList, saveWorkspaceTask, saveWorkspaceUser, setWorkspaceListItemCompleted, setWorkspaceTaskCompleted, syncPlannerUsersToGuests } from "./features/planner-v2";
 
 export function rpc(input: { method: string; payload: unknown }) {
   const { method, payload } = input;
@@ -90,6 +90,8 @@ export function rpc(input: { method: string; payload: unknown }) {
       return importLegacyPeopleToWorkspaceUsers();
     case "syncPlannerUsersToGuests":
       return syncPlannerUsersToGuests();
+    case "normalizeWorkspaceTaskAssignments":
+      return normalizeWorkspaceTaskAssignments();
     case "archiveLegacyPlanningData":
       return archiveLegacyPlanningData();
     case "listWorkspaceEvents":
@@ -154,6 +156,9 @@ function getPlannerBootstrap() {
   }
 
   initializePlannerWorkspace();
+  // This migration is idempotent. It repairs development-era task rows the
+  // first time a full planner loads the upgraded dashboard.
+  normalizeWorkspaceTaskAssignments();
   return {
     profile,
     planner: {

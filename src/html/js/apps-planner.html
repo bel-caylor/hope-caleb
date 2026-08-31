@@ -5598,7 +5598,14 @@
     if (!ids.length) return "Unassigned";
     return ids.map((id) => {
       if (id.startsWith("guest-type:")) return id.slice("guest-type:".length) || "Guest type";
-      if (id.startsWith("guest:")) return id.slice("guest:".length) || "Guest";
+      if (id.startsWith("guest:")) {
+        const guestValue = id.slice("guest:".length).trim();
+        const guest = getWorkspaceInviteeGuestChoices().find((item) =>
+          String(item?.id || "").trim().toLowerCase() === guestValue.toLowerCase()
+          || String(item?.name || "").trim().toLowerCase() === guestValue.toLowerCase()
+        );
+        return guest?.name || guestValue || "Guest";
+      }
       const user = cachedWorkspaceUsers.find((item) => String(item.id || "") === id);
       return user?.name || user?.email || id;
     }).join(", ");
@@ -7304,7 +7311,7 @@
       <input type="hidden" name="assignedUserIds" value="">
       <fieldset class="workspace-task-assignment"><legend>Assigned to</legend>
         <div class="workspace-task-assignee-selection" data-workspace-task-assignee-selection>No one selected.</div>
-        <label class="workspace-task-edit-field"><span>Add individual</span><div class="split"><select data-workspace-task-assignee-person><option value="">Choose a person</option>${taskEligibleGuests.map((guest) => `<option value="guest:${escapeHtml(guest.name)}">${escapeHtml(guest.name)}</option>`).join("")}</select><button class="button button--icon" type="button" data-add-workspace-task-assignee aria-label="Add person" title="Add person"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button></div></label>
+        <label class="workspace-task-edit-field"><span>Add individual</span><div class="split"><select data-workspace-task-assignee-person><option value="">Choose a person</option>${taskEligibleGuests.filter((guest) => String(guest?.id || "").trim()).map((guest) => `<option value="guest:${escapeHtml(guest.id)}">${escapeHtml(guest.name)}</option>`).join("")}</select><button class="button button--icon" type="button" data-add-workspace-task-assignee aria-label="Add person" title="Add person"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button></div></label>
         <div class="workspace-task-group-list"><span>Groups</span><div>${taskAssignmentGroups.map((group) => `
           <label><input type="checkbox" value="guest-type:${escapeHtml(group)}" data-workspace-task-assignee-group><span>${escapeHtml(group)}</span></label>
         `).join("")}</div></div>
@@ -10696,7 +10703,6 @@ function sortTables(items) {
       return;
     }
 
-    const editButton = event.target.closest("[data-edit-project-task]");
     const projectButton = event.target.closest("[data-edit-project]");
     if (projectButton) {
       event.preventDefault();
@@ -10711,6 +10717,7 @@ function sortTables(items) {
       return;
     }
 
+    const editButton = event.target.closest("[data-edit-project-task]");
     if (editButton) {
       const taskId = String(editButton.dataset.editProjectTask || "").trim();
       selectedWorkspaceEventId = String(editButton.dataset.projectId || "").trim();

@@ -201,7 +201,7 @@ function isWriteRpcMethod(method: string) {
     "saveTodo", "uploadTodoImage", "deleteTodo", "uploadRehearsalSlideImage", "saveRehearsalSlide", "deleteRehearsalSlide", "saveEventList", "deleteEventList",
     "saveTable", "saveTableReservedOpenSeats", "saveGuestTableAssignment", "saveGuestTableAssignments",
     "saveGuestDetails", "syncGuestSummarySheets", "syncGroupsSheet", "savePlannerRsvpCorrection",
-    "initializePlannerWorkspace", "saveWorkspaceUser", "importLegacyPeopleToWorkspaceUsers", "syncPlannerUsersToGuests",
+    "initializePlannerWorkspace", "saveWorkspaceUser", "importLegacyPeopleToWorkspaceUsers", "syncPlannerUsersToGuests", "normalizeWorkspaceTaskAssignments",
     "archiveLegacyPlanningData", "saveWorkspaceEvent", "deleteWorkspaceEvent", "saveWorkspaceTask",
     "setWorkspaceTaskCompleted", "deleteWorkspaceTask", "saveWorkspaceList", "setWorkspaceListItemCompleted",
     "deleteWorkspaceList", "saveWorkspaceAsset", "deleteWorkspaceAsset"

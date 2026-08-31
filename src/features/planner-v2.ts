@@ -44,6 +44,11 @@ type GuestContact = {
   types: string[];
 };
 
+type TaskAssignmentContext = {
+  guests: GuestContact[];
+  users: Array<ReturnType<typeof mapUser>>;
+};
+
 const GUEST_CONTACT_HEADERS = [
   "Guest Id",
   "Email",
@@ -124,6 +129,35 @@ function splitIds(value: unknown) {
     seen.add(key);
     return true;
   });
+}
+
+/**
+ * Task assignees have historically been stored as a planner-user id, a
+ * display-name token (guest:Jane), or a guest-type token.  Individual guests
+ * now always use their immutable Guest Id, while group tokens stay groups.
+ */
+function normalizeTaskAssignmentIds(value: unknown, context?: TaskAssignmentContext) {
+  const values = splitIds(value);
+  if (!context) return values;
+
+  const guestsById = new Map(context.guests.map((guest) => [guest.id.toLowerCase(), guest]));
+  const guestsByName = new Map(context.guests.map((guest) => [guest.name.toLowerCase(), guest]));
+  const usersById = new Map(context.users.map((user) => [user.id.toLowerCase(), user]));
+
+  return splitIds(values.map((value) => {
+    const raw = String(value || "").trim();
+    const normalized = raw.toLowerCase();
+    if (!raw || normalized.startsWith("guest-type:")) return raw;
+
+    const user = usersById.get(normalized);
+    if (user?.guestId && guestsById.has(user.guestId.toLowerCase())) {
+      return `guest:${guestsById.get(user.guestId.toLowerCase())!.id}`;
+    }
+
+    const individualValue = normalized.startsWith("guest:") ? raw.slice("guest:".length).trim() : raw;
+    const guest = guestsById.get(individualValue.toLowerCase()) || guestsByName.get(individualValue.toLowerCase());
+    return guest?.id ? `guest:${guest.id}` : raw;
+  }));
 }
 
 /** Keep planner names consistent without changing intentional acronyms such as "AI" or "UTSA". */
@@ -297,6 +331,8 @@ function taskIsAssignedToWorkspaceViewer(task: ReturnType<typeof mapTask>, viewe
   const viewerAssignments = [
     viewer.userId,
     viewer.guestId,
+    viewer.guestId ? `guest:${viewer.guestId}` : "",
+    // Retain this fallback for an unmigrated guest row with no Guest Id.
     viewer.name ? `guest:${viewer.name}` : ""
   ].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
   if (assignedUserIds.some((id) => viewerAssignments.includes(id))) return true;
@@ -307,14 +343,15 @@ function taskIsAssignedToWorkspaceViewer(task: ReturnType<typeof mapTask>, viewe
   return (guest?.types || []).some((type) => groupAssignments.has(type.trim().toLowerCase()));
 }
 
-function mapTask(row: Record<string, unknown>) {
+function mapTask(row: Record<string, unknown>, assignmentContext?: TaskAssignmentContext) {
+  const assignedUserIds = normalizeTaskAssignmentIds(row.AssignedUserId, assignmentContext);
   return {
     id: String(row.Id || "").trim(),
     title: toTitleCase(row.Title),
     eventId: String(row.EventId || "").trim(),
     listId: String(row.ListId || "").trim(),
-    assignedUserIds: splitIds(row.AssignedUserId),
-    assignedUserId: splitIds(row.AssignedUserId)[0] || "",
+    assignedUserIds,
+    assignedUserId: assignedUserIds[0] || "",
     dueAt: iso(row.DueAt),
     status: String(row.Status || "Not Started").trim(),
     priority: String(row.Priority || "Medium").trim(),
@@ -377,6 +414,48 @@ function ensureWorkspaceSheets() {
   ensureSheet(PLANNER_V2_LISTS_SHEET, PLANNER_V2_LIST_HEADERS);
   ensureSheet(PLANNER_V2_ASSETS_SHEET, PLANNER_V2_ASSET_HEADERS);
   ensureSheet(PLANNER_ARCHIVE_SHEET, PLANNER_ARCHIVE_HEADERS);
+}
+
+function getTaskAssignmentContext(assignMissingGuestIds = false): TaskAssignmentContext {
+  const guests = listGuestContacts(assignMissingGuestIds);
+  const guestsById = new Map(guests.map((guest) => [guest.id, guest]));
+  const users = readRows(PLANNER_USERS_SHEET)
+    .map((row) => mapUser(row, guestsById.get(String(row.GuestId || "").trim())))
+    .filter((user) => user.id);
+  return { guests, users };
+}
+
+/** Convert historical task assignee values to immutable guest-id tokens. */
+export function normalizeWorkspaceTaskAssignments() {
+  requireWorkspaceManager();
+  initializePlannerWorkspace();
+  const context = getTaskAssignmentContext(true);
+  const now = new Date().toISOString();
+  let updated = 0;
+  let unresolved = 0;
+
+  readRows(PLANNER_V2_TASKS_SHEET).forEach((row) => {
+    const id = String(row.Id || "").trim();
+    if (!id) return;
+    const original = splitIds(row.AssignedUserId);
+    const normalized = normalizeTaskAssignmentIds(original, context);
+    const originalKey = original.map((value) => value.toLowerCase()).join(",");
+    const normalizedKey = normalized.map((value) => value.toLowerCase()).join(",");
+    unresolved += normalized.filter((value) => {
+      const lower = value.toLowerCase();
+      return !lower.startsWith("guest:") && !lower.startsWith("guest-type:");
+    }).length;
+    if (originalKey === normalizedKey) return;
+    upsertRow(PLANNER_V2_TASKS_SHEET, PLANNER_V2_TASK_HEADERS, id, {
+      ...row,
+      Id: id,
+      AssignedUserId: normalized.join(", "),
+      UpdatedAt: now
+    });
+    updated += 1;
+  });
+
+  return { updated, unresolved, guestCount: context.guests.length };
 }
 
 export function listWorkspaceUsers() {
@@ -473,7 +552,7 @@ export function importLegacyPeopleToWorkspaceUsers() {
   ensureSheet(PEOPLE_SHEET, PEOPLE_HEADERS);
   const existingNames = new Set(
     readRows(PLANNER_USERS_SHEET)
-      .map(mapUser)
+      .map((row) => mapUser(row))
       .map((user) => user.name.toLowerCase())
       .filter(Boolean)
   );
@@ -593,7 +672,7 @@ export function deleteWorkspaceEvent(input: { id?: string }) {
   if (!id) throw new Error("Missing event id.");
 
   const taskIds = readRows(PLANNER_V2_TASKS_SHEET)
-    .map(mapTask)
+    .map((row) => mapTask(row))
     .filter((task) => task.eventId === id)
     .map((task) => task.id);
   readRows(PLANNER_V2_ASSETS_SHEET)
@@ -611,7 +690,8 @@ export function deleteWorkspaceEvent(input: { id?: string }) {
 
 export function listWorkspaceTasks() {
   const viewer = getWorkspaceViewer();
-  const tasks = readRows(PLANNER_V2_TASKS_SHEET).map(mapTask).filter((task) => task.title);
+  const assignmentContext = getTaskAssignmentContext();
+  const tasks = readRows(PLANNER_V2_TASKS_SHEET).map((row) => mapTask(row, assignmentContext)).filter((task) => task.title);
   const visibleTasks = viewer.accessLevel === "full_planner" || viewer.accessLevel === "contributor"
     ? tasks
     : tasks.filter((task) => taskIsAssignedToWorkspaceViewer(task, viewer));
@@ -626,9 +706,10 @@ export function listWorkspaceTasks() {
 export function saveWorkspaceTask(input: SaveWorkspaceTaskInput) {
   const viewer = getWorkspaceViewer();
   const id = String(input.id || "").trim() || createId("workspace_task");
-  const existing = readRows(PLANNER_V2_TASKS_SHEET).map(mapTask).find((task) => task.id === id);
-  const ownsExistingTask = Boolean(existing) && taskIsAssignedToWorkspaceViewer(existing, viewer);
-  const isCompletionOnly = Boolean(existing) && ownsExistingTask && String(input.status || existing.status).trim().toLowerCase() === "done";
+  const assignmentContext = getTaskAssignmentContext();
+  const existing = readRows(PLANNER_V2_TASKS_SHEET).map((row) => mapTask(row, assignmentContext)).find((task) => task.id === id);
+  const ownsExistingTask = existing ? taskIsAssignedToWorkspaceViewer(existing, viewer) : false;
+  const isCompletionOnly = existing ? ownsExistingTask && String(input.status || existing.status).trim().toLowerCase() === "done" : false;
   if (viewer.accessLevel !== "full_planner" && viewer.accessLevel !== "contributor" && !isCompletionOnly) {
     throw new Error("You can only complete tasks assigned to you.");
   }
@@ -639,11 +720,11 @@ export function saveWorkspaceTask(input: SaveWorkspaceTaskInput) {
   const listId = Object.prototype.hasOwnProperty.call(input, "listId")
     ? String(input.listId || "").trim()
     : String(existing?.listId || "").trim();
-  const assignedUserIds = Object.prototype.hasOwnProperty.call(input, "assignedUserIds")
+  const assignedUserIds = normalizeTaskAssignmentIds(Object.prototype.hasOwnProperty.call(input, "assignedUserIds")
     ? splitIds(input.assignedUserIds)
     : Object.prototype.hasOwnProperty.call(input, "assignedUserId")
       ? splitIds(input.assignedUserId)
-      : existing?.assignedUserIds || splitIds(existing?.assignedUserId);
+      : existing?.assignedUserIds || splitIds(existing?.assignedUserId), assignmentContext);
   const dueAt = Object.prototype.hasOwnProperty.call(input, "dueAt")
     ? String(input.dueAt || "").trim()
     : String(existing?.dueAt || "").trim();
@@ -651,7 +732,7 @@ export function saveWorkspaceTask(input: SaveWorkspaceTaskInput) {
   const sortOrder = Number.isFinite(requestedSortOrder) && requestedSortOrder > 0
     ? requestedSortOrder
     : Number(existing?.sortOrder || 0) || readRows(PLANNER_V2_TASKS_SHEET)
-      .map(mapTask)
+      .map((row) => mapTask(row, assignmentContext))
       .filter((task) => task.eventId === eventId)
       .reduce((highest, task) => Math.max(highest, Number(task.sortOrder || 0)), 0) + 1;
   const saved = {
@@ -670,7 +751,7 @@ export function saveWorkspaceTask(input: SaveWorkspaceTaskInput) {
     CompletedAt: status.toLowerCase() === "done" ? String(input.completedAt || existing?.completedAt || now).trim() : ""
   };
   upsertRow(PLANNER_V2_TASKS_SHEET, PLANNER_V2_TASK_HEADERS, id, saved);
-  return mapTask(saved);
+  return mapTask(saved, assignmentContext);
 }
 
 /** Update only a task's completion state so assignees cannot alter its other details. */
@@ -680,7 +761,8 @@ export function setWorkspaceTaskCompleted(input: { id?: string; completed?: bool
   const id = String(input.id || "").trim();
   if (!id) throw new Error("Missing task id.");
 
-  const existing = readRows(PLANNER_V2_TASKS_SHEET).map(mapTask).find((task) => task.id === id);
+  const assignmentContext = getTaskAssignmentContext();
+  const existing = readRows(PLANNER_V2_TASKS_SHEET).map((row) => mapTask(row, assignmentContext)).find((task) => task.id === id);
   if (!existing) throw new Error("Task not found.");
   const canComplete = viewer.accessLevel === "full_planner" || taskIsAssignedToWorkspaceViewer(existing, viewer);
   if (!canComplete) throw new Error("Only a full planner or the assigned person can complete this task.");
@@ -703,7 +785,7 @@ export function setWorkspaceTaskCompleted(input: { id?: string; completed?: bool
     CompletedAt: completed ? now : ""
   };
   upsertRow(PLANNER_V2_TASKS_SHEET, PLANNER_V2_TASK_HEADERS, id, saved);
-  return mapTask(saved);
+  return mapTask(saved, assignmentContext);
 }
 
 export function deleteWorkspaceTask(input: { id?: string }) {
