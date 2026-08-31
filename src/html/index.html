@@ -5531,24 +5531,23 @@
 
       .projects-accordion > summary::-webkit-details-marker { display: none; }
 
-      .projects-accordion__title { flex: 1; }
+      .projects-accordion__title { flex: 0 1 auto; }
+
+      .projects-accordion > summary > .meta { margin-left: auto; }
 
       .projects-accordion__toggle {
-        display: grid;
-        width: 1.4rem;
-        height: 1.4rem;
+        display: inline-block;
+        width: 1rem;
         flex: 0 0 auto;
-        place-items: center;
-        border: 1px solid rgba(111, 29, 42, 0.34);
-        border-radius: 999px;
         color: var(--wine);
-        font-size: 1.2rem;
-        font-weight: 500;
+        font-size: 1.15rem;
+        font-weight: 800;
         line-height: 1;
+        text-align: center;
       }
 
-      .projects-accordion__toggle::before { content: "+"; }
-      .projects-accordion[open] .projects-accordion__toggle::before { content: "−"; }
+      .projects-accordion__toggle::before { content: "▾"; }
+      .projects-accordion[open] .projects-accordion__toggle::before { content: "▴"; }
 
       .projects-accordion__actions {
         display: inline-flex;

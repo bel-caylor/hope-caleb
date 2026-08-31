@@ -4257,7 +4257,7 @@
         .filter((task) => String(task.eventId || "") === String(project.id || ""))
         .sort((left, right) => Number(left.sortOrder || 0) - Number(right.sortOrder || 0));
       return `
-        <details class="projects-accordion" open>
+        <details class="projects-accordion">
           <summary>
             <span class="projects-accordion__toggle" aria-hidden="true"></span>
             <span class="projects-accordion__title">${escapeHtml(project.title || "Untitled project")}</span>
