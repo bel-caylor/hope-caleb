@@ -4882,6 +4882,7 @@
     ` : "";
     const renderSubmissionAccordion = (rsvp, records, group) => {
       const guestCount = getSubmissionGuestCount(rsvp);
+      const volunteerRoles = getVolunteerRoles(rsvp);
       const detailFields = [
         ["Wedding", rsvp.weddingRsvpSummary || (rsvp.attending ? getRsvpLabel(getRsvpGroup(rsvp.attending)) : "")],
         ["Rehearsal dinner", rsvp.rehearsalRsvp],
@@ -4889,7 +4890,6 @@
         ["Contact email", rsvp.email],
         ["Mobile number", rsvp.mobile],
         ["Text-message updates", /^(true|yes)$/i.test(rsvp.smsOptedIn) ? "Opted in" : "Not opted in"],
-        ["Volunteer roles", getVolunteerRoles(rsvp).join(", ")],
         ["Submitted", formatSubmissionTime(rsvp)]
       ].filter(([, value]) => String(value || "").trim());
       const memberResponses = renderMemberResponses(rsvp.groupMembers);
@@ -4907,6 +4907,7 @@
             <div class="guest-card__grid">
               ${detailFields.map(([label, value]) => `<div class="guest-card__field"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}
             </div>
+            ${volunteerRoles.length ? `<section class="rsvp-submission-roles"><span>Volunteer roles</span><ul>${volunteerRoles.map((role) => `<li>${escapeHtml(role)}</li>`).join("")}</ul></section>` : ""}
             ${memberResponses ? `<section class="rsvp-submission-members"><span>Wedding party responses</span><ul>${memberResponses}</ul></section>` : ""}
             ${rsvp.comment ? `<section class="rsvp-submission-note"><span>Note</span><p>${escapeHtml(rsvp.comment)}</p></section>` : ""}
             ${renderSubmissionHistory(records)}

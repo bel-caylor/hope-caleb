@@ -1950,12 +1950,14 @@
         grid-template-columns: minmax(11rem, 15rem) minmax(13rem, 1fr);
       }
 
+      .rsvp-submission-roles,
       .rsvp-submission-members,
       .rsvp-submission-note {
         border-top: 1px solid rgba(86, 29, 40, 0.14);
         padding-top: 0.8rem;
       }
 
+      .rsvp-submission-roles > span,
       .rsvp-submission-members > span,
       .rsvp-submission-note > span {
         display: block;
@@ -2103,6 +2105,15 @@
         display: grid;
         gap: 0.3rem;
         font-weight: 700;
+      }
+
+      .rsvp-submission-roles ul {
+        margin: 0.3rem 0 0;
+        padding-left: 1.3rem;
+      }
+
+      .rsvp-submission-roles li + li {
+        margin-top: 0.2rem;
       }
 
       #rsvpEditForm .checkbox-label {
