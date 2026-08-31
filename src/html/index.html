@@ -4112,6 +4112,24 @@
         font-weight: 800;
       }
 
+      /* Checkbox labels are always a single, compact control: checkbox then text. */
+      label:has(input[type="checkbox"]) {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+      }
+
+      label:has(input[type="checkbox"]) input[type="checkbox"] {
+        box-sizing: border-box;
+        flex: 0 0 1rem;
+        width: 1rem;
+        min-width: 1rem;
+        height: 1rem;
+        min-height: 1rem;
+        margin: 0;
+        padding: 0;
+      }
+
       .workspace-task-edit-notes-label {
         gap: 0.35rem;
       }
@@ -7711,6 +7729,28 @@
                 <button class="button button--light" type="button" data-reset-guest-type>Clear</button>
               </div>
               <p class="status" id="guestTypeStatus"></p>
+            </form>
+          </div>
+        </section>
+
+        <section class="modal" id="guestTextContactModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-guest-text-contact-modal></div>
+          <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="guestTextContactModalTitle">
+            <button class="modal__close" type="button" data-close-guest-text-contact-modal aria-label="Close dialog">X</button>
+            <div class="modal__header">
+              <div>
+                <h3 id="guestTextContactModalTitle">Edit text contact</h3>
+                <p class="meta">Add or correct this guest’s mobile number and record their permission to receive text updates.</p>
+              </div>
+            </div>
+            <form id="guestTextContactForm">
+              <input type="hidden" name="rowNumber">
+              <label>Mobile number <input name="phone" type="tel" inputmode="tel" placeholder="(210) 555-1234" required></label>
+              <label class="checkbox-label"><input name="smsOptedIn" type="checkbox" value="yes"> This guest has opted in to receive text updates</label>
+              <div class="toolbar">
+                <button class="button" type="submit">Save contact</button>
+              </div>
+              <p class="status" id="guestTextContactStatus"></p>
             </form>
           </div>
         </section>

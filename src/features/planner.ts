@@ -119,6 +119,8 @@ type SaveGuestDetailsInput = {
   rowNumber?: number | string;
   type?: string;
   rsvp?: string;
+  phone?: string;
+  smsOptedIn?: boolean | string;
 };
 
 function normalizeBoolean(value: unknown, fallback = false) {
@@ -1242,16 +1244,34 @@ export function saveGuestDetails(input: SaveGuestDetailsInput) {
 
   const typeColumnIndex = ensureColumnCaseInsensitive(guestsSheet, headers, "Type");
   const rsvpColumnIndex = ensureColumnCaseInsensitive(guestsSheet, headers, "RSVP");
+  const phoneColumnIndex = headers.findIndex((header) => /^phone/i.test(header)) + 1
+    || ensureColumnCaseInsensitive(guestsSheet, headers, "Phone Number");
+  const smsOptedInColumnIndex = headers.findIndex((header) => /^sms\s*opted\s*in$/i.test(header)) + 1
+    || ensureColumnCaseInsensitive(guestsSheet, headers, "SMS Opted In");
+  const smsConsentRecordedAtColumnIndex = headers.findIndex((header) => /^sms\s*consent\s*recorded\s*at$/i.test(header)) + 1
+    || ensureColumnCaseInsensitive(guestsSheet, headers, "SMS Consent Recorded At");
   const typeValue = String(input.type || "").trim();
   const rsvpValue = String(input.rsvp || "").trim();
 
   guestsSheet.getRange(rowNumber, typeColumnIndex).setValue(typeValue);
   guestsSheet.getRange(rowNumber, rsvpColumnIndex).setValue(rsvpValue);
 
+  if (Object.prototype.hasOwnProperty.call(input, "phone")) {
+    guestsSheet.getRange(rowNumber, phoneColumnIndex).setValue(String(input.phone || "").trim());
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, "smsOptedIn")) {
+    const smsOptedIn = normalizeBoolean(input.smsOptedIn);
+    guestsSheet.getRange(rowNumber, smsOptedInColumnIndex).setValue(smsOptedIn ? "TRUE" : "FALSE");
+    guestsSheet.getRange(rowNumber, smsConsentRecordedAtColumnIndex).setValue(smsOptedIn ? new Date().toISOString() : "");
+  }
+
   return {
     rowNumber,
     type: typeValue,
-    rsvp: rsvpValue
+    rsvp: rsvpValue,
+    phone: Object.prototype.hasOwnProperty.call(input, "phone") ? String(input.phone || "").trim() : undefined,
+    smsOptedIn: Object.prototype.hasOwnProperty.call(input, "smsOptedIn") ? normalizeBoolean(input.smsOptedIn) : undefined
   };
 }
 

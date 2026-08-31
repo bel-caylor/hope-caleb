@@ -56,6 +56,7 @@
   const eventListModal = document.querySelector("#eventListModal");
   const tableModal = document.querySelector("#tableModal");
   const guestTypeModal = document.querySelector("#guestTypeModal");
+  const guestTextContactModal = document.querySelector("#guestTextContactModal");
   const addGuestModal = document.querySelector("#addGuestModal");
   const openTodoModalButton = document.querySelector("#openTodoModal");
   const openTableModalButton = document.querySelector("#openTableModal");
@@ -63,6 +64,8 @@
   const tableTypeOptionsEl = document.querySelector("#tableTypeOptions");
   const guestTypeForm = document.querySelector("#guestTypeForm");
   const guestTypeOptionsEl = document.querySelector("#guestTypeOptions");
+  const guestTextContactForm = document.querySelector("#guestTextContactForm");
+  const guestTextContactStatusEl = document.querySelector("#guestTextContactStatus");
   const personForm = document.querySelector("#personForm");
   const eventForm = document.querySelector("#eventForm");
   const eventPromptFillButton = document.querySelector("#eventPromptFillButton");
@@ -228,6 +231,7 @@
   let eventIncludedPeopleModalReturnFocusEl = null;
   let eventPromptModalReturnFocusEl = null;
   let guestTypeModalReturnFocusEl = null;
+  let guestTextContactModalReturnFocusEl = null;
   let addGuestModalReturnFocusEl = null;
   let rsvpFeedConnected = false;
   let plannerCountdownTimer = null;
@@ -1916,6 +1920,33 @@
     guestTypeModal.setAttribute("aria-hidden", "true");
     clearGuestTypeForm();
     guestTypeModalReturnFocusEl = null;
+  }
+
+  function openGuestTextContactModal(rowNumber, options = {}) {
+    const numericRowNumber = Number(rowNumber || 0);
+    const guest = cachedGuests.find((row) => getGuestRowNumber(row) === numericRowNumber);
+    if (!guest || !guestTextContactForm || !guestTextContactModal) return;
+    guestTextContactModalReturnFocusEl = options.returnFocusEl instanceof HTMLElement ? options.returnFocusEl : null;
+    guestTextContactForm.reset();
+    guestTextContactForm.elements.namedItem("rowNumber").value = String(numericRowNumber);
+    guestTextContactForm.elements.namedItem("phone").value = getGuestPhone(guest);
+    guestTextContactForm.elements.namedItem("smsOptedIn").checked = isGuestSmsOptedIn(guest);
+    guestTextContactModal.querySelector("#guestTextContactModalTitle").textContent = `Edit text contact for ${getGuestDisplayName(guest) || "guest"}`;
+    setStatus(guestTextContactStatusEl, "", "");
+    guestTextContactModal.hidden = false;
+    guestTextContactModal.setAttribute("aria-hidden", "false");
+    guestTextContactForm.elements.namedItem("phone").focus();
+  }
+
+  function closeGuestTextContactModal() {
+    const returnFocusEl = guestTextContactModalReturnFocusEl;
+    guestTextContactModal.hidden = true;
+    guestTextContactModal.setAttribute("aria-hidden", "true");
+    guestTextContactForm.reset();
+    guestTextContactModalReturnFocusEl = null;
+    if (returnFocusEl && document.contains(returnFocusEl) && !returnFocusEl.disabled) {
+      returnFocusEl.focus();
+    }
   }
 
   function clearAddGuestForm() {
@@ -5253,14 +5284,19 @@
         : guests.map((guest) => {
           const selected = selectedTextGuestRowNumbers.has(guest.rowNumber);
           const phoneCopy = guest.phone ? guest.phone : "No working cell number";
-          const selection = guest.phone && guest.optedIn
-            ? `<label class="text-recipient-card__choice"><input type="checkbox" data-text-recipient="${escapeHtml(String(guest.rowNumber))}" ${selected ? "checked" : ""}> Include</label>`
-            : `<span class="meta">${guest.phone ? "Not opted in" : "Cannot text"}</span>`;
+          const selection = guest.phone
+            ? guest.optedIn
+              ? `<label class="text-recipient-card__choice"><input type="checkbox" data-text-recipient="${escapeHtml(String(guest.rowNumber))}" ${selected ? "checked" : ""}> Include</label>`
+              : '<span class="meta">Not opted in</span>'
+            : "";
           const dismiss = !guest.phone
             ? `<button class="text-recipient-card__dismiss" type="button" data-dismiss-text-guest="${escapeHtml(String(guest.rowNumber))}" aria-label="Hide ${escapeHtml(guest.name)} from this text list" title="Hide from this text list">×</button>`
             : "";
+          const edit = !guest.phone
+            ? `<button class="button button--light" type="button" data-edit-text-contact="${escapeHtml(String(guest.rowNumber))}">Edit</button>`
+            : "";
           return `<article class="text-recipient-card text-recipient-card--${guest.phone ? "ready" : "missing"}">
-            <div><strong>${escapeHtml(guest.name)}</strong><p>${escapeHtml(phoneCopy)}</p></div>${selection}${dismiss}
+            <div><strong>${escapeHtml(guest.name)}</strong>${guest.phone ? `<p>${escapeHtml(phoneCopy)}</p>` : ""}</div>${selection}${edit}${dismiss}
           </article>`;
         }).join("");
     renderGuestMessagingSummary();
@@ -5377,6 +5413,16 @@
       } else {
         guest.RSVP = nextRsvp;
       }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updates, "phone")) {
+      const phoneColumn = Object.keys(guest).find((column) => /^phone/i.test(String(column || "").trim())) || "phone";
+      guest[phoneColumn] = String(updates.phone || "").trim();
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updates, "smsOptedIn")) {
+      const consentColumn = Object.keys(guest).find((column) => /^sms\s*opted\s*in$/i.test(String(column || "").trim())) || "smsOptedIn";
+      guest[consentColumn] = updates.smsOptedIn ? "TRUE" : "FALSE";
     }
 
     return guest;
@@ -10647,6 +10693,12 @@ function sortTables(items) {
     });
   });
 
+  document.querySelectorAll("[data-close-guest-text-contact-modal]").forEach((button) => {
+    button.addEventListener("click", () => {
+      closeGuestTextContactModal();
+    });
+  });
+
   document.querySelectorAll("[data-close-add-guest-modal]").forEach((button) => {
     button.addEventListener("click", () => {
       closeAddGuestModal();
@@ -10708,6 +10760,12 @@ function sortTables(items) {
   });
 
   textGuestListEl?.addEventListener("click", (event) => {
+    const editButton = event.target.closest("[data-edit-text-contact]");
+    if (editButton) {
+      openGuestTextContactModal(editButton.dataset.editTextContact, { returnFocusEl: editButton });
+      return;
+    }
+
     const dismissButton = event.target.closest("[data-dismiss-text-guest]");
     if (!dismissButton) return;
     const rowNumber = Number(dismissButton.dataset.dismissTextGuest || 0);
@@ -10715,6 +10773,35 @@ function sortTables(items) {
     selectedTextGuestRowNumbers.delete(rowNumber);
     privateTextPosition = 0;
     renderTextGuests();
+  });
+
+  guestTextContactForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      requirePlannerAccess();
+      const data = new FormData(guestTextContactForm);
+      const rowNumber = Number(data.get("rowNumber") || 0);
+      const phone = String(data.get("phone") || "").trim();
+      if (!normalizeTextPhone(phone)) {
+        throw new Error("Enter a valid 10-digit mobile number.");
+      }
+      setStatus(guestTextContactStatusEl, "Saving contact…", "pending");
+      const guest = cachedGuests.find((row) => getGuestRowNumber(row) === rowNumber);
+      await backendRequest("saveGuestDetails", {
+        rowNumber,
+        type: getGuestTypeValue(guest),
+        rsvp: getGuestRsvpLabel(guest),
+        phone,
+        smsOptedIn: data.get("smsOptedIn") === "yes"
+      });
+      updateCachedGuestDetails(rowNumber, { phone, smsOptedIn: data.get("smsOptedIn") === "yes" });
+      dismissedTextGuestRowNumbers.delete(rowNumber);
+      renderGuests();
+      setStatus(textsStatusEl, "Guest text contact saved.", "success");
+      closeGuestTextContactModal();
+    } catch (error) {
+      setStatus(guestTextContactStatusEl, error.message || "Unable to save this guest contact.", "error");
+    }
   });
 
   startGroupTextButton?.addEventListener("click", () => {
@@ -11892,6 +11979,11 @@ function sortTables(items) {
 
     if (event.key === "Escape" && !addGuestModal.hidden) {
       closeAddGuestModal();
+      return;
+    }
+
+    if (event.key === "Escape" && guestTextContactModal && !guestTextContactModal.hidden) {
+      closeGuestTextContactModal();
     }
   });
 

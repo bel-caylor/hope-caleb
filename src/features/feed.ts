@@ -1091,6 +1091,8 @@ function readPlannerGuestRows() {
       __rowNumber: String(row.__rowNumber || ""),
       name,
       type: firstNonEmptyValue(row, [/^type$/i, /guest\s*type/i]),
+      phone: firstNonEmptyValue(row, [/^phone/i, /mobile/i, /cell/i]),
+      smsOptedIn: firstNonEmptyValue(row, [/^sms\s*opted\s*in$/i, /^text\s*consent$/i, /^sms\s*consent$/i]),
       rsvp: firstNonEmptyValue(row, [/^rsvp$/i, /^attending$/i, /attendance/i, /response/i], ["plus 1"]),
       plusOneRsvp: firstNonEmptyValue(row, [/plus\s*1.*rsvp/i, /rsvp.*plus\s*1/i, /plus\s*one.*rsvp/i, /^plus\s*1$/i]),
       "Table Number": firstNonEmptyValue(row, [/^table\s*(number|#)?$/i, /table\s*(assignment|assigned)/i]),
