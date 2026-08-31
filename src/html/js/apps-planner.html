@@ -4927,11 +4927,10 @@
     }, 0);
     const rehearsalDinnerAttending = getEventAttendingCount("rehearsalRsvp");
     const openHouseAttending = getEventAttendingCount("openHouseRsvp");
-    const riverCruiseInterested = latestSubmissions.reduce((total, { latest }) => {
-      if (String(latest.riverWalkInterest || "").trim().toLowerCase() !== "interested") return total;
-      const count = Number.parseInt(latest.riverWalkCount || "0", 10);
-      return total + (Number.isNaN(count) ? 0 : Math.max(0, count));
-    }, 0);
+    const riverCruiseInterested = latestSubmissions.reduce(
+      (total, { latest }) => total + getRiverCruiseAttendeeCount(latest),
+      0
+    );
     const getSubmissionChanges = (current, previous) => {
       const fields = [
         ["Wedding", current.weddingRsvpSummary || current.attending, previous.weddingRsvpSummary || previous.attending],
@@ -4976,7 +4975,8 @@
         ["Airport transportation", formatAirportTransportation(rsvp.airportTransportation)],
         ["Arrival plans", rsvp.arrivalDetails],
         ["Departure plans", rsvp.departureDetails],
-        ["Travel help", rsvp.travelHelpNote]
+        ["Travel help", rsvp.travelHelpNote],
+        ["River Walk cruise", formatRiverCruiseInterest(rsvp)]
       ].filter(([, value]) => String(value || "").trim());
       const detailFields = [
         ["Wedding", rsvp.weddingRsvpSummary || (rsvp.attending ? getRsvpLabel(getRsvpGroup(rsvp.attending)) : "")],
@@ -10507,6 +10507,30 @@ function sortTables(items) {
     return labels[normalized] || normalized;
   }
 
+  function isRiverCruiseInterested(value) {
+    return ["interested", "yes", "y", "true", "1"].includes(String(value || "").trim().toLowerCase());
+  }
+
+  function getRiverCruiseAttendeeCount(rsvp) {
+    if (!isRiverCruiseInterested(rsvp?.riverWalkInterest)) return 0;
+
+    const statedCount = Number.parseInt(rsvp?.riverWalkCount || "", 10);
+    if (Number.isFinite(statedCount) && statedCount > 0) return statedCount;
+
+    // Earlier responses can record interest without a usable party count.
+    // In that case, use the RSVP's attending-party total so interest is not
+    // silently omitted from the planner total.
+    const attendingCount = Number.parseInt(getSubmissionGuestCount(rsvp || {}), 10);
+    return Number.isFinite(attendingCount) ? Math.max(0, attendingCount) : 0;
+  }
+
+  function formatRiverCruiseInterest(rsvp) {
+    if (!String(rsvp?.riverWalkInterest || "").trim()) return "";
+    if (!isRiverCruiseInterested(rsvp.riverWalkInterest)) return "Not interested";
+    const count = getRiverCruiseAttendeeCount(rsvp);
+    return count ? `Interested · ${count} ${count === 1 ? "person" : "people"}` : "Interested";
+  }
+
   function openRsvpEventAttendeesModal(field, returnFocusEl) {
     const modal = rsvpListEl?.querySelector("#rsvpEventAttendeesModal");
     const titleEl = modal?.querySelector("#rsvpEventAttendeesModalTitle");
@@ -10518,10 +10542,10 @@ function sortTables(items) {
     const eventTitle = isRiverCruise ? "River Cruise" : field === "rehearsalRsvp" ? "Rehearsal Dinner" : "Open House";
     const attendees = isRiverCruise
       ? getLatestRsvpSubmissions()
-        .filter((rsvp) => String(rsvp.riverWalkInterest || "").trim().toLowerCase() === "interested")
+        .filter((rsvp) => isRiverCruiseInterested(rsvp.riverWalkInterest))
         .map((rsvp) => ({
           group: String(rsvp.group || rsvp.name || "Guest").trim() || "Guest",
-          count: Math.max(0, Number.parseInt(rsvp.riverWalkCount || "0", 10) || 0)
+          count: getRiverCruiseAttendeeCount(rsvp)
         }))
       : getLatestRsvpSubmissions()
         .filter((rsvp) => getRsvpGroup(rsvp[field]) === "yes")
