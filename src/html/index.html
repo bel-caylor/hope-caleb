@@ -5494,6 +5494,10 @@
         display: grid;
         gap: 0.75rem;
         align-content: start;
+        /* Projects can contain many expanded task groups; let the page grow
+           rather than cropping the directory at the generic list height. */
+        max-height: none;
+        overflow: visible;
       }
 
       .projects-accordion {
@@ -5510,14 +5514,52 @@
         padding: 0.8rem 1rem;
         cursor: pointer;
         font-weight: 800;
+        list-style: none;
       }
 
-      .projects-accordion > summary::marker { color: var(--wine); }
+      .projects-accordion > summary::-webkit-details-marker { display: none; }
 
       .projects-accordion__title { flex: 1; }
 
-      .projects-accordion__add { margin-left: auto; }
+      .projects-accordion__toggle {
+        display: grid;
+        width: 1.4rem;
+        height: 1.4rem;
+        flex: 0 0 auto;
+        place-items: center;
+        border: 1px solid rgba(111, 29, 42, 0.34);
+        border-radius: 999px;
+        color: var(--wine);
+        font-size: 1.2rem;
+        font-weight: 500;
+        line-height: 1;
+      }
 
+      .projects-accordion__toggle::before { content: "+"; }
+      .projects-accordion[open] .projects-accordion__toggle::before { content: "−"; }
+
+      .projects-accordion__actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+
+      .projects-accordion__add {
+        background: var(--wine);
+        color: #ffd3d7;
+        font-size: 1.55rem;
+        font-weight: 400;
+      }
+
+      .projects-accordion__add:hover,
+      .projects-accordion__add:focus-visible {
+        background: #590000;
+      }
+
+      .projects-accordion__edit {
+        color: var(--wine);
+
+      }
       .projects-accordion__content {
         display: grid;
         gap: 0.45rem;
