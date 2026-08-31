@@ -4359,7 +4359,7 @@
 
     const filteredTodos = getFilteredTodos();
     if (!filteredTodos.length) {
-      todosListEl.innerHTML = '<p class="meta">No to-dos match the selected assignee.</p>';
+      todosListEl.innerHTML = '<p class="meta">No to-dos match the selected filters.</p>';
       return;
     }
 
@@ -4419,7 +4419,7 @@
     });
 
     if (!parentTasks.length) {
-      todosListEl.innerHTML = `<p class="meta">No ${parentType === "project" ? "project" : "event"} tasks match the selected assignee.</p>`;
+      todosListEl.innerHTML = `<p class="meta">No ${parentType === "project" ? "project" : "event"} tasks match the selected filters.</p>`;
       return;
     }
 

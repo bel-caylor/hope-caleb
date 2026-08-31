@@ -1276,6 +1276,11 @@
         color: var(--white);
       }
 
+      .planner-panel[data-planner-panel="todos"] .planner-filter-row {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: center;
+      }
+
       .planner-panel__title--mobile-only {
         display: block;
       }
@@ -4762,7 +4767,8 @@
         }
 
         .planner-panel[data-planner-panel="todos"] .planner-filter-field label,
-        .planner-panel[data-planner-panel="todos"] .todo-group-toggle__button {
+        .planner-panel[data-planner-panel="todos"] .todo-group-toggle__button,
+        .planner-panel[data-planner-panel="todos"] .todo-complete-filter {
           white-space: nowrap;
           font-size: 0.72rem;
         }
