@@ -1,4 +1,4 @@
-import { BED_HEADERS, BEDS_SHEET, EVENT_HEADERS, EVENT_LIST_HEADERS, EVENT_LISTS_SHEET, EVENTS_SHEET, GUESTS_SHEET, PEOPLE_HEADERS, PEOPLE_SHEET, REHEARSAL_SLIDE_HEADERS, REHEARSAL_SLIDES_SHEET, SHOT_HEADERS, SHOTS_SHEET, TABLE_HEADERS, TABLES_SHEET, TODO_HEADERS, TODO_SHEET } from "../constants";
+import { BED_HEADERS, BEDS_SHEET, EVENT_HEADERS, EVENT_LIST_HEADERS, EVENT_LISTS_SHEET, EVENTS_SHEET, GUESTS_SHEET, PEOPLE_HEADERS, PEOPLE_SHEET, REHEARSAL_SLIDE_HEADERS, REHEARSAL_SLIDES_SHEET, SHOT_HEADERS, SHOTS_SHEET, TABLE_HEADERS, TABLES_SHEET, TABLE_LAYOUT_HEADERS, TABLE_LAYOUT_SHEET, TODO_HEADERS, TODO_SHEET } from "../constants";
 import { requirePlannerAccess } from "../auth";
 import { createId, deleteRowById, ensureSheet, getSheetByName, readRows, toIsoString, upsertRow } from "../util/sheets";
 
@@ -99,6 +99,8 @@ type SaveTableInput = {
   type?: string;
   count?: number | string;
 };
+
+type SaveTableLayoutInput = { sectionCount?: number | string; sections?: string[]; };
 
 type SaveTableReservedOpenSeatsInput = {
   id?: string;
@@ -666,6 +668,32 @@ function normalizeTablesSheet() {
   }
 
   return sheet;
+}
+
+const DEFAULT_TABLE_SECTIONS = ["Head", "Food Side", "Bar Side"];
+
+export function getTableLayout() {
+  requirePlannerAccess();
+  ensureSheet(TABLE_LAYOUT_SHEET, TABLE_LAYOUT_HEADERS);
+  const row = readRows(TABLE_LAYOUT_SHEET)[0] || {};
+  const count = Math.min(4, Math.max(1, Number(row["Section Count"] || DEFAULT_TABLE_SECTIONS.length)));
+  const sections = Array.from({ length: count }, (_, index) => String(row[`Section ${index + 1}`] || DEFAULT_TABLE_SECTIONS[index] || `Section ${index + 1}`).trim() || `Section ${index + 1}`);
+  return { sectionCount: count, sections };
+}
+
+export function saveTableLayout(input: SaveTableLayoutInput) {
+  requirePlannerAccess();
+  const count = Math.min(4, Math.max(1, Number(input.sectionCount || DEFAULT_TABLE_SECTIONS.length)));
+  const requested = Array.isArray(input.sections) ? input.sections : [];
+  const sections = Array.from({ length: 4 }, (_, index) => {
+    if (index >= count) return "";
+    return String(requested[index] || DEFAULT_TABLE_SECTIONS[index] || `Section ${index + 1}`).trim() || `Section ${index + 1}`;
+  });
+  const now = new Date().toISOString();
+  upsertRow(TABLE_LAYOUT_SHEET, TABLE_LAYOUT_HEADERS, "layout", {
+    Id: "layout", "Section Count": count, "Section 1": sections[0], "Section 2": sections[1], "Section 3": sections[2], "Section 4": sections[3], UpdatedAt: now
+  });
+  return { sectionCount: count, sections: sections.slice(0, count), updatedAt: now };
 }
 
 const RESERVED_OPEN_SEAT_POSITIONS_HEADER = "Reserved Open Seat Positions";

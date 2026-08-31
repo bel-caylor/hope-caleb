@@ -1,6 +1,6 @@
 import { listPlannerDashboardFeed, savePlannerRsvpCorrection, syncGroupsSheet, syncGuestSummarySheets } from "./features/feed";
 import { getViewerProfile } from "./auth";
-import { deleteEventList, deleteRehearsalSlide, deleteShot, deleteTodo, getRehearsalSlideImage, listBeds, listEventLists, listEvents, listPeople, listRehearsalSlides, listShots, listTables, listTodos, saveBed, saveEvent, saveEventList, saveGuestDetails, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveRehearsalSlide, saveShot, saveTable, saveTableReservedOpenSeats, saveTodo, uploadRehearsalSlideImage, uploadTodoImage } from "./features/planner";
+import { deleteEventList, deleteRehearsalSlide, deleteShot, deleteTodo, getRehearsalSlideImage, getTableLayout, listBeds, listEventLists, listEvents, listPeople, listRehearsalSlides, listShots, listTables, listTodos, saveBed, saveEvent, saveEventList, saveGuestDetails, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveRehearsalSlide, saveShot, saveTable, saveTableLayout, saveTableReservedOpenSeats, saveTodo, uploadRehearsalSlideImage, uploadTodoImage } from "./features/planner";
 import { generateEventPlan } from "./util/ai";
 import { PLANNER_BUILD_VERSION } from "./version";
 import { archiveLegacyPlanningData, deleteWorkspaceAsset, deleteWorkspaceEvent, deleteWorkspaceList, deleteWorkspaceTask, getWorkspaceAssetImage, getWorkspaceProfile, importLegacyPeopleToWorkspaceUsers, initializePlannerWorkspace, listWorkspaceAssets, listWorkspaceEvents, listWorkspaceInvitees, listWorkspaceLists, listWorkspaceTasks, listWorkspaceUsers, normalizeWorkspaceTaskAssignments, saveWorkspaceAsset, saveWorkspaceEvent, saveWorkspaceList, saveWorkspaceTask, saveWorkspaceUser, setWorkspaceListItemCompleted, setWorkspaceTaskCompleted, syncPlannerUsersToGuests } from "./features/planner-v2";
@@ -56,6 +56,10 @@ export function rpc(input: { method: string; payload: unknown }) {
       return deleteEventList(payload as Parameters<typeof deleteEventList>[0]);
     case "listTables":
       return listTables();
+    case "getTableLayout":
+      return getTableLayout();
+    case "saveTableLayout":
+      return saveTableLayout(payload as Parameters<typeof saveTableLayout>[0]);
     case "saveTable":
       return saveTable(payload as Parameters<typeof saveTable>[0]);
     case "saveTableReservedOpenSeats":
@@ -169,6 +173,7 @@ function getPlannerBootstrap() {
       todos: listTodos(),
       eventLists: listEventLists(),
       tables: listTables(),
+      tableLayout: getTableLayout(),
       feed: listPlannerDashboardFeed()
     },
     workspace: {

@@ -4,6 +4,7 @@ export const EVENTS_SHEET = "Events";
 export const SHOTS_SHEET = "Shot List";
 export const BEDS_SHEET = "Beds";
 export const TABLES_SHEET = "Tables";
+export const TABLE_LAYOUT_SHEET = "Table Layout";
 export const TODO_SHEET = "Todo";
 export const EVENT_LISTS_SHEET = "Event Lists";
 export const REHEARSAL_SLIDES_SHEET = "Rehearsal Slides";
@@ -89,6 +90,7 @@ export const TABLE_HEADERS = [
   "CreatedAt",
   "UpdatedAt"
 ];
+export const TABLE_LAYOUT_HEADERS = ["Id", "Section Count", "Section 1", "Section 2", "Section 3", "Section 4", "UpdatedAt"];
 export const TODO_HEADERS = [
   "Id",
   "EventId",

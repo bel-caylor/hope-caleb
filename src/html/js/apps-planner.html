@@ -68,6 +68,9 @@
   const openTodoModalButton = document.querySelector("#openTodoModal");
   const openTableModalButton = document.querySelector("#openTableModal");
   const tableForm = document.querySelector("#tableForm");
+  const tableLayoutForm = document.querySelector("#tableLayoutForm");
+  const tableSectionCountEl = document.querySelector("#tableSectionCount");
+  const tableSectionEl = document.querySelector("#tableSection");
   const tableTypeOptionsEl = document.querySelector("#tableTypeOptions");
   const guestTypeForm = document.querySelector("#guestTypeForm");
   const guestTypeOptionsEl = document.querySelector("#guestTypeOptions");
@@ -160,7 +163,7 @@
     eventDetailId: "hope-caleb-event-detail-id",
     eventDetailTab: "hope-caleb-event-detail-tab",
     plannerScrollPosition: "hope-caleb-planner-scroll-position",
-    plannerDataCache: "hope-caleb-planner-data-cache-v3"
+    plannerDataCache: "hope-caleb-planner-data-cache-v4"
   };
   // This is private data on the current device, not an authentication token.
   // Keep it long enough to make returning to the dashboard feel instant, while
@@ -172,6 +175,7 @@
   let cachedShots = [];
   let cachedBeds = [];
   let cachedTables = [];
+  let cachedTableLayout = { sectionCount: 3, sections: ["Head", "Food Side", "Bar Side"] };
   let cachedTodos = [];
   let cachedEventLists = [];
   let cachedRsvps = [];
@@ -238,6 +242,7 @@
   let activeEventVoiceRecognition = null;
   let eventListModalReturnFocusEl = null;
   let eventIncludedPeopleModalReturnFocusEl = null;
+  let rsvpEventAttendeesModalReturnFocusEl = null;
   let eventPromptModalReturnFocusEl = null;
   let guestTypeModalReturnFocusEl = null;
   let guestTextContactModalReturnFocusEl = null;
@@ -403,6 +408,7 @@
   function rerenderTableData() {
     renderTables();
     renderTableTypeOptions();
+    renderTableLayoutForm();
     renderSummary();
   }
 
@@ -1841,14 +1847,34 @@
 
   function clearTableForm() {
     tableForm.reset();
+    tableForm.elements.namedItem("id").value = "";
     tableForm.querySelectorAll('input[name="type"]').forEach((input) => {
       input.checked = false;
     });
     setStatus(tableStatusEl, "", "");
   }
 
-  function openTableModal() {
+  function renderTableSectionOptions(selectedSection = "") {
+    if (!tableSectionEl) return;
+    const sections = getTableSections();
+    tableSectionEl.innerHTML = sections.map((section) => `<option value="${escapeHtml(section)}">${escapeHtml(section)}</option>`).join("");
+    tableSectionEl.value = sections.includes(selectedSection) ? selectedSection : sections[0];
+  }
+
+  function openTableModal(table = null) {
     clearTableForm();
+    const isEditing = Boolean(table);
+    document.querySelector("#tableModalTitle").textContent = isEditing ? "Edit Table" : "Add Table";
+    tableForm.querySelector('button[type="submit"]').textContent = isEditing ? "Save Changes" : "Add Table";
+    renderTableSectionOptions(String(table?.location || ""));
+    if (table) {
+      tableForm.elements.namedItem("id").value = String(table.id || "");
+      tableForm.elements.namedItem("tableName").value = String(table.tableName || "");
+      tableForm.elements.namedItem("order").value = String(table.order || "");
+      tableForm.elements.namedItem("count").value = String(table.count || "");
+      const selectedTypes = new Set(getTableTypes(table).map((type) => type.toLowerCase()));
+      tableForm.querySelectorAll('input[name="type"]').forEach((input) => { input.checked = selectedTypes.has(String(input.value || "").toLowerCase()); });
+    }
     tableModal.hidden = false;
     tableModal.setAttribute("aria-hidden", "false");
     const firstField = tableForm.elements.namedItem("tableName");
@@ -4901,6 +4927,11 @@
     }, 0);
     const rehearsalDinnerAttending = getEventAttendingCount("rehearsalRsvp");
     const openHouseAttending = getEventAttendingCount("openHouseRsvp");
+    const riverCruiseInterested = latestSubmissions.reduce((total, { latest }) => {
+      if (String(latest.riverWalkInterest || "").trim().toLowerCase() !== "interested") return total;
+      const count = Number.parseInt(latest.riverWalkCount || "0", 10);
+      return total + (Number.isNaN(count) ? 0 : Math.max(0, count));
+    }, 0);
     const getSubmissionChanges = (current, previous) => {
       const fields = [
         ["Wedding", current.weddingRsvpSummary || current.attending, previous.weddingRsvpSummary || previous.attending],
@@ -4940,6 +4971,13 @@
     const renderSubmissionAccordion = (rsvp, records, group) => {
       const guestCount = getSubmissionGuestCount(rsvp);
       const volunteerRoles = getVolunteerRoles(rsvp);
+      const travelAndStayFields = [
+        ["Stay", rsvp.lodging],
+        ["Airport transportation", formatAirportTransportation(rsvp.airportTransportation)],
+        ["Arrival plans", rsvp.arrivalDetails],
+        ["Departure plans", rsvp.departureDetails],
+        ["Travel help", rsvp.travelHelpNote]
+      ].filter(([, value]) => String(value || "").trim());
       const detailFields = [
         ["Wedding", rsvp.weddingRsvpSummary || (rsvp.attending ? getRsvpLabel(getRsvpGroup(rsvp.attending)) : "")],
         ["Rehearsal dinner", rsvp.rehearsalRsvp],
@@ -4957,6 +4995,7 @@
               <span class="accordion-toggle" aria-hidden="true"></span>
               <span class="accordion-title">${escapeHtml(rsvp.name || rsvp.group || "Guest")}</span>
               <span class="rsvp-submission-count">${guestCount ? `${escapeHtml(guestCount)} guest${guestCount === 1 || guestCount === "1" ? "" : "s"} attending` : "RSVP recorded"}</span>
+              ${travelAndStayFields.length ? '<span class="rsvp-travel-stay-pill">Travel &amp; Stay</span>' : ""}
             </span>
             ${viewerProfile.isAdmin && records.length ? `<button class="button button--icon button--light rsvp-submission-edit-button" type="button" data-edit-rsvp-response="${escapeHtml(group)}" aria-label="Edit response for ${escapeHtml(rsvp.name || rsvp.group || "guest")}" title="Edit response"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>` : ""}
           </summary>
@@ -4964,6 +5003,7 @@
             <div class="guest-card__grid">
               ${detailFields.map(([label, value]) => `<div class="guest-card__field"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}
             </div>
+            ${travelAndStayFields.length ? `<section class="rsvp-submission-travel"><span>Travel &amp; Stay</span><div class="guest-card__grid">${travelAndStayFields.map(([label, value]) => `<div class="guest-card__field"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</div></section>` : ""}
             ${volunteerRoles.length ? `<section class="rsvp-submission-roles"><span>Volunteer roles</span><ul>${volunteerRoles.map((role) => `<li>${escapeHtml(role)}</li>`).join("")}</ul></section>` : ""}
             ${memberResponses ? `<section class="rsvp-submission-members"><span>Wedding party responses</span><ul>${memberResponses}</ul></section>` : ""}
             ${rsvp.comment ? `<section class="rsvp-submission-note"><span>Note</span><p>${escapeHtml(rsvp.comment)}</p></section>` : ""}
@@ -4985,11 +5025,13 @@
         </div>
         <div class="rsvp-section-counts">
           <span>Total attending · ${totalGuestsAttending}</span>
-          <span>Rehearsal dinner count · ${rehearsalDinnerAttending}</span>
-          <span>Open house count · ${openHouseAttending}</span>
+          <button class="rsvp-count-link" type="button" data-open-rsvp-event-attendees="rehearsalRsvp">Rehearsal dinner count · ${rehearsalDinnerAttending}</button>
+          <button class="rsvp-count-link" type="button" data-open-rsvp-event-attendees="openHouseRsvp">Open house count · ${openHouseAttending}</button>
+          <button class="rsvp-count-link" type="button" data-open-rsvp-event-attendees="riverCruise">River cruise count · ${riverCruiseInterested}</button>
         </div>
       </div>
       ${submissionMarkup}
+      <section class="modal" id="rsvpEventAttendeesModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-rsvp-event-attendees-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="rsvpEventAttendeesModalTitle"><button class="modal__close" type="button" data-close-rsvp-event-attendees-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="rsvpEventAttendeesModalTitle">Event attendees</h3><p class="meta" id="rsvpEventAttendeesModalSummary"></p></div></div><div class="rsvp-event-attendee-list" id="rsvpEventAttendeesModalList"></div></div></section>
       ${viewerProfile.isAdmin ? `<section class="modal" id="rsvpEditModal" hidden aria-hidden="true"><div class="modal__backdrop" data-close-rsvp-edit-modal></div><div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="rsvpEditModalTitle"><button class="modal__close" type="button" data-close-rsvp-edit-modal aria-label="Close dialog">X</button><div class="modal__header"><div><h3 id="rsvpEditModalTitle">Edit RSVP response</h3><p class="meta">Saving records a corrected response and keeps the previous submission in its history.</p></div></div><form id="rsvpEditForm"><input name="group" type="hidden"><input name="contactName" type="hidden"><label>Contact email <input name="email" type="email"></label><fieldset class="type-options"><legend>Wedding party</legend><div class="rsvp-edit-members" data-rsvp-edit-members></div></fieldset><div class="split"><label>Rehearsal dinner <select name="rehearsalRsvp"><option value="">No response</option><option value="attending">Attending</option><option value="not-attending">Not attending</option></select></label><label>Open house <select name="openHouseRsvp"><option value="">No response</option><option value="attending">Attending</option><option value="not-attending">Not attending</option></select></label></div><div class="split"><label>Plus ones <input name="plusOneCount" type="number" min="0" step="1"></label><label>Plus-one name <input name="plusOneName"></label></div><div class="split"><label>Children <input name="childrenCount" type="number" min="0" step="1"></label><label>Children note <input name="childrenNote"></label></div><label>Note <textarea name="comment"></textarea></label><div class="toolbar"><button class="button" type="submit">Save corrected response</button><button class="button button--light" type="button" data-close-rsvp-edit-modal>Cancel</button></div><p class="status" id="rsvpEditStatus"></p></form></div></section>` : ""}
     `;
   }
@@ -5108,6 +5150,7 @@
   }
 
   function renderTables() {
+    renderTableLayoutForm();
     if (tablesUnseatedCountEl) {
       const unseatedCount = countUnseatedPeople();
       tablesUnseatedCountEl.textContent = unseatedCount
@@ -5138,6 +5181,7 @@
                 <p class="meta">${assignedGuests.length} assigned</p>
               </div>
             </div>
+            <button class="button button--light" type="button" data-edit-table data-table-id="${escapeHtml(String(table.id || ""))}">Edit</button>
           </div>
           <div class="table-assignment-list ${assignedGuests.length ? "" : "table-assignment-list--empty"}" data-table-drop-list data-table-name="${escapeHtml(String(table.tableName || "").trim())}">
             ${renderTableSeatGrid(table, assignedGuests, seatCount)}
@@ -6027,6 +6071,21 @@
     `).join("");
   }
 
+  function renderTableLayoutForm() {
+    if (!tableLayoutForm || !tableSectionCountEl) return;
+    const sections = getTableSections();
+    tableSectionCountEl.value = String(sections.length);
+    tableLayoutForm.querySelectorAll("[data-table-section-name]").forEach((field, index) => {
+      const active = index < sections.length;
+      field.hidden = !active;
+      const input = field.querySelector("input");
+      if (input) {
+        input.value = sections[index] || "";
+        input.required = active;
+      }
+    });
+  }
+
   function findGuestTitleColumn(columns) {
     return columns.find((column) => /name/i.test(column)) || columns[0] || "Guest";
   }
@@ -6076,12 +6135,16 @@
     return String(column ? table[column] || "" : "").trim();
   }
 
+  function getTableSections() {
+    const requested = Array.isArray(cachedTableLayout?.sections) ? cachedTableLayout.sections : [];
+    const count = Math.min(4, Math.max(1, Number(cachedTableLayout?.sectionCount || requested.length || 3)));
+    return Array.from({ length: count }, (_, index) => String(requested[index] || `Section ${index + 1}`).trim() || `Section ${index + 1}`);
+  }
+
   function isTableLayoutSideToken(value) {
     const normalized = String(value || "").trim().toLowerCase();
-    return normalized.includes("bar")
-      || normalized.includes("food")
-      || normalized.includes("head")
-      || normalized.includes("center");
+    return getTableSections().some((section) => section.toLowerCase() === normalized)
+      || normalized.includes("bar") || normalized.includes("food") || normalized.includes("head") || normalized.includes("center");
   }
 
   function getTableTypes(table) {
@@ -6104,20 +6167,9 @@
       || getTableColumnValue(table, /^location$/i)
       || (isTableLayoutSideToken(table?.type) ? table?.type : "")
       || ""
-    ).trim().toLowerCase();
-    if (!raw) {
-      return "head";
-    }
-    if (raw.includes("bar")) {
-      return "bar";
-    }
-    if (raw.includes("food")) {
-      return "food";
-    }
-    if (raw.includes("head") || raw.includes("center")) {
-      return "head";
-    }
-    return "head";
+    ).trim();
+    const sections = getTableSections();
+    return sections.find((section) => section.toLowerCase() === raw.toLowerCase()) || sections[0];
   }
 
   function getTableLayoutOrder(table) {
@@ -6146,16 +6198,11 @@
   }
 
   function groupTablesForLayout(items) {
-    const groups = [
-      { key: "head", label: "Head", tables: [] },
-      { key: "food", label: "Food Side", tables: [] },
-      { key: "bar", label: "Bar Side", tables: [] }
-    ];
-    const groupMap = new Map(groups.map((group) => [group.key, group]));
+    const groups = getTableSections().map((label, index) => ({ key: `section-${index + 1}`, label, tables: [] }));
 
     items.forEach((table) => {
       const side = getTableLayoutSideValue(table);
-      const targetGroup = groupMap.get(side) || groupMap.get("head");
+      const targetGroup = groups.find((group) => group.label.toLowerCase() === side.toLowerCase()) || groups[0];
       targetGroup.tables.push(table);
     });
 
@@ -9043,7 +9090,7 @@
     if (!viewerProfile.email) return;
     try {
       const serialized = JSON.stringify({
-        version: 3,
+        version: 4,
         email: viewerProfile.email,
         viewer: viewerProfile,
         savedAt: Date.now(),
@@ -9052,6 +9099,7 @@
         shots: cachedShots,
         beds: cachedBeds,
         tables: cachedTables,
+        tableLayout: cachedTableLayout,
         todos: cachedTodos,
         eventLists: cachedEventLists,
         rsvps: cachedRsvps,
@@ -9080,7 +9128,7 @@
         || ""
       ));
       const savedAt = Number(cached?.savedAt || 0);
-      const isCurrent = Number(cached?.version || 0) === 3;
+      const isCurrent = Number(cached?.version || 0) === 4;
       const isFresh = savedAt > 0 && Date.now() - savedAt <= PLANNER_CACHE_TTL_MS;
       if (!cached || !isCurrent || !isFresh || String(cached.email || "").toLowerCase() !== viewerProfile.email.toLowerCase()) {
         window.localStorage.removeItem(STORAGE_KEYS.plannerDataCache);
@@ -9092,6 +9140,7 @@
       cachedShots = Array.isArray(cached.shots) ? cached.shots : [];
       cachedBeds = Array.isArray(cached.beds) ? cached.beds : [];
       cachedTables = Array.isArray(cached.tables) ? cached.tables : [];
+      cachedTableLayout = cached.tableLayout && typeof cached.tableLayout === "object" ? cached.tableLayout : cachedTableLayout;
       cachedTodos = Array.isArray(cached.todos) ? cached.todos : [];
       cachedEventLists = Array.isArray(cached.eventLists) ? cached.eventLists : [];
       cachedRsvps = Array.isArray(cached.rsvps) ? cached.rsvps : [];
@@ -9130,7 +9179,7 @@
       const cachedEmail = String(cached?.email || "").trim().toLowerCase();
       const requestedEmail = String(expectedEmail || "").trim().toLowerCase();
       const savedAt = Number(cached?.savedAt || 0);
-      const isFresh = Number(cached?.version || 0) === 3 && savedAt > 0 && Date.now() - savedAt <= PLANNER_CACHE_TTL_MS;
+      const isFresh = Number(cached?.version || 0) === 4 && savedAt > 0 && Date.now() - savedAt <= PLANNER_CACHE_TTL_MS;
       if (!isFresh || !cachedEmail || (requestedEmail && cachedEmail !== requestedEmail) || !cached?.viewer) {
         window.localStorage.removeItem(STORAGE_KEYS.plannerDataCache);
         window.sessionStorage.removeItem(STORAGE_KEYS.plannerDataCache);
@@ -9174,6 +9223,7 @@
     cachedTodos = sortTodos(Array.isArray(planner.todos) ? planner.todos : []);
     cachedEventLists = sortEventLists(Array.isArray(planner.eventLists) ? planner.eventLists : []);
     cachedTables = sortTables(Array.isArray(planner.tables) ? planner.tables : []);
+    cachedTableLayout = planner.tableLayout && typeof planner.tableLayout === "object" ? planner.tableLayout : cachedTableLayout;
     cachedRsvps = normalizeRsvps(feed);
     cachedGuests = normalizeGuests(feed);
     cachedWorkspaceUsers = Array.isArray(workspace.users) ? workspace.users : [];
@@ -10383,6 +10433,100 @@ function sortTables(items) {
     return group === "yes" ? "attending" : group === "no" ? "not-attending" : "";
   }
 
+  function getLatestRsvpSubmissions() {
+    const submissionsByGroup = new Map();
+    getRsvpSubmissions().forEach((rsvp) => {
+      const group = String(rsvp.group || rsvp.name || "Guest").trim() || "Guest";
+      const current = submissionsByGroup.get(group);
+      if (!current || new Date(rsvp.submittedAt || 0).getTime() > new Date(current.submittedAt || 0).getTime()) {
+        submissionsByGroup.set(group, rsvp);
+      }
+    });
+    return Array.from(submissionsByGroup.values());
+  }
+
+  function getRsvpEventAttendeeNames(rsvp) {
+    const names = getRsvpEditMembers(rsvp)
+      .filter((member) => getRsvpGroup(member.response) === "yes")
+      .map((member) => member.name);
+    const plusOneCount = Math.max(0, Number.parseInt(rsvp.plusOneCount || "0", 10) || 0);
+    const childrenCount = Math.max(0, Number.parseInt(rsvp.childrenCount || "0", 10) || 0);
+    const plusOneName = String(rsvp.plusOneName || "").trim();
+    const childrenNote = String(rsvp.childrenNote || "").trim();
+
+    if (!names.length && !String(rsvp.groupMembers || "").trim()) {
+      names.push(String(rsvp.name || rsvp.group || "Guest").trim() || "Guest");
+    }
+    for (let index = 0; index < plusOneCount; index += 1) {
+      names.push(index === 0 && plusOneName ? plusOneName : `Plus one${plusOneCount > 1 ? ` ${index + 1}` : ""}`);
+    }
+    for (let index = 0; index < childrenCount; index += 1) {
+      names.push(index === 0 && childrenNote ? `Child — ${childrenNote}` : `Child${childrenCount > 1 ? ` ${index + 1}` : ""}`);
+    }
+
+    const count = Number.parseInt(getSubmissionGuestCount(rsvp), 10);
+    if (Number.isNaN(count) || count < 1) return [];
+    while (names.length < count) names.push("Guest (name not recorded)");
+    return names.slice(0, count);
+  }
+
+  function formatAirportTransportation(value) {
+    const labels = {
+      "no-help-needed": "Transportation covered",
+      "airport-ride-needed": "May need an airport ride",
+      "coordination-help-needed": "Would like transportation coordination"
+    };
+    const normalized = String(value || "").trim();
+    return labels[normalized] || normalized;
+  }
+
+  function openRsvpEventAttendeesModal(field, returnFocusEl) {
+    const modal = rsvpListEl?.querySelector("#rsvpEventAttendeesModal");
+    const titleEl = modal?.querySelector("#rsvpEventAttendeesModalTitle");
+    const summaryEl = modal?.querySelector("#rsvpEventAttendeesModalSummary");
+    const listEl = modal?.querySelector("#rsvpEventAttendeesModalList");
+    if (!modal || !titleEl || !summaryEl || !listEl) return;
+
+    const isRiverCruise = field === "riverCruise";
+    const eventTitle = isRiverCruise ? "River Cruise" : field === "rehearsalRsvp" ? "Rehearsal Dinner" : "Open House";
+    const attendees = isRiverCruise
+      ? getLatestRsvpSubmissions()
+        .filter((rsvp) => String(rsvp.riverWalkInterest || "").trim().toLowerCase() === "interested")
+        .map((rsvp) => ({
+          group: String(rsvp.group || rsvp.name || "Guest").trim() || "Guest",
+          count: Math.max(0, Number.parseInt(rsvp.riverWalkCount || "0", 10) || 0)
+        }))
+      : getLatestRsvpSubmissions()
+        .filter((rsvp) => getRsvpGroup(rsvp[field]) === "yes")
+        .flatMap((rsvp) => getRsvpEventAttendeeNames(rsvp));
+    rsvpEventAttendeesModalReturnFocusEl = returnFocusEl instanceof HTMLElement ? returnFocusEl : null;
+    titleEl.textContent = `${eventTitle} Count`;
+    const attendeeCount = isRiverCruise
+      ? attendees.reduce((total, attendee) => total + attendee.count, 0)
+      : attendees.length;
+    summaryEl.textContent = attendeeCount
+      ? `${attendeeCount} ${attendeeCount === 1 ? "person is" : "people are"} included in this count.`
+      : `No one is included in the ${eventTitle.toLowerCase()} count yet.`;
+    listEl.innerHTML = attendees.length
+      ? isRiverCruise
+        ? attendees.map((attendee) => `<article class="rsvp-event-attendee"><strong>${escapeHtml(attendee.group)}</strong><span>${attendee.count} ${attendee.count === 1 ? "person" : "people"}</span></article>`).join("")
+        : attendees.map((name) => `<article class="rsvp-event-attendee"><strong>${escapeHtml(name)}</strong></article>`).join("")
+      : '<p class="meta">No attending RSVPs yet.</p>';
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    modal.querySelector("[data-close-rsvp-event-attendees-modal]")?.focus();
+  }
+
+  function closeRsvpEventAttendeesModal() {
+    const modal = rsvpListEl?.querySelector("#rsvpEventAttendeesModal");
+    if (!modal) return;
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    const returnFocusEl = rsvpEventAttendeesModalReturnFocusEl;
+    rsvpEventAttendeesModalReturnFocusEl = null;
+    if (returnFocusEl) window.setTimeout(() => returnFocusEl.focus(), 0);
+  }
+
   function openRsvpEditModal(group) {
     requirePlannerAccess();
     const modal = rsvpListEl?.querySelector("#rsvpEditModal");
@@ -10438,8 +10582,17 @@ function sortTables(items) {
   }
 
   rsvpListEl?.addEventListener("click", (event) => {
+    if (event.target.closest("[data-close-rsvp-event-attendees-modal]")) {
+      closeRsvpEventAttendeesModal();
+      return;
+    }
     if (event.target.closest("[data-close-rsvp-edit-modal]")) {
       closeRsvpEditModal();
+      return;
+    }
+    const eventAttendeesButton = event.target.closest("[data-open-rsvp-event-attendees]");
+    if (eventAttendeesButton) {
+      openRsvpEventAttendeesModal(String(eventAttendeesButton.dataset.openRsvpEventAttendees || ""), eventAttendeesButton);
       return;
     }
     const editButton = event.target.closest("[data-edit-rsvp-response]");
@@ -10568,6 +10721,41 @@ function sortTables(items) {
     openTableModal();
   });
 
+  tableSectionCountEl?.addEventListener("change", () => {
+    const count = Math.min(4, Math.max(1, Number(tableSectionCountEl.value || 1)));
+    cachedTableLayout = { ...cachedTableLayout, sectionCount: count };
+    renderTableLayoutForm();
+  });
+
+  tableLayoutForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      requirePlannerAccess();
+      const data = new FormData(tableLayoutForm);
+      const sectionCount = Math.min(4, Math.max(1, Number(data.get("sectionCount") || 1)));
+      const sections = Array.from({ length: sectionCount }, (_, index) => String(data.get(`section${index + 1}`) || "").trim());
+      if (sections.some((section) => !section)) throw new Error("Name every active section.");
+      if (new Set(sections.map((section) => section.toLowerCase())).size !== sections.length) throw new Error("Each section needs a different name.");
+      setStatus(tableStatusEl, "Saving table setup...", "pending");
+      const previousSections = getTableSections();
+      const savedLayout = await backendRequest("saveTableLayout", { sectionCount, sections });
+      cachedTableLayout = savedLayout;
+      const updatedTables = await Promise.all(cachedTables.map(async (table) => {
+        const oldIndex = previousSections.findIndex((section) => section.toLowerCase() === String(table.location || "").trim().toLowerCase());
+        const nextLocation = sections[oldIndex >= 0 && oldIndex < sections.length ? oldIndex : 0];
+        if (String(table.location || "").trim() === nextLocation) return table;
+        return backendRequest("saveTable", { ...table, location: nextLocation });
+      }));
+      cachedTables = sortTables(updatedTables);
+      rerenderTableData();
+      savePlannerSessionCache();
+      setStatus(tableStatusEl, "Table setup saved.", "success");
+    } catch (error) {
+      renderTableLayoutForm();
+      setStatus(tableStatusEl, error.message || "Unable to save table setup.", "error");
+    }
+  });
+
   tableForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
@@ -10583,12 +10771,15 @@ function sortTables(items) {
         throw new Error("Select at least one type.");
       }
       const tableName = String(data.tableName || "").trim();
-      const existingTable = cachedTables.find((item) => String(item.tableName || "").trim() === tableName);
-      const tableId = String(existingTable?.id || "").trim() || createClientId("table");
+      const tableId = String(data.id || "").trim() || createClientId("table");
+      const existingTable = cachedTables.find((item) => String(item.id || "").trim() === tableId);
+      const renamedAssignments = existingTable && String(existingTable.tableName || "").trim() !== tableName
+        ? getAssignedGuestByTableName(String(existingTable.tableName || "").trim())
+        : [];
       upsertCachedTable({
         id: tableId,
         tableName,
-        location: String(data.location || "Center").trim(),
+        location: String(data.location || getTableSections()[0]).trim(),
         order: Number(data.order || 0),
         type: selectedTypes.join(", "),
         count: Number(data.count || 0),
@@ -10599,12 +10790,19 @@ function sortTables(items) {
       const savedTable = await backendRequest("saveTable", {
         id: tableId,
         tableName,
-        location: String(data.location || "Center").trim(),
+        location: String(data.location || getTableSections()[0]).trim(),
         order: Number(data.order || 0),
         type: selectedTypes.join(", "),
         count: Number(data.count || 0)
       });
       upsertCachedTable(savedTable);
+      if (renamedAssignments.length) {
+        const savedAssignments = await backendRequest("saveGuestTableAssignments", {
+          assignments: renamedAssignments.map((guest) => ({ rowNumber: guest.rowNumber, tableName, tableOrder: guest.tableOrder }))
+        });
+        savedAssignments.forEach((assignment) => updateCachedGuestTableAssignment(assignment.rowNumber, assignment.tableName, assignment.tableOrder));
+      }
+      savePlannerSessionCache();
       tableForm.reset();
       setStatus(tableStatusEl, "Table saved to Google Sheets.", "success");
       setActivePlannerPanel("tables");
@@ -11373,6 +11571,14 @@ function sortTables(items) {
   });
 
   tablesListEl.addEventListener("click", async (event) => {
+    const editButton = event.target.closest("[data-edit-table]");
+    if (editButton) {
+      requirePlannerAccess();
+      const table = getTableById(editButton.dataset.tableId);
+      if (table) openTableModal(table);
+      return;
+    }
+
     const openButton = event.target.closest("[data-open-add-guest-seat]");
     if (openButton) {
       const table = cachedTables.find((item) => item.id === openButton.dataset.tableId);

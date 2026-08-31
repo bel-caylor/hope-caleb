@@ -1956,6 +1956,47 @@
         gap: 0.25rem;
       }
 
+      .rsvp-count-link {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--wine);
+        font: inherit;
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-decoration: underline;
+        text-underline-offset: 0.14em;
+        cursor: pointer;
+      }
+
+      .rsvp-count-link:hover,
+      .rsvp-count-link:focus-visible {
+        color: var(--green);
+      }
+
+      .rsvp-event-attendee-list {
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .rsvp-event-attendee {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.7rem 0.8rem;
+        border: 1px solid var(--planner-border);
+        border-radius: 8px;
+        background: #fcf4f5;
+      }
+
+      .rsvp-event-attendee span {
+        color: var(--muted);
+        font-size: 0.9rem;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
       .rsvp-section-header span {
         color: var(--muted);
         font-size: 0.9rem;
@@ -1979,20 +2020,35 @@
         gap: 0.9rem;
       }
 
+      .rsvp-travel-stay-pill {
+        flex: 0 0 auto;
+        padding: 0.18rem 0.5rem;
+        border: 1px solid rgba(40, 74, 47, 0.28);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.6);
+        color: #284a2f;
+        font-size: 0.76rem;
+        font-weight: 700;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+
       .rsvp-submission-card .guest-card__grid {
         grid-template-columns: minmax(11rem, 15rem) minmax(13rem, 1fr);
       }
 
       .rsvp-submission-roles,
       .rsvp-submission-members,
-      .rsvp-submission-note {
+      .rsvp-submission-note,
+      .rsvp-submission-travel {
         border-top: 1px solid rgba(86, 29, 40, 0.14);
         padding-top: 0.8rem;
       }
 
       .rsvp-submission-roles > span,
       .rsvp-submission-members > span,
-      .rsvp-submission-note > span {
+      .rsvp-submission-note > span,
+      .rsvp-submission-travel > span {
         display: block;
         color: var(--muted);
         font-size: 0.82rem;
@@ -7319,6 +7375,18 @@
             <button class="button button--icon" type="button" id="openTableModal" aria-label="Add table">+</button>
           </div>
           <p class="status" id="tableStatus"></p>
+          <form id="tableLayoutForm" class="guest-filter" aria-label="Table section setup">
+            <label>Sections
+              <select name="sectionCount" id="tableSectionCount">
+                <option value="1">1 section</option><option value="2">2 sections</option><option value="3">3 sections</option><option value="4">4 sections</option>
+              </select>
+            </label>
+            <label data-table-section-name>Section 1 <input name="section1" required></label>
+            <label data-table-section-name>Section 2 <input name="section2"></label>
+            <label data-table-section-name>Section 3 <input name="section3"></label>
+            <label data-table-section-name>Section 4 <input name="section4"></label>
+            <div class="toolbar"><button class="button button--light" type="submit">Save table setup</button></div>
+          </form>
           <div class="list" id="tablesList">
             <p class="meta">No tables loaded yet.</p>
           </div>
@@ -7793,38 +7861,19 @@
               </div>
             </div>
             <form id="tableForm" class="guest-filter">
+              <input type="hidden" name="id">
               <label>Table Name <input name="tableName" type="text" required></label>
-              <label>Location
-                <select name="location" required>
-                  <option value="Center">Center</option>
-                  <option value="Food Side">Food Side</option>
-                  <option value="Bar Side">Bar Side</option>
-                </select>
+              <label>Section
+                <select name="location" id="tableSection" required></select>
               </label>
               <label>Order <input name="order" type="number" min="1" step="1" required></label>
               <fieldset class="type-options">
                 <legend>Type</legend>
                 <div id="tableTypeOptions" class="type-options__grid"></div>
               </fieldset>
-              <label>Count
-                <select name="count" required>
-                  <option value="">Select seat count</option>
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                  <option value="4">4</option>
-                  <option value="5">5</option>
-                  <option value="6">6</option>
-                  <option value="7">7</option>
-                  <option value="8">8</option>
-                  <option value="9">9</option>
-                  <option value="10">10</option>
-                  <option value="11">11</option>
-                  <option value="12">12</option>
-                </select>
-              </label>
+              <label>Seats <input name="count" type="number" min="1" step="1" required></label>
               <div class="toolbar">
-                <button class="button" type="submit">Add Table</button>
+                <button class="button" type="submit">Save Table</button>
               </div>
             </form>
           </div>
