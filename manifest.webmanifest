@@ -11,9 +11,9 @@
   "theme_color": "#590000",
   "icons": [
     {
-      "src": "/images/hero-monogram.png",
-      "sizes": "256x262",
-      "type": "image/png",
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
     }
   ]
