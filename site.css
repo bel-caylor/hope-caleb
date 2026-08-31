@@ -375,7 +375,7 @@ main {
 .section-nav__menu-toggle::before {
   content: "";
   position: absolute;
-  top: 50%;
+  top: 55%;
   left: 50%;
   width: 2.85rem;
   height: 2.75rem;
@@ -2417,6 +2417,16 @@ h4#rsvp-volunteer-heading {
 }
 
 .rsvp-status[data-tone="error"] {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1000;
+  max-width: min(32rem, calc(100vw - 2rem));
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(140, 29, 24, 0.35);
+  border-radius: 0.5rem;
+  background: #fff9f8;
+  box-shadow: 0 0.7rem 1.8rem rgba(58, 29, 27, 0.2);
   color: #8c1d18;
   font-size: 1.12rem;
   font-weight: 700;
