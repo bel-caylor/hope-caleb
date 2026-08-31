@@ -116,7 +116,6 @@
   const guestMessagingSummaryEl = document.querySelector("#guestMessagingSummary");
   const textGroupPickerEl = document.querySelector("#textGroupPicker");
   const textGuestListEl = document.querySelector("#textGuestList");
-  const selectFilteredTextGuestsButton = document.querySelector("#selectFilteredTextGuests");
   const startGroupTextButton = document.querySelector("#startGroupText");
   const startPrivateTextButton = document.querySelector("#startPrivateText");
   const clearTextGuestsButton = document.querySelector("#clearTextGuests");
@@ -169,7 +168,6 @@
   let cachedEventLists = [];
   let cachedRsvps = [];
   let cachedGuests = [];
-  let selectedTextGuestRowNumbers = new Set();
   let selectedTextGroups = new Set();
   let dismissedTextGuestRowNumbers = new Set();
   let privateTextPosition = 0;
@@ -5216,13 +5214,13 @@
   }
 
   function getSelectedTextGuests() {
-    const selected = new Set(selectedTextGuestRowNumbers);
-    return getTextEligibleGuests().filter((guest) => selected.has(guest.rowNumber));
+    return selectedTextGroups.size ? getFilteredTextEligibleGuests() : [];
   }
 
   function getFilteredTextEligibleGuests() {
     const selectedTypes = new Set(selectedTextGroups);
     return getTextEligibleGuests().filter((guest) => {
+      if (dismissedTextGuestRowNumbers.has(guest.rowNumber)) return false;
       if (!selectedTypes.size) return true;
       const row = cachedGuests.find((candidate) => getGuestRowNumber(candidate) === guest.rowNumber);
       return getTypeTokens(getGuestTypeValue(row)).some((type) => selectedTypes.has(type.toLowerCase()));
@@ -5245,20 +5243,7 @@
   }
 
   function getTextGuestsForSelectedGroups() {
-    const selectedTypes = new Set(selectedTextGroups);
-    if (!selectedTypes.size) return [];
-    return cachedGuests
-      .filter((guest) => getGuestRowNumber(guest))
-      .filter((guest) => getTypeTokens(getGuestTypeValue(guest)).some((type) => selectedTypes.has(type.toLowerCase())))
-      .filter((guest) => !dismissedTextGuestRowNumbers.has(getGuestRowNumber(guest)))
-      .map((guest) => ({
-        rowNumber: getGuestRowNumber(guest),
-        name: getGuestDisplayName(guest) || "Unnamed guest",
-        phone: normalizeTextPhone(getGuestPhone(guest)),
-        rawPhone: getGuestPhone(guest),
-        optedIn: isGuestSmsOptedIn(guest)
-      }))
-      .sort((left, right) => left.name.localeCompare(right.name));
+    return selectedTextGroups.size ? getFilteredTextEligibleGuests() : [];
   }
 
   function renderTextGuests() {
@@ -5280,23 +5265,12 @@
     textGuestListEl.innerHTML = !selectedGroupNames.length
       ? '<p class="meta">Select a group above to see its guests.</p>'
       : !guests.length
-        ? '<p class="meta">No guests are assigned to the selected groups.</p>'
+        ? '<p class="meta">No opted-in guests with working mobile numbers are in the selected groups.</p>'
         : guests.map((guest) => {
-          const selected = selectedTextGuestRowNumbers.has(guest.rowNumber);
-          const phoneCopy = guest.phone ? guest.phone : "No working cell number";
-          const selection = guest.phone
-            ? guest.optedIn
-              ? `<label class="text-recipient-card__choice"><input type="checkbox" data-text-recipient="${escapeHtml(String(guest.rowNumber))}" ${selected ? "checked" : ""}> Include</label>`
-              : '<span class="meta">Not opted in</span>'
-            : "";
-          const dismiss = !guest.phone
-            ? `<button class="text-recipient-card__dismiss" type="button" data-dismiss-text-guest="${escapeHtml(String(guest.rowNumber))}" aria-label="Hide ${escapeHtml(guest.name)} from this text list" title="Hide from this text list">×</button>`
-            : "";
-          const edit = !guest.phone
-            ? `<button class="button button--icon button--light" type="button" data-edit-text-contact="${escapeHtml(String(guest.rowNumber))}" aria-label="Edit text contact for ${escapeHtml(guest.name)}" title="Edit text contact"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"></path></svg></button>`
-            : "";
-          return `<article class="text-recipient-card text-recipient-card--${guest.phone ? "ready" : "missing"}">
-            ${dismiss}<div><strong>${escapeHtml(guest.name)}</strong>${guest.phone ? `<p>${escapeHtml(phoneCopy)}</p>` : ""}</div>${selection}${edit}
+          const phoneCopy = guest.phone;
+          const dismiss = `<button class="text-recipient-card__dismiss" type="button" data-dismiss-text-guest="${escapeHtml(String(guest.rowNumber))}" aria-label="Remove ${escapeHtml(guest.name)} from this message" title="Remove from this message">×</button>`;
+          return `<article class="text-recipient-card text-recipient-card--ready">
+            <div><strong>${escapeHtml(guest.name)}</strong><p>${escapeHtml(phoneCopy)}</p></div>${dismiss}
           </article>`;
         }).join("");
     renderGuestMessagingSummary();
@@ -5305,12 +5279,11 @@
   function renderGuestMessagingSummary() {
     if (!guestMessagingSummaryEl) return;
     const selectedCount = getSelectedTextGuests().length;
-    const filteredCount = getTextGuestsForSelectedGroups().length;
     guestMessagingSummaryEl.textContent = selectedCount
-      ? `${selectedCount} opted-in ${selectedCount === 1 ? "guest is" : "guests are"} selected.`
-      : filteredCount
-        ? `${filteredCount} ${filteredCount === 1 ? "guest is" : "guests are"} in the selected groups. Green has a working cell number; red does not.`
-        : "Select one or more groups to choose recipients.";
+      ? `${selectedCount} opted-in ${selectedCount === 1 ? "guest will" : "guests will"} receive this message.`
+      : selectedTextGroups.size
+        ? "No opted-in guests with working mobile numbers are available in the selected groups."
+        : "Select one or more groups to add recipients.";
   }
 
   function getTextMessageBody() {
@@ -10715,18 +10688,8 @@ function sortTables(items) {
     setStatus(personStatusEl, `Editing ${person.name}.`, "success");
   });
 
-  selectFilteredTextGuestsButton?.addEventListener("click", () => {
-    const recipients = getFilteredTextEligibleGuests();
-    selectedTextGuestRowNumbers = new Set(recipients.map((guest) => guest.rowNumber));
-    privateTextPosition = 0;
-    renderGuests();
-    setStatus(textsStatusEl, recipients.length
-      ? `Selected ${recipients.length} opted-in ${recipients.length === 1 ? "guest" : "guests"}.`
-      : "No opted-in guests with usable mobile numbers are in the selected groups.", recipients.length ? "success" : "pending");
-  });
-
   clearTextGuestsButton?.addEventListener("click", () => {
-    selectedTextGuestRowNumbers.clear();
+    selectedTextGroups.clear();
     dismissedTextGuestRowNumbers.clear();
     privateTextPosition = 0;
     renderGuests();
@@ -10746,19 +10709,6 @@ function sortTables(items) {
     renderTextGuests();
   });
 
-  textGuestListEl?.addEventListener("change", (event) => {
-    const textRecipient = event.target.closest("[data-text-recipient]");
-    if (!textRecipient) return;
-    const rowNumber = Number(textRecipient.dataset.textRecipient || 0);
-    if (textRecipient.checked) {
-      selectedTextGuestRowNumbers.add(rowNumber);
-    } else {
-      selectedTextGuestRowNumbers.delete(rowNumber);
-    }
-    privateTextPosition = 0;
-    renderGuestMessagingSummary();
-  });
-
   textGuestListEl?.addEventListener("click", (event) => {
     const editButton = event.target.closest("[data-edit-text-contact]");
     if (editButton) {
@@ -10770,7 +10720,6 @@ function sortTables(items) {
     if (!dismissButton) return;
     const rowNumber = Number(dismissButton.dataset.dismissTextGuest || 0);
     dismissedTextGuestRowNumbers.add(rowNumber);
-    selectedTextGuestRowNumbers.delete(rowNumber);
     privateTextPosition = 0;
     renderTextGuests();
   });

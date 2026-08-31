@@ -3014,6 +3014,20 @@
         gap: 0.6rem;
       }
 
+      .guest-messaging__section {
+        display: grid;
+        gap: 0.7rem;
+        padding: 0.9rem;
+        border: 1px solid color-mix(in srgb, var(--planner-accent) 18%, var(--planner-border));
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.55);
+      }
+
+      .guest-messaging__section-heading,
+      .guest-messaging__section-copy {
+        margin: 0;
+      }
+
       .text-group-picker {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
@@ -3086,8 +3100,7 @@
         resize: vertical;
       }
 
-      .guest-card__text-choice,
-      .text-recipient-card__choice {
+      .guest-card__text-choice {
         display: flex;
         align-items: center;
         gap: 0.4rem;
@@ -3097,8 +3110,7 @@
         font-weight: 700;
       }
 
-      .guest-card__text-choice input,
-      .text-recipient-card__choice input {
+      .guest-card__text-choice input {
         width: 1rem;
         height: 1rem;
       }
@@ -7194,15 +7206,20 @@
             <div class="guest-messaging__header">
               <div>
                 <h3 id="guestMessagingTitle">Text guests</h3>
-                <p class="meta" id="guestMessagingSummary">Select one or more groups to choose recipients.</p>
+                <p class="meta" id="guestMessagingSummary">Choose groups to add everyone in them to this message.</p>
               </div>
             </div>
-            <div>
-              <strong>Select groups</strong>
+            <section class="guest-messaging__section" aria-labelledby="textGroupPickerTitle">
+              <h4 class="guest-messaging__section-heading" id="textGroupPickerTitle">Select groups</h4>
               <div class="text-group-picker" id="textGroupPicker"><p class="meta">Guest groups will appear here.</p></div>
-            </div>
-            <div class="text-recipient-list" id="textGuestList"><p class="meta">Select a group to see its guests.</p></div>
-            <button class="button button--light" type="button" id="selectFilteredTextGuests">Select eligible guests in groups</button>
+            </section>
+            <section class="guest-messaging__section" aria-labelledby="textGuestListTitle">
+              <div>
+                <h4 class="guest-messaging__section-heading" id="textGuestListTitle">Message recipients</h4>
+                <p class="meta guest-messaging__section-copy">Everyone shown here will receive the message. Use × to remove someone.</p>
+              </div>
+              <div class="text-recipient-list" id="textGuestList"><p class="meta">Select a group to see its guests.</p></div>
+            </section>
             <label>Message <textarea id="guestMessagingBody" placeholder="Example: We can’t wait to celebrate with you! Please arrive by 4:30 p.m."></textarea></label>
             <div class="guest-messaging__actions">
               <button class="button" type="button" id="startGroupText">Open group text</button>
