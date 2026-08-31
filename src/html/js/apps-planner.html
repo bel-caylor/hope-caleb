@@ -6392,7 +6392,7 @@
           <div class="workspace-event-directory__details">
             <div class="workspace-event-directory__details-grid">
               ${event.notes ? `<div class="workspace-event-directory__notes"><strong>${escapeHtml(event.notes)}</strong></div>` : ""}
-              <div><strong>${escapeHtml(event.location || "Location not set")}</strong></div>
+              ${String(event.location || "").trim() ? `<div><strong>${escapeHtml(event.location)}</strong></div>` : ""}
               ${incompleteTasks.length ? `<div class="workspace-event-directory__tasks"><ul>${incompleteTasks.map((task) => `<li>${escapeHtml(task.title || "Untitled task")}</li>`).join("")}</ul></div>` : ""}
               ${inviteeNames.length ? `<div class="workspace-event-directory__invitees"><strong>${escapeHtml(inviteeNames.join(", "))}</strong></div>` : ""}
             </div>
