@@ -3082,22 +3082,31 @@
 
       .table-layout-choice__diagram {
         display: grid;
-        gap: 0.18rem;
+        gap: 0.16rem;
         grid-auto-rows: minmax(0, 1fr);
-        width: 2.65rem;
-        height: 2.65rem;
-        padding: 0.18rem;
-        border: 1px solid color-mix(in srgb, var(--planner-accent) 30%, var(--planner-border));
-        border-radius: 5px;
-        background: color-mix(in srgb, #fffdf9 88%, var(--planner-accent));
+        width: 3rem;
+        height: 3rem;
+        padding: 0.16rem;
+        border: 2px solid var(--planner-accent);
+        border-radius: 4px;
+        background: #fffdf9;
       }
 
       .table-layout-choice__diagram i {
-        display: block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         min-width: 0;
         min-height: 0;
-        border-radius: 2px;
+        border: 1px solid var(--planner-accent);
+        border-radius: 1px;
+        color: #fff;
         background: var(--planner-accent);
+        font-family: system-ui, sans-serif;
+        font-size: 0.62rem;
+        font-style: normal;
+        font-weight: 800;
+        line-height: 1;
       }
 
       .table-layout-choice__diagram--single { grid-template-columns: 1fr; }
@@ -7500,13 +7509,13 @@
               <legend>Room arrangement</legend>
               <p class="meta">Choose the shape that best matches the room. The labels below name each area.</p>
               <div class="table-layout-picker__choices" role="radiogroup" aria-label="Room arrangement">
-                <label class="table-layout-choice" data-layout-choice="single"><input type="radio" name="roomLayout" value="single"><span class="table-layout-choice__diagram table-layout-choice__diagram--single" aria-hidden="true"><i></i></span><span>One area</span></label>
-                <label class="table-layout-choice" data-layout-choice="columns-2"><input type="radio" name="roomLayout" value="columns-2"><span class="table-layout-choice__diagram table-layout-choice__diagram--columns-2" aria-hidden="true"><i></i><i></i></span><span>Two columns</span></label>
-                <label class="table-layout-choice" data-layout-choice="front-two"><input type="radio" name="roomLayout" value="front-two"><span class="table-layout-choice__diagram table-layout-choice__diagram--front-two" aria-hidden="true"><i></i><i></i><i></i></span><span>Front + two</span></label>
-                <label class="table-layout-choice" data-layout-choice="columns-3"><input type="radio" name="roomLayout" value="columns-3"><span class="table-layout-choice__diagram table-layout-choice__diagram--columns-3" aria-hidden="true"><i></i><i></i><i></i></span><span>Three columns</span></label>
-                <label class="table-layout-choice" data-layout-choice="quadrants"><input type="radio" name="roomLayout" value="quadrants"><span class="table-layout-choice__diagram table-layout-choice__diagram--quadrants" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Four quadrants</span></label>
-                <label class="table-layout-choice" data-layout-choice="columns-4"><input type="radio" name="roomLayout" value="columns-4"><span class="table-layout-choice__diagram table-layout-choice__diagram--columns-4" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Four columns</span></label>
-                <label class="table-layout-choice" data-layout-choice="front-four"><input type="radio" name="roomLayout" value="front-four"><span class="table-layout-choice__diagram table-layout-choice__diagram--front-four" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span>Front + four</span></label>
+                <label class="table-layout-choice" data-layout-choice="single"><input type="radio" name="roomLayout" value="single"><span class="table-layout-choice__diagram table-layout-choice__diagram--single" aria-hidden="true"><i>1</i></span><span>One area</span></label>
+                <label class="table-layout-choice" data-layout-choice="columns-2"><input type="radio" name="roomLayout" value="columns-2"><span class="table-layout-choice__diagram table-layout-choice__diagram--columns-2" aria-hidden="true"><i>1</i><i>2</i></span><span>Two columns</span></label>
+                <label class="table-layout-choice" data-layout-choice="front-two"><input type="radio" name="roomLayout" value="front-two"><span class="table-layout-choice__diagram table-layout-choice__diagram--front-two" aria-hidden="true"><i>1</i><i>2</i><i>3</i></span><span>Front + two</span></label>
+                <label class="table-layout-choice" data-layout-choice="columns-3"><input type="radio" name="roomLayout" value="columns-3"><span class="table-layout-choice__diagram table-layout-choice__diagram--columns-3" aria-hidden="true"><i>1</i><i>2</i><i>3</i></span><span>Three columns</span></label>
+                <label class="table-layout-choice" data-layout-choice="quadrants"><input type="radio" name="roomLayout" value="quadrants"><span class="table-layout-choice__diagram table-layout-choice__diagram--quadrants" aria-hidden="true"><i>1</i><i>2</i><i>3</i><i>4</i></span><span>Four quadrants</span></label>
+                <label class="table-layout-choice" data-layout-choice="columns-4"><input type="radio" name="roomLayout" value="columns-4"><span class="table-layout-choice__diagram table-layout-choice__diagram--columns-4" aria-hidden="true"><i>1</i><i>2</i><i>3</i><i>4</i></span><span>Four columns</span></label>
+                <label class="table-layout-choice" data-layout-choice="front-four"><input type="radio" name="roomLayout" value="front-four"><span class="table-layout-choice__diagram table-layout-choice__diagram--front-four" aria-hidden="true"><i>1</i><i>2</i><i>3</i><i>4</i><i>5</i></span><span>Front + four</span></label>
               </div>
             </fieldset>
             <label data-table-section-name><span>Section 1</span><input name="section1" required></label>
