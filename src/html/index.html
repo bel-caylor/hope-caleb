@@ -1226,6 +1226,25 @@
         font: inherit;
       }
 
+      .todo-complete-filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 800;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+
+      .todo-complete-filter input {
+        width: 1rem;
+        height: 1rem;
+        margin: 0;
+        accent-color: #810d0b;
+        cursor: pointer;
+      }
+
       .todo-group-toggle {
         display: inline-flex;
         justify-self: end;
@@ -5475,16 +5494,30 @@
         grid-column: 1 / -1;
       }
 
-      .workspace-event-directory__tasks ul {
-        width: 100%;
-        margin: 0;
-        padding-left: 1.15rem;
+      .workspace-event-directory__tasks {
+        display: grid;
+        gap: 0.35rem;
         font-size: 0.94rem;
+      }
+
+      .workspace-event-directory__task {
+        display: flex;
+        align-items: baseline;
+        gap: 0.4rem;
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .workspace-event-directory__task .todo-task-complete {
+        margin-right: 0;
+      }
+
+      .workspace-event-directory__task strong {
         font-weight: 700;
       }
 
-      .workspace-event-directory__tasks li + li {
-        margin-top: 0.2rem;
+      .workspace-event-directory__task span {
+        font-weight: 400;
       }
 
       }
@@ -7355,6 +7388,10 @@
                 <option value="__unassigned__">Unassigned</option>
               </select>
             </div>
+            <label class="todo-complete-filter">
+              <input id="todoHideCompletedFilter" type="checkbox">
+              <span>Hide completed</span>
+            </label>
             <div class="todo-group-toggle" role="group" aria-label="Group to-dos by">
               <button class="todo-group-toggle__button is-active" type="button" data-todo-group-by="due" aria-pressed="true">By date</button>
               <button class="todo-group-toggle__button" type="button" data-todo-group-by="event" aria-pressed="false">Event</button>

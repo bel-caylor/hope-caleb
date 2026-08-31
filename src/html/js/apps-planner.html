@@ -93,6 +93,7 @@
   const eventAssignedToFilterEl = document.querySelector("#eventAssignedToFilter");
   const eventAssignedToFilterSummaryEl = document.querySelector("#eventAssignedToFilterSummary");
   const todoAssignedToFilterEl = document.querySelector("#todoAssignedToFilter");
+  const todoHideCompletedFilterEl = document.querySelector("#todoHideCompletedFilter");
   const todoGroupToggleButtons = Array.from(document.querySelectorAll("[data-todo-group-by]"));
   const eventDetailShellEl = document.querySelector("#eventDetailShell");
   const eventIncludedPeopleModalSummaryEl = document.querySelector("#eventIncludedPeopleModalSummary");
@@ -226,6 +227,7 @@
   let selectedEventDate = "";
   let selectedEventAssignedTo = [];
   let selectedTodoAssignedTo = [];
+  let hideCompletedTodos = false;
   let todoGroupBy = "due";
   let selectedEventDetailId = String(window.sessionStorage.getItem(STORAGE_KEYS.eventDetailId) || "").trim();
   let activeEventDetailTab = String(window.sessionStorage.getItem(STORAGE_KEYS.eventDetailTab) || "overview").trim() || "overview";
@@ -5818,9 +5820,13 @@
   }
 
   function getFilteredTodos() {
-    if (!selectedTodoAssignedTo.length) return cachedWorkspaceTasks;
     const selectedLookup = new Set(selectedTodoAssignedTo);
     return cachedWorkspaceTasks.filter((todo) => {
+      const normalizedStatus = String(todo?.status || "").trim().toLowerCase();
+      if (hideCompletedTodos && ["done", "complete", "completed"].includes(normalizedStatus)) {
+        return false;
+      }
+      if (!selectedLookup.size) return true;
       const ids = Array.isArray(todo?.assignedUserIds) ? todo.assignedUserIds : [todo?.assignedUserId];
       if (selectedLookup.has("__unassigned__")) {
         return !ids.some((id) => String(id || "").trim());
@@ -6692,7 +6698,14 @@
             <div class="workspace-event-directory__details-grid">
               ${event.notes ? `<div class="workspace-event-directory__notes"><strong>${escapeHtml(event.notes)}</strong></div>` : ""}
               ${String(event.location || "").trim() ? `<div><strong>${escapeHtml(event.location)}</strong></div>` : ""}
-              ${incompleteTasks.length ? `<div class="workspace-event-directory__tasks"><ul>${incompleteTasks.map((task) => `<li>${escapeHtml(task.title || "Untitled task")}</li>`).join("")}</ul></div>` : ""}
+              ${incompleteTasks.length ? `<div class="workspace-event-directory__tasks" aria-label="Open tasks">${incompleteTasks.map((task) => {
+                const assignee = getWorkspaceTaskAssigneeLabel(task.assignedUserIds || task.assignedUserId);
+                return `<label class="workspace-event-directory__task">
+                  ${renderWorkspaceTaskCompletionCheckbox(task)}
+                  <strong>${escapeHtml(task.title || "Untitled task")}</strong>
+                  ${assignee !== "Unassigned" ? `<span>— ${escapeHtml(assignee)}</span>` : ""}
+                </label>`;
+              }).join("")}</div>` : ""}
               ${inviteeNames.length ? `<div class="workspace-event-directory__invitees"><strong>${escapeHtml(inviteeNames.join(", "))}</strong></div>` : ""}
             </div>
           </div>
@@ -10489,6 +10502,11 @@ function sortTables(items) {
     renderTodos();
   });
 
+  todoHideCompletedFilterEl?.addEventListener("change", (event) => {
+    hideCompletedTodos = event.target.checked;
+    renderTodos();
+  });
+
   todoGroupToggleButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const groupBy = String(button.dataset.todoGroupBy || "due");
@@ -11700,6 +11718,13 @@ function sortTables(items) {
     const button = event.target.closest("[data-open-workspace-event]");
     if (!button) return;
     openWorkspaceEvent(button.dataset.openWorkspaceEvent);
+  });
+
+  workspaceEventDirectoryListEl?.addEventListener("change", (event) => {
+    const completionCheckbox = event.target.closest("[data-workspace-todo-complete]");
+    if (!completionCheckbox) return;
+    const taskId = String(completionCheckbox.dataset.workspaceTodoComplete || "").trim();
+    queueWorkspaceTaskCompletionChange(taskId, completionCheckbox.checked, renderWorkspaceEventDirectory);
   });
 
   workspaceCaptureForm?.addEventListener("submit", async (event) => {
