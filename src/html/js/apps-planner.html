@@ -108,6 +108,12 @@
   const rsvpStatusEl = document.querySelector("#rsvpStatus");
   const guestsListEl = document.querySelector("#guestsList");
   const guestsStatusEl = document.querySelector("#guestsStatus");
+  const guestMessagingBodyEl = document.querySelector("#guestMessagingBody");
+  const guestMessagingSummaryEl = document.querySelector("#guestMessagingSummary");
+  const selectFilteredTextGuestsButton = document.querySelector("#selectFilteredTextGuests");
+  const startGroupTextButton = document.querySelector("#startGroupText");
+  const startPrivateTextButton = document.querySelector("#startPrivateText");
+  const clearTextGuestsButton = document.querySelector("#clearTextGuests");
   const guestTypeFilterDropdownEl = document.querySelector("#guestTypeFilterDropdown");
   const guestTypeFilterEl = document.querySelector("#guestTypeFilter");
   const guestTypeFilterSummaryEl = document.querySelector("#guestTypeFilterSummary");
@@ -157,6 +163,8 @@
   let cachedEventLists = [];
   let cachedRsvps = [];
   let cachedGuests = [];
+  let selectedTextGuestRowNumbers = new Set();
+  let privateTextPosition = 0;
   const RSVP_VOLUNTEER_OPTIONS = [
     "Food setup — Friday, 3 p.m.",
     "Serving — Friday, 6 p.m.",
@@ -4993,6 +5001,8 @@
       ? visibleGuests.filter((guest) => getTypeTokens(guest.type).some((type) => selectedGuestTypeLookup.has(type.toLowerCase())))
       : visibleGuests;
 
+    renderGuestMessagingSummary();
+
     if (!filteredGuests.length) {
       guestsListEl.innerHTML = selectedGuestTypes.length
         ? `<div class="rsvp-section-header"><h3>Guests</h3><span>Attending RSVP count · ${attendingGuestCount}</span></div><p class="meta">No guest rows match the selected ${selectedGuestTypes.length === 1 ? "type" : "types"}.</p>`
@@ -5040,6 +5050,7 @@
                 `;
                 }).join("")}
               </div>
+              ${renderGuestTextChoice(guest.rowNumber)}
             </div>
           </details>
         `;
@@ -5152,6 +5163,84 @@
   function getGuestType(row) {
     const match = Object.entries(row).find(([key]) => String(key || "").trim().toLowerCase() === "type");
     return String(match?.[1] || "").trim();
+  }
+
+  function getTextEligibleGuests() {
+    return cachedGuests
+      .filter((guest) => getGuestRowNumber(guest))
+      .filter((guest) => isGuestSmsOptedIn(guest))
+      .map((guest) => ({
+        rowNumber: getGuestRowNumber(guest),
+        name: getGuestDisplayName(guest),
+        phone: normalizeTextPhone(getGuestPhone(guest))
+      }))
+      .filter((guest) => guest.phone)
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  function getSelectedTextGuests() {
+    const selected = new Set(selectedTextGuestRowNumbers);
+    return getTextEligibleGuests().filter((guest) => selected.has(guest.rowNumber));
+  }
+
+  function getFilteredTextEligibleGuests() {
+    const selectedTypes = new Set(selectedGuestTypes.map((type) => String(type || "").toLowerCase()));
+    return getTextEligibleGuests().filter((guest) => {
+      if (!selectedTypes.size) return true;
+      const row = cachedGuests.find((candidate) => getGuestRowNumber(candidate) === guest.rowNumber);
+      return getTypeTokens(getGuestTypeValue(row)).some((type) => selectedTypes.has(type.toLowerCase()));
+    });
+  }
+
+  function isGuestSmsOptedIn(guest) {
+    const consentColumn = Object.keys(guest || {}).find((column) => {
+      const normalized = String(column || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      return normalized === "smsoptedin" || normalized === "textconsent" || normalized === "smsconsent";
+    });
+    return /^(true|yes|optedin)$/i.test(String(consentColumn ? guest[consentColumn] || "" : "").replace(/[ -]/g, ""));
+  }
+
+  function normalizeTextPhone(value) {
+    const digits = String(value || "").replace(/\D/g, "");
+    if (digits.length === 10) return `+1${digits}`;
+    if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
+    return "";
+  }
+
+  function renderGuestTextChoice(rowNumber) {
+    const guest = cachedGuests.find((candidate) => getGuestRowNumber(candidate) === Number(rowNumber));
+    if (!guest) return "";
+    const phone = normalizeTextPhone(getGuestPhone(guest));
+    const optedIn = isGuestSmsOptedIn(guest);
+    if (!phone) return '<p class="guest-card__text-choice">No usable mobile number</p>';
+    if (!optedIn) return '<p class="guest-card__text-choice">Not opted in to text updates</p>';
+    const selected = selectedTextGuestRowNumbers.has(Number(rowNumber));
+    return `<label class="guest-card__text-choice"><input type="checkbox" data-text-recipient="${escapeHtml(String(rowNumber))}" ${selected ? "checked" : ""}> Include in text</label>`;
+  }
+
+  function renderGuestMessagingSummary() {
+    if (!guestMessagingSummaryEl) return;
+    const selectedCount = getSelectedTextGuests().length;
+    const filteredCount = getFilteredTextEligibleGuests().length;
+    guestMessagingSummaryEl.textContent = selectedCount
+      ? `${selectedCount} opted-in ${selectedCount === 1 ? "guest is" : "guests are"} selected.`
+      : filteredCount
+        ? `${filteredCount} opted-in ${filteredCount === 1 ? "guest" : "guests"} match the current filter.`
+        : "No opted-in guests with usable mobile numbers match this filter.";
+  }
+
+  function getTextMessageBody() {
+    const message = String(guestMessagingBodyEl?.value || "").trim();
+    if (!message) {
+      throw new Error("Write a message before opening your phone’s text composer.");
+    }
+    return message;
+  }
+
+  function openSmsComposer(recipients, message) {
+    const phones = recipients.map((recipient) => recipient.phone).filter(Boolean);
+    if (!phones.length) throw new Error("Choose at least one opted-in guest with a usable mobile number.");
+    window.location.href = `sms:${phones.join(",")}?body=${encodeURIComponent(message)}`;
   }
 
   function getGuestStatusTone(rsvp) {
@@ -10526,7 +10615,70 @@ function sortTables(items) {
     setStatus(personStatusEl, `Editing ${person.name}.`, "success");
   });
 
+  selectFilteredTextGuestsButton?.addEventListener("click", () => {
+    const recipients = getFilteredTextEligibleGuests();
+    selectedTextGuestRowNumbers = new Set(recipients.map((guest) => guest.rowNumber));
+    privateTextPosition = 0;
+    renderGuests();
+    setStatus(guestsStatusEl, recipients.length
+      ? `Selected ${recipients.length} opted-in ${recipients.length === 1 ? "guest" : "guests"}.`
+      : "No opted-in guests with usable mobile numbers match the current filter.", recipients.length ? "success" : "pending");
+  });
+
+  clearTextGuestsButton?.addEventListener("click", () => {
+    selectedTextGuestRowNumbers.clear();
+    privateTextPosition = 0;
+    renderGuests();
+    setStatus(guestsStatusEl, "Text recipient selection cleared.", "success");
+  });
+
+  startGroupTextButton?.addEventListener("click", () => {
+    try {
+      const recipients = getSelectedTextGuests();
+      const message = getTextMessageBody();
+      if (recipients.length < 2) {
+        throw new Error("Choose at least two guests for a group text. Use private text for one person.");
+      }
+      const confirmed = window.confirm(`Open a group text for ${recipients.length} guests? Everyone in the group can see the other recipients’ numbers and replies.`);
+      if (!confirmed) return;
+      openSmsComposer(recipients, message);
+      setStatus(guestsStatusEl, "Your phone’s group-text draft is ready to review and send.", "success");
+    } catch (error) {
+      setStatus(guestsStatusEl, error.message || "Unable to open the group text.", "error");
+    }
+  });
+
+  startPrivateTextButton?.addEventListener("click", () => {
+    try {
+      const recipients = getSelectedTextGuests();
+      const message = getTextMessageBody();
+      if (!recipients.length) {
+        throw new Error("Choose at least one opted-in guest with a usable mobile number.");
+      }
+      const recipient = recipients[privateTextPosition % recipients.length];
+      privateTextPosition = (privateTextPosition + 1) % recipients.length;
+      openSmsComposer([recipient], message);
+      const nextName = recipients[privateTextPosition]?.name;
+      setStatus(guestsStatusEl, `Opened a private text for ${recipient.name}. ${nextName ? `Return here and tap again for ${nextName}.` : ""}`, "success");
+    } catch (error) {
+      setStatus(guestsStatusEl, error.message || "Unable to open the private text.", "error");
+    }
+  });
+
   guestsListEl?.addEventListener("click", async (event) => {
+    const textRecipient = event.target.closest("[data-text-recipient]");
+    if (textRecipient) {
+      const rowNumber = Number(textRecipient.dataset.textRecipient || 0);
+      if (textRecipient.checked) {
+        selectedTextGuestRowNumbers.add(rowNumber);
+      } else {
+        selectedTextGuestRowNumbers.delete(rowNumber);
+      }
+      privateTextPosition = 0;
+      renderGuestMessagingSummary();
+      return;
+    }
+
     const typeButton = event.target.closest("[data-edit-guest-type]");
     if (typeButton) {
       event.preventDefault();

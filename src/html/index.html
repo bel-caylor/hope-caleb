@@ -2986,6 +2986,64 @@
         margin-top: 0.75rem;
       }
 
+      .guest-messaging {
+        display: grid;
+        gap: 0.8rem;
+        margin: 0 0 1rem;
+        padding: 1rem;
+        border: 1px solid color-mix(in srgb, var(--planner-accent) 24%, var(--planner-border));
+        border-radius: 14px;
+        background: color-mix(in srgb, #fffdf9 92%, var(--planner-accent));
+      }
+
+      .guest-messaging__header {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .guest-messaging__header h3,
+      .guest-messaging__header p {
+        margin: 0;
+      }
+
+      .guest-messaging__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+      }
+
+      .guest-messaging textarea {
+        min-height: 5.5rem;
+        resize: vertical;
+      }
+
+      .guest-card__text-choice {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 0.65rem;
+        color: var(--muted);
+        font-size: 0.85rem;
+        font-weight: 700;
+      }
+
+      .guest-card__text-choice input {
+        width: 1rem;
+        height: 1rem;
+      }
+
+      @media (max-width: 560px) {
+        .guest-messaging__header {
+          display: grid;
+        }
+
+        .guest-messaging__actions .button {
+          width: 100%;
+        }
+      }
+
       .planner-panel[data-planner-panel="beds"] #bedsList {
         flex: 1 1 auto;
         min-height: 0;
@@ -7034,6 +7092,22 @@
               </details>
             </div>
           </div>
+          <section class="guest-messaging" aria-labelledby="guestMessagingTitle">
+            <div class="guest-messaging__header">
+              <div>
+                <h3 id="guestMessagingTitle">Text guests</h3>
+                <p class="meta" id="guestMessagingSummary">Choose guests who have opted in to text updates.</p>
+              </div>
+              <button class="button button--light" type="button" id="selectFilteredTextGuests">Select filtered</button>
+            </div>
+            <label>Message <textarea id="guestMessagingBody" placeholder="Example: We can’t wait to celebrate with you! Please arrive by 4:30 p.m."></textarea></label>
+            <div class="guest-messaging__actions">
+              <button class="button" type="button" id="startGroupText">Open group text</button>
+              <button class="button button--light" type="button" id="startPrivateText">Open private text</button>
+              <button class="button button--light" type="button" id="clearTextGuests">Clear selection</button>
+            </div>
+            <p class="meta">Group texts share recipients’ numbers and replies. Private text opens one draft at a time. Your phone sends the message from your own number after you review it.</p>
+          </section>
           <div class="list" id="guestsList">
             <p class="meta">No guests feed loaded yet.</p>
           </div>
