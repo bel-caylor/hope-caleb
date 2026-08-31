@@ -3050,7 +3050,7 @@
 
       .text-recipient-list {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         gap: 0.6rem;
         align-items: start;
       }
@@ -3060,6 +3060,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
+        min-width: 300px;
         padding: 0.8rem 0.9rem;
         border: 1px solid transparent;
         border-radius: 12px;
@@ -3127,6 +3128,14 @@
       }
 
       @media (max-width: 560px) {
+        .text-recipient-list {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .text-recipient-card {
+          min-width: 0;
+        }
+
         .guest-messaging__header {
           display: grid;
         }
