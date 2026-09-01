@@ -5346,9 +5346,16 @@
         const ready = Boolean(recipient.phone && recipient.optedIn);
         return `<label class="text-recipient-card text-recipient-card--${ready ? "ready" : "missing"}"><span class="text-recipient-card__identity"><input type="checkbox" data-task-text-recipient="${escapeHtml(recipient.key)}" ${selectedTaskTextRecipientKeys.has(recipient.key) && ready ? "checked" : ""} ${ready ? "" : "disabled"}><span class="text-recipient-card__details"><strong>${escapeHtml(recipient.name)}</strong><p>${escapeHtml(ready ? recipient.phone : recipient.phone ? "Not opted in for texts" : "Needs attention")}</p></span></span></label>`;
       }).join("");
+    syncTaskTextDraftButton();
   }
 
-  function openTaskTextModal(task) {
+  function syncTaskTextDraftButton() {
+    if (!sendTaskGroupTextButton) return;
+    const selectedCount = activeTaskTextRecipients.filter((recipient) => selectedTaskTextRecipientKeys.has(recipient.key) && recipient.phone && recipient.optedIn).length;
+    sendTaskGroupTextButton.textContent = selectedCount > 1 ? "Open group-text draft" : "Open text draft";
+  }
+
+  async function openTaskTextModal(task) {
     if (!taskTextModal) return;
     activeTaskTextRecipients = getTaskTextRecipients(task);
     selectedTaskTextRecipientKeys = new Set(activeTaskTextRecipients.filter((recipient) => recipient.phone && recipient.optedIn).map((recipient) => recipient.key));
@@ -5364,6 +5371,12 @@
     taskTextModal.hidden = false;
     taskTextModal.setAttribute("aria-hidden", "false");
     window.setTimeout(() => taskTextMessageEl.focus(), 0);
+    try {
+      const link = await backendRequest("createWorkspaceTaskCompletionLink", { id: task.id });
+      taskTextMessageEl.value = [taskTextMessageEl.value, "Mark Task Done:", String(link?.url || "").trim()].filter(Boolean).join("\n\n");
+    } catch (error) {
+      setStatus(taskTextStatusEl, error.message || "Unable to create the task-completion link.", "error");
+    }
   }
 
   function closeTaskTextModal() {
@@ -11519,22 +11532,23 @@ function sortTables(items) {
     const key = String(checkbox.dataset.taskTextRecipient || "");
     if (checkbox.checked) selectedTaskTextRecipientKeys.add(key);
     else selectedTaskTextRecipientKeys.delete(key);
+    syncTaskTextDraftButton();
   });
 
   sendTaskGroupTextButton?.addEventListener("click", () => {
     const recipients = activeTaskTextRecipients.filter((recipient) => selectedTaskTextRecipientKeys.has(recipient.key) && recipient.phone && recipient.optedIn);
     const message = String(taskTextMessageEl?.value || "").trim();
-    if (recipients.length < 2) {
-      setStatus(taskTextStatusEl, "Choose at least two text-ready recipients for a group text.", "pending");
+    if (!recipients.length) {
+      setStatus(taskTextStatusEl, "Choose at least one text-ready recipient.", "pending");
       return;
     }
     if (!message) {
       setStatus(taskTextStatusEl, "Add a message before sending.", "pending");
       return;
     }
-    if (!window.confirm(`Open a group text for ${recipients.length} recipients? Everyone can see the other recipients’ numbers and replies.`)) return;
+    if (recipients.length > 1 && !window.confirm(`Open a group text for ${recipients.length} recipients? Everyone can see the other recipients’ numbers and replies.`)) return;
     openSmsComposer(recipients, message);
-    setStatus(taskTextStatusEl, "Your phone’s group-text draft is ready to review and send.", "success");
+    setStatus(taskTextStatusEl, recipients.length > 1 ? "Your phone’s group-text draft is ready to review and send." : "Your phone’s text draft is ready to review and send.", "success");
   });
 
   todosListEl.addEventListener("change", async (event) => {

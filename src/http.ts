@@ -2,6 +2,7 @@ import { getGoogleClientId } from "./auth";
 import { listPublicFeed, lookupPublicRsvpGroups, savePublicSubmission, syncGroupsSheet, syncGroupsSheetForEditor, syncGuestSummarySheets } from "./features/feed";
 import { getPublicRehearsalSlideImage, initializeBedsSheet, listPublicRehearsalSlides } from "./features/planner";
 import { rpc } from "./rpc";
+import { completeWorkspaceTaskFromTextLink } from "./features/planner-v2";
 import { withSpreadsheetWriteLock } from "./util/sheets";
 import { PLANNER_BUILD_VERSION } from "./version";
 
@@ -18,6 +19,9 @@ function include(filename: string) {
 }
 
 export function doGet(e?: GoogleAppsScript.Events.DoGet) {
+  if (String(e?.parameter?.completeTask || "").trim()) {
+    return taskCompletionPage(e);
+  }
   if (isRpcGetRequest(e)) {
     return handleRpcGet(e);
   }
@@ -53,6 +57,27 @@ export function doGet(e?: GoogleAppsScript.Events.DoGet) {
   tpl.plannerBuildVersion = PLANNER_BUILD_VERSION;
   tpl.include = include;
   return tpl.evaluate().setTitle("Hope & Caleb Planner");
+}
+
+function taskCompletionPage(e?: GoogleAppsScript.Events.DoGet) {
+  try {
+    const result = withSpreadsheetWriteLock(() => completeWorkspaceTaskFromTextLink({
+      id: e?.parameter?.completeTask,
+      token: e?.parameter?.token
+    }));
+    const title = escapeHtml(result.title || "your task");
+    const message = result.alreadyCompleted
+      ? `“${title}” was already marked done.`
+      : `“${title}” is marked done.`;
+    return HtmlService.createHtmlOutput(`<!doctype html><html><head><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Task Done</title></head><body style="font-family:system-ui,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#f7f4ee;color:#24352d"><main style="max-width:28rem;padding:2rem;text-align:center"><h1 style="margin:0 0 .75rem">Task done</h1><p style="font-size:1.1rem">${message}</p><p style="color:#5b6b62">You can close this page.</p></main></body></html>`).setTitle("Task Done");
+  } catch (error) {
+    const message = escapeHtml(error instanceof Error ? error.message : String(error));
+    return HtmlService.createHtmlOutput(`<!doctype html><html><head><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Unable to complete task</title></head><body style="font-family:system-ui,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#f7f4ee;color:#24352d"><main style="max-width:28rem;padding:2rem;text-align:center"><h1 style="margin:0 0 .75rem">We couldn’t mark this task done</h1><p style="font-size:1.1rem">${message}</p></main></body></html>`).setTitle("Unable to complete task");
+  }
+}
+
+function escapeHtml(value: unknown) {
+  return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 export function doPost(e?: GoogleAppsScript.Events.DoPost) {
@@ -208,7 +233,7 @@ function isWriteRpcMethod(method: string) {
     "saveGuestDetails", "syncGuestSummarySheets", "syncGroupsSheet", "savePlannerRsvpCorrection",
     "initializePlannerWorkspace", "saveWorkspaceUser", "importLegacyPeopleToWorkspaceUsers", "syncPlannerUsersToGuests", "normalizeWorkspaceTaskAssignments",
     "archiveLegacyPlanningData", "saveWorkspaceEvent", "deleteWorkspaceEvent", "saveWorkspaceTask",
-    "setWorkspaceTaskCompleted", "deleteWorkspaceTask", "saveWorkspaceList", "setWorkspaceListItemCompleted",
+    "setWorkspaceTaskCompleted", "createWorkspaceTaskCompletionLink", "deleteWorkspaceTask", "saveWorkspaceList", "setWorkspaceListItemCompleted",
     "deleteWorkspaceList", "saveWorkspaceAsset", "deleteWorkspaceAsset"
   ]).has(method);
 }

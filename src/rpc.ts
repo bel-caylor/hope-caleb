@@ -3,7 +3,7 @@ import { getViewerProfile } from "./auth";
 import { deleteEventList, deleteRehearsalSlide, deleteShot, deleteTodo, getRehearsalSlideImage, getTableLayout, listBeds, listEventLists, listEvents, listPeople, listRehearsalSlides, listShots, listTables, listTodos, saveBed, saveEvent, saveEventList, saveGuestDetails, saveGuestTableAssignment, saveGuestTableAssignments, savePerson, saveRehearsalSlide, saveShot, saveTable, saveTableLayout, saveTableReservedOpenSeats, saveTodo, uploadRehearsalSlideImage, uploadTodoImage } from "./features/planner";
 import { generateEventPlan } from "./util/ai";
 import { PLANNER_BUILD_VERSION } from "./version";
-import { archiveLegacyPlanningData, deleteWorkspaceAsset, deleteWorkspaceEvent, deleteWorkspaceList, deleteWorkspaceTask, getWorkspaceAssetImage, getWorkspaceProfile, importLegacyPeopleToWorkspaceUsers, initializePlannerWorkspace, listWorkspaceAssets, listWorkspaceEvents, listWorkspaceInvitees, listWorkspaceLists, listWorkspaceTasks, listWorkspaceUsers, normalizeWorkspaceTaskAssignments, saveWorkspaceAsset, saveWorkspaceEvent, saveWorkspaceList, saveWorkspaceTask, saveWorkspaceUser, setWorkspaceListItemCompleted, setWorkspaceTaskCompleted, syncPlannerUsersToGuests } from "./features/planner-v2";
+import { archiveLegacyPlanningData, createWorkspaceTaskCompletionLink, deleteWorkspaceAsset, deleteWorkspaceEvent, deleteWorkspaceList, deleteWorkspaceTask, getWorkspaceAssetImage, getWorkspaceProfile, importLegacyPeopleToWorkspaceUsers, initializePlannerWorkspace, listWorkspaceAssets, listWorkspaceEvents, listWorkspaceInvitees, listWorkspaceLists, listWorkspaceTasks, listWorkspaceUsers, normalizeWorkspaceTaskAssignments, saveWorkspaceAsset, saveWorkspaceEvent, saveWorkspaceList, saveWorkspaceTask, saveWorkspaceUser, setWorkspaceListItemCompleted, setWorkspaceTaskCompleted, syncPlannerUsersToGuests } from "./features/planner-v2";
 
 export function rpc(input: { method: string; payload: unknown }) {
   const { method, payload } = input;
@@ -110,6 +110,8 @@ export function rpc(input: { method: string; payload: unknown }) {
       return saveWorkspaceTask(payload as Parameters<typeof saveWorkspaceTask>[0]);
     case "setWorkspaceTaskCompleted":
       return setWorkspaceTaskCompleted(payload as Parameters<typeof setWorkspaceTaskCompleted>[0]);
+    case "createWorkspaceTaskCompletionLink":
+      return createWorkspaceTaskCompletionLink(payload as Parameters<typeof createWorkspaceTaskCompletionLink>[0]);
     case "deleteWorkspaceTask":
       return deleteWorkspaceTask(payload as Parameters<typeof deleteWorkspaceTask>[0]);
     case "listWorkspaceLists":

@@ -12,7 +12,7 @@ import {
   TABLE_NUMBER_SHEET
 } from "../constants";
 import { requirePlannerAccess, requireScriptEditorAccess } from "../auth";
-import { ensureSheet, getSheetByName, readRows, withSpreadsheetWriteLock } from "../util/sheets";
+import { ensureSheet, getSheetByName, readDisplayRows, readRows, withSpreadsheetWriteLock } from "../util/sheets";
 
 type PublicSubmissionParams = Record<string, string | undefined>;
 
@@ -120,7 +120,7 @@ export function listPublicFeed() {
   ensureRsvpSheet();
   ensureSheet(COMMENT_SHEET, COMMENT_HEADERS);
 
-  const responses = readRows(RSVP_SHEET)
+  const responses = readDisplayRows(RSVP_SHEET)
     .filter((row) => String(row.Name || row.Attending || row.Comment || "").trim())
     .map((row) => ({
       submittedAt: String(row["Submitted At"] || ""),
@@ -154,7 +154,7 @@ export function listPlannerDashboardFeed() {
   ensureRsvpSheet();
 
   return {
-    responses: readRows(RSVP_SHEET)
+    responses: readDisplayRows(RSVP_SHEET)
       .filter((row) => String(row.Name || row.Attending || row.Comment || "").trim())
       .map((row) => ({
         submittedAt: String(row["Submitted At"] || ""),
@@ -1271,7 +1271,7 @@ function getPublicLookupGroupRecord(
 }
 
 function readLatestGroupRsvpMap() {
-  const rows = readRows(RSVP_SHEET);
+  const rows = readDisplayRows(RSVP_SHEET);
   const latestByGroup = new Map<string, Record<string, string>>();
 
   rows.forEach((row) => {

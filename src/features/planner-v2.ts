@@ -782,10 +782,65 @@ export function setWorkspaceTaskCompleted(input: { id?: string; completed?: bool
     SortOrder: existing.sortOrder,
     CreatedAt: existing.createdAt || now,
     UpdatedAt: now,
-    CompletedAt: completed ? now : ""
+    CompletedAt: completed ? now : "",
+    CompletionToken: String(readRows(PLANNER_V2_TASKS_SHEET).find((row) => String(row.Id || "").trim() === id)?.CompletionToken || "").trim()
   };
   upsertRow(PLANNER_V2_TASKS_SHEET, PLANNER_V2_TASK_HEADERS, id, saved);
   return mapTask(saved, assignmentContext);
+}
+
+/** Creates a bearer link that an assigned recipient can use to complete this task from a text. */
+export function createWorkspaceTaskCompletionLink(input: { id?: string }) {
+  requireWorkspaceManager();
+  initializePlannerWorkspace();
+  const id = String(input.id || "").trim();
+  if (!id) throw new Error("Missing task id.");
+
+  const assignmentContext = getTaskAssignmentContext();
+  const row = readRows(PLANNER_V2_TASKS_SHEET).find((item) => String(item.Id || "").trim() === id);
+  if (!row) throw new Error("Task not found.");
+  const task = mapTask(row, assignmentContext);
+  const token = String(row.CompletionToken || "").trim() || Utilities.base64EncodeWebSafe(`${Utilities.getUuid()}${Utilities.getUuid()}`);
+  const now = new Date().toISOString();
+  upsertRow(PLANNER_V2_TASKS_SHEET, PLANNER_V2_TASK_HEADERS, id, {
+    ...row,
+    Id: id,
+    CompletionToken: token,
+    UpdatedAt: now
+  });
+  const baseUrl = ScriptApp.getService().getUrl();
+  if (!baseUrl) throw new Error("The planner web-app URL is not available.");
+  return {
+    title: task.title,
+    url: `${baseUrl}?completeTask=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`
+  };
+}
+
+/** Completes a task using the unguessable link included in an assigned recipient's text. */
+export function completeWorkspaceTaskFromTextLink(input: { id?: string; token?: string }) {
+  // This endpoint is intentionally usable without a planner sign-in; the
+  // unguessable token in the text is the recipient's authorization.
+  ensureWorkspaceSheets();
+  const id = String(input.id || "").trim();
+  const token = String(input.token || "").trim();
+  if (!id || !token) throw new Error("This task-completion link is incomplete.");
+
+  const assignmentContext = getTaskAssignmentContext();
+  const row = readRows(PLANNER_V2_TASKS_SHEET).find((item) => String(item.Id || "").trim() === id);
+  if (!row || String(row.CompletionToken || "").trim() !== token) throw new Error("This task-completion link is invalid or has expired.");
+  const task = mapTask(row, assignmentContext);
+  if (task.status.toLowerCase() === "done") return { title: task.title, alreadyCompleted: true };
+
+  const now = new Date().toISOString();
+  upsertRow(PLANNER_V2_TASKS_SHEET, PLANNER_V2_TASK_HEADERS, id, {
+    ...row,
+    Id: id,
+    Status: "Done",
+    UpdatedAt: now,
+    CompletedAt: now,
+    CompletionToken: token
+  });
+  return { title: task.title, alreadyCompleted: false };
 }
 
 export function deleteWorkspaceTask(input: { id?: string }) {

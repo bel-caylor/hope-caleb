@@ -47,6 +47,18 @@ export function readRows(sheetName: string): PlannerRow[] {
   if (!sheet || sheet.getLastRow() < 2) return [];
 
   const values = sheet.getDataRange().getValues();
+  return mapSheetRows(values);
+}
+
+/** Uses the sheet's visible formatting, preserving text-style dates such as "Jan 7". */
+export function readDisplayRows(sheetName: string): PlannerRow[] {
+  const sheet = getSpreadsheet().getSheetByName(sheetName);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+
+  return mapSheetRows(sheet.getDataRange().getDisplayValues());
+}
+
+function mapSheetRows(values: unknown[][]): PlannerRow[] {
   const headers = values.shift()!.map((header) => String(header || "").trim());
 
   return values.map((row) => {

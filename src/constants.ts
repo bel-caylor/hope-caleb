@@ -157,7 +157,8 @@ export const PLANNER_V2_TASK_HEADERS = [
   "SortOrder",
   "CreatedAt",
   "UpdatedAt",
-  "CompletedAt"
+  "CompletedAt",
+  "CompletionToken"
 ];
 export const PLANNER_V2_LIST_HEADERS = [
   "Id",
