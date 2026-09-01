@@ -8111,12 +8111,10 @@
         pendingWorkspaceTaskPhotos = [];
         renderPendingWorkspaceTaskPhotos();
       }
-      selectedWorkspaceTaskId = "";
-      activeWorkspaceEventTab = "tasks";
-      window.sessionStorage.removeItem(STORAGE_KEYS.workspaceTaskId);
-      window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
-      syncPlannerRoute();
-      renderWorkspaceEventPage();
+      // Opening the editor adds a route to the browser history. Use that route
+      // instead of manufacturing a workspace destination, so this control has
+      // the same behavior as the browser's Back button.
+      window.history.back();
     };
     const closeWorkspaceTaskPhotosModal = () => {
       if (!workspaceTaskPhotosModal) return;
@@ -11372,7 +11370,9 @@ function sortTables(items) {
       activeWorkspaceEventTab = "tasks";
       window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
       window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
-      setActivePlannerPanel("workspace");
+      // The editor click below records the destination. Avoid adding its
+      // intermediate workspace page to history so Back returns to this list.
+      setActivePlannerPanel("workspace", { recordHistory: false });
       renderWorkspaceEventPage();
       workspaceEventPageContentEl?.querySelector(`[data-edit-workspace-task="${CSS.escape(taskId)}"]`)?.click();
     }
@@ -11448,7 +11448,9 @@ function sortTables(items) {
       activeWorkspaceEventTab = "tasks";
       window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventId, selectedWorkspaceEventId);
       window.sessionStorage.setItem(STORAGE_KEYS.workspaceEventTab, activeWorkspaceEventTab);
-      setActivePlannerPanel("workspace");
+      // The editor click below records the destination. Avoid adding its
+      // intermediate workspace page to history so Back returns to To-Dos.
+      setActivePlannerPanel("workspace", { recordHistory: false });
       renderWorkspaceEventPage();
       // The task editor is owned by its event/project page. Render that page
       // behind the dialog, then invoke its established editor so this pencil
