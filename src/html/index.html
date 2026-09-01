@@ -4535,6 +4535,12 @@
         padding: 1rem;
       }
 
+      /* The planner header is fixed above ordinary dialogs. Keep photo previews
+         above it so the top of a tall image is never obscured. */
+      #todoPhotoViewerModal {
+        z-index: 70;
+      }
+
       .modal__backdrop {
         position: absolute;
         inset: 0;
