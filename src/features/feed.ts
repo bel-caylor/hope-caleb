@@ -40,6 +40,7 @@ function ensureRsvpSheet() {
   ].join("\u0000");
 
   if (!hasLegacyOrder) {
+    repairRsvpRowsForMovedHeaders(sheet, headers);
     return sheet;
   }
 
@@ -72,6 +73,47 @@ function ensureRsvpSheet() {
   }
 
   return sheet;
+}
+
+/**
+ * RSVP fields are named, so organizers may rearrange columns. Earlier
+ * versions appended a fixed array; repair only rows that clearly have that
+ * old fixed order (timestamp, form type) after a header move.
+ */
+function repairRsvpRowsForMovedHeaders(sheet: GoogleAppsScript.Spreadsheet.Sheet, headers: string[]) {
+  const submittedAtColumn = headers.indexOf("Submitted At");
+  if (submittedAtColumn < 0 || submittedAtColumn === 0 || sheet.getLastRow() < 2) {
+    return;
+  }
+
+  const width = headers.length;
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, width).getValues();
+  let changed = false;
+  const repaired = rows.map((row) => {
+    const wasWrittenInFixedOrder = isRsvpTimestamp(row[0])
+      && ["rsvp", "group-rsvp"].includes(String(row[1] || "").trim().toLowerCase())
+      && !isRsvpTimestamp(row[submittedAtColumn]);
+    if (!wasWrittenInFixedOrder) return row;
+
+    changed = true;
+    const fixedOrderValues = new Map(RSVP_HEADERS.map((header, index) => [header, row[index] || ""]));
+    return headers.map((header, index) => fixedOrderValues.has(header) ? fixedOrderValues.get(header) : row[index] || "");
+  });
+
+  if (changed) {
+    sheet.getRange(2, 1, repaired.length, width).setValues(repaired);
+  }
+}
+
+function isRsvpTimestamp(value: unknown) {
+  return /^\d{4}-\d{2}-\d{2}T/.test(String(value || "").trim());
+}
+
+function appendRsvpRecord(values: Record<string, string>) {
+  const sheet = ensureRsvpSheet();
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+    .map((header) => String(header || "").trim());
+  sheet.appendRow(headers.map((header) => values[header] || ""));
 }
 
 export function listPublicFeed() {
@@ -215,24 +257,15 @@ function savePublicSubmissionLocked(rawParams: Record<string, unknown> | undefin
     ]]);
   } else {
     const submittedAt = data.submittedAt || new Date().toISOString();
-    ensureRsvpSheet().appendRow([
-      submittedAt,
-      data.formType || "rsvp",
-      data.name || "",
-      data.email || "",
-      data.attending || "",
-      data.guests || "",
-      data.comment || "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      ""
-    ]);
+    appendRsvpRecord({
+      "Submitted At": submittedAt,
+      "Form Type": data.formType || "rsvp",
+      Name: data.name || "",
+      Email: data.email || "",
+      Attending: data.attending || "",
+      Guests: data.guests || "",
+      Comment: data.comment || ""
+    });
 
     sendRsvpNotification({
       submittedAt,
@@ -848,41 +881,41 @@ function appendStructuredRsvpRow(
   submission: ParsedGroupRsvpSubmission,
   guestResult: { weddingAttendingCount: number; matchedGuestCount: number }
 ) {
-  ensureRsvpSheet().appendRow([
-    submission.submittedAt,
-    "group-rsvp",
-    submission.contactName || submission.groupName,
-    submission.email,
-    guestResult.weddingAttendingCount > 0 ? "Yes" : "No",
-    String(guestResult.weddingAttendingCount + submission.plusOneCount + submission.childrenCount),
-    submission.comment,
-    submission.groupName,
-    Object.keys(submission.weddingSelections)
+  appendRsvpRecord({
+    "Submitted At": submission.submittedAt,
+    "Form Type": "group-rsvp",
+    Name: submission.contactName || submission.groupName,
+    Email: submission.email,
+    Attending: guestResult.weddingAttendingCount > 0 ? "Yes" : "No",
+    Guests: String(guestResult.weddingAttendingCount + submission.plusOneCount + submission.childrenCount),
+    Comment: submission.comment,
+    Group: submission.groupName,
+    "Group Members": Object.keys(submission.weddingSelections)
       .map((guestName) => `${guestName}: ${formatRsvpLabel(submission.weddingSelections[guestName])}`)
       .join(" | "),
-    guestResult.weddingAttendingCount === 0
+    "Wedding RSVP Summary": guestResult.weddingAttendingCount === 0
       ? "Not Attending"
       : guestResult.weddingAttendingCount === guestResult.matchedGuestCount
         ? "Attending"
         : "Partial",
-    formatRsvpLabel(submission.rehearsalRsvp),
-    formatRsvpLabel(submission.openHouseRsvp),
-    String(submission.plusOneCount),
-    submission.plusOneName,
-    String(submission.childrenCount),
-    submission.childrenNote,
-    submission.mobile,
-    submission.smsOptedIn ? "TRUE" : "FALSE",
-    submission.smsConsentRecordedAt,
-    submission.lodging,
-    submission.airportTransportation,
-    submission.arrivalDetails,
-    submission.departureDetails,
-    submission.travelHelpNote,
-    JSON.stringify(submission.volunteerRoles),
-    submission.riverWalkInterest,
-    String(submission.riverWalkCount)
-  ]);
+    "Rehearsal RSVP": formatRsvpLabel(submission.rehearsalRsvp),
+    "Open House RSVP": formatRsvpLabel(submission.openHouseRsvp),
+    "Plus One Count": String(submission.plusOneCount),
+    "Plus One Name": submission.plusOneName,
+    "Children Count": String(submission.childrenCount),
+    "Children Note": submission.childrenNote,
+    Mobile: submission.mobile,
+    "SMS Opted In": submission.smsOptedIn ? "TRUE" : "FALSE",
+    "SMS Consent Recorded At": submission.smsConsentRecordedAt,
+    Lodging: submission.lodging,
+    "Airport Transportation": submission.airportTransportation,
+    "Arrival Details": submission.arrivalDetails,
+    "Departure Details": submission.departureDetails,
+    "Travel Help Note": submission.travelHelpNote,
+    "Volunteer Roles": JSON.stringify(submission.volunteerRoles),
+    "River Walk Interest": submission.riverWalkInterest,
+    "River Walk Count": String(submission.riverWalkCount)
+  });
 }
 
 function buildGroupNotesSummary(
