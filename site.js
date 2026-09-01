@@ -13,7 +13,7 @@ const HONEYMOON_OPTIONS = {
 };
 
 const HOME_RSVP = {
-  scriptUrl: "https://script.google.com/macros/s/AKfycbxdJg6yy5mgH5f_h5FXAvR0rDgx-goldzxiuBjW39l-T-BVzQ-bIPPChEiHVHT5OV0s/exec",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbyVG7y4vbfIRNdv_Tf7EPhCoyPw2Poc_fEzWCdDDq8lot8MNhnE9P0wZYJbzcGBF4Kj/exec",
   lookupUrl: "https://hope-caleb-wedding-planner-proxy.belinda-caylor.workers.dev/rsvp-lookup",
   submitUrl: "https://hope-caleb-wedding-planner-proxy.belinda-caylor.workers.dev/rsvp-submit",
   deadlineLabel: "Please reply by December 1, 2026."
@@ -766,6 +766,8 @@ function normalizeLookupGuest(item) {
     name: fullName,
     firstName: normalizeNamePart(item?.firstName || extractFirstName(fullName)),
     lastName: normalizeNamePart(item?.lastName || extractLastName(fullName)),
+    email: String(item?.email || "").trim(),
+    phone: String(item?.phone || "").trim(),
     group: String(item?.group || "").trim(),
     type: String(item?.type || "").trim(),
     plusOnesAllowed: normalizeWholeNumber(item?.plusOnesAllowed),
@@ -795,7 +797,14 @@ function normalizeLookupGroup(item) {
     openHouseRsvp: normalizeLookupAnswer(item?.openHouseRsvp || item?.savedOpenHouseRsvp),
     savedRiverWalkInterest: String(item?.savedRiverWalkInterest || "").trim(),
     savedRiverWalkCount: normalizeWholeNumber(item?.savedRiverWalkCount),
+    savedLodging: String(item?.savedLodging || "").trim(),
+    savedAirportTransportation: String(item?.savedAirportTransportation || "").trim(),
+    savedArrivalDetails: String(item?.savedArrivalDetails || "").trim(),
+    savedDepartureDetails: String(item?.savedDepartureDetails || "").trim(),
+    savedTravelHelpNote: String(item?.savedTravelHelpNote || "").trim(),
     savedEmail: String(item?.savedEmail || item?.email || "").trim(),
+    savedMobile: String(item?.savedMobile || "").trim(),
+    savedSmsOptedIn: isTruthyInvitationValue(item?.savedSmsOptedIn),
     savedComment: String(item?.savedComment || "").trim(),
     savedPlusOneCount: normalizeWholeNumber(item?.savedPlusOneCount),
     savedPlusOneName: String(item?.savedPlusOneName || "").trim(),
@@ -863,11 +872,23 @@ function renderRsvpEditor(group) {
   rsvpResponseForm.elements.namedItem("group").value = group.group;
   rsvpResponseForm.elements.namedItem("lookupFirstName").value = rsvpState.lookupFirstName;
   rsvpResponseForm.elements.namedItem("lookupLastName").value = rsvpState.lookupLastName;
+  const lookupMember = members.find((member) => (
+    member.firstName === rsvpState.lookupFirstName
+    && member.lastName === rsvpState.lookupLastName
+  ));
   if (rsvpContactName) {
-    rsvpContactName.value = group.primaryContact || members[0]?.name || "";
+    rsvpContactName.value = lookupMember?.name || group.primaryContact || members[0]?.name || "";
   }
   if (rsvpEmail) {
-    rsvpEmail.value = group.savedEmail || group.email || "";
+    rsvpEmail.value = lookupMember?.email || group.savedEmail || group.email || "";
+  }
+  const mobileField = rsvpResponseForm.elements.namedItem("mobile");
+  if (mobileField instanceof HTMLInputElement) {
+    mobileField.value = lookupMember?.phone || group.savedMobile || group.phone || "";
+  }
+  const smsOptInField = rsvpResponseForm.elements.namedItem("smsOptIn");
+  if (smsOptInField instanceof HTMLInputElement) {
+    smsOptInField.checked = group.savedSmsOptedIn;
   }
   const commentField = rsvpResponseForm.elements.namedItem("comment");
   if (commentField instanceof HTMLTextAreaElement) {

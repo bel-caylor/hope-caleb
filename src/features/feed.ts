@@ -1064,6 +1064,8 @@ function readPublicGuestLookupRows() {
       name,
       firstName: extractFirstName(name),
       lastName: firstNonEmptyValue(row, [/^last\s*name$/i]),
+      email: firstNonEmptyValue(row, [/^email$/i, /e-?mail/i]),
+      phone: firstNonEmptyValue(row, [/^phone/i, /mobile/i, /cell/i]),
       group: firstNonEmptyValue(row, [/^group$/i, /group\s*(name|id)/i]),
       type: firstNonEmptyValue(row, [/^type$/i, /guest\s*type/i]),
       rsvp: firstNonEmptyValue(row, [/^rsvp$/i, /^attending$/i, /attendance/i, /response/i], ["plus 1"]),
@@ -1177,6 +1179,10 @@ function getPublicLookupGroupRecord(
   const fromSheet = groups.find((group) => String(group.group || "").trim() === groupName);
   if (fromSheet) {
     return {
+      // Preserve the latest saved group RSVP fields that were merged into the
+      // public group record. The RSVP editor uses these to prefill optional
+      // travel, River Walk, and contact details on a subsequent lookup.
+      ...fromSheet,
       rowNumber: fromSheet.rowNumber,
       group: fromSheet.group,
       displayName: fromSheet.displayName,
@@ -1193,6 +1199,8 @@ function getPublicLookupGroupRecord(
         name: member.name,
         firstName: member.firstName,
         lastName: member.lastName,
+        email: member.email,
+        phone: member.phone,
         group: member.group,
         type: member.type,
         plusOnesAllowed: member.plusOnesAllowed,
@@ -1231,6 +1239,8 @@ function readLatestGroupRsvpMap() {
 
     latestByGroup.set(groupName, {
       savedEmail: String(row.Email || "").trim(),
+      savedMobile: String(row.Mobile || "").trim(),
+      savedSmsOptedIn: String(row["SMS Opted In"] || "").trim(),
       savedComment: String(row.Comment || "").trim(),
       savedWeddingRsvp: String(row["Wedding RSVP Summary"] || "").trim(),
       savedRehearsalRsvp: String(row["Rehearsal RSVP"] || "").trim(),
