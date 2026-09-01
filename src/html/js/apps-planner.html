@@ -5916,8 +5916,13 @@
         );
         return guest?.name || guestValue || "Guest";
       }
-      const user = cachedWorkspaceUsers.find((item) => String(item.id || "") === id);
-      return user?.name || user?.email || id;
+      const user = cachedWorkspaceUsers.find((item) => String(item.id || "").trim().toLowerCase() === id.toLowerCase());
+      if (user?.name || user?.email) return user.name || user.email;
+      const guest = getWorkspaceInviteeGuestChoices().find((item) =>
+        String(item?.id || "").trim().toLowerCase() === id.toLowerCase()
+        || String(item?.name || "").trim().toLowerCase() === id.toLowerCase()
+      );
+      return guest?.name || id;
     }).join(", ");
   }
 
@@ -7659,16 +7664,7 @@
         `).join("")}</div></div>
       </fieldset>
     `;
-    const formatTaskAssignee = (assignedUserIds) => {
-      const values = Array.isArray(assignedUserIds) ? assignedUserIds : String(assignedUserIds || "").split(/[\n,;]+/);
-      const labels = values.map((item) => String(item || "").trim()).filter(Boolean).map((value) => {
-        if (value.startsWith("guest-type:")) return value.slice("guest-type:".length) || "Guest type";
-        if (value.startsWith("guest:")) return value.slice("guest:".length) || "Guest";
-        const person = cachedWorkspaceUsers.find((user) => String(user.id || "") === value);
-        return person?.name || person?.email || value;
-      });
-      return labels.length ? labels.join(", ") : "Unassigned";
-    };
+    const formatTaskAssignee = getWorkspaceTaskAssigneeLabel;
     const formatTaskDueDate = (dueAt) => {
       const date = String(dueAt || "").slice(0, 10);
       if (!date) return "No due date";
