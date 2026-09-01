@@ -1152,7 +1152,7 @@ function buildLookupMatchesForName(
       return;
     }
 
-    const groupRecord = getPublicLookupGroupRecord(groupName, guests, groups);
+    const groupRecord = getPublicLookupGroupRecord(groupName, guests, groups, guest);
     if (!groupRecord) {
       return;
     }
@@ -1166,7 +1166,8 @@ function buildLookupMatchesForName(
 function getPublicLookupGroupRecord(
   groupName: string,
   guests: Array<Record<string, string>>,
-  groups: Array<Record<string, string>>
+  groups: Array<Record<string, string>>,
+  lookupGuest?: Record<string, string>
 ) {
   const members = guests
     .filter((guest) => String(guest.group || "").trim() === groupName)
@@ -1194,6 +1195,11 @@ function getPublicLookupGroupRecord(
       weddingRsvp: fromSheet.weddingRsvp,
       rehearsalRsvp: fromSheet.rehearsalRsvp,
       openHouseRsvp: fromSheet.openHouseRsvp,
+      lookupContact: lookupGuest ? {
+        name: lookupGuest.name,
+        email: lookupGuest.email,
+        phone: lookupGuest.phone
+      } : {},
       members: members.map((member) => ({
         rowNumber: member.rowNumber,
         name: member.name,
@@ -1222,6 +1228,11 @@ function getPublicLookupGroupRecord(
     weddingRsvp: "",
     rehearsalRsvp: "",
     openHouseRsvp: "",
+    lookupContact: lookupGuest ? {
+      name: lookupGuest.name,
+      email: lookupGuest.email,
+      phone: lookupGuest.phone
+    } : {},
     members
   };
 }
@@ -1237,7 +1248,8 @@ function readLatestGroupRsvpMap() {
       return;
     }
 
-    latestByGroup.set(groupName, {
+    const existing = latestByGroup.get(groupName) || {};
+    const latest = {
       savedEmail: String(row.Email || "").trim(),
       savedMobile: String(row.Mobile || "").trim(),
       savedSmsOptedIn: String(row["SMS Opted In"] || "").trim(),
@@ -1256,7 +1268,14 @@ function readLatestGroupRsvpMap() {
       savedTravelHelpNote: String(row["Travel Help Note"] || "").trim(),
       savedRiverWalkInterest: String(row["River Walk Interest"] || "").trim(),
       savedRiverWalkCount: String(row["River Walk Count"] || "").trim()
-    });
+    };
+
+    // Older submissions do not have the newer optional fields. Keep the last
+    // non-empty value for each field so a later RSVP from an older form does
+    // not erase the household's saved travel details during lookup.
+    latestByGroup.set(groupName, Object.fromEntries(
+      Object.entries(latest).map(([key, value]) => [key, value || existing[key] || ""])
+    ));
   });
 
   return latestByGroup;

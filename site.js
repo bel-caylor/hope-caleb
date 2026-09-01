@@ -13,7 +13,7 @@ const HONEYMOON_OPTIONS = {
 };
 
 const HOME_RSVP = {
-  scriptUrl: "https://script.google.com/macros/s/AKfycbyVG7y4vbfIRNdv_Tf7EPhCoyPw2Poc_fEzWCdDDq8lot8MNhnE9P0wZYJbzcGBF4Kj/exec",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbxIV1HtHAlm8wJnng9BrISjIWbIhirZNw5dN__Yplj0OpAUaCYAVqCmgJTJTtorKYuB/exec",
   lookupUrl: "https://hope-caleb-wedding-planner-proxy.belinda-caylor.workers.dev/rsvp-lookup",
   submitUrl: "https://hope-caleb-wedding-planner-proxy.belinda-caylor.workers.dev/rsvp-submit",
   deadlineLabel: "Please reply by December 1, 2026."
@@ -36,6 +36,7 @@ const rsvpGroupList = document.querySelector("[data-rsvp-group-list]");
 const rsvpEditor = document.querySelector("[data-rsvp-editor]");
 const rsvpResponseForm = document.querySelector("[data-rsvp-response-form]");
 const rsvpMembers = document.querySelector("[data-rsvp-members]");
+const rsvpWelcome = document.querySelector("[data-rsvp-welcome]");
 const rsvpRehearsalSection = document.querySelector("[data-rsvp-rehearsal-section]");
 const rsvpOpenHouseSection = document.querySelector("[data-rsvp-open-house-section]");
 const rsvpRiverWalkSection = document.querySelector("[data-rsvp-river-walk-section]");
@@ -795,6 +796,11 @@ function normalizeLookupGroup(item) {
     hasRecordedWeddingResponse: Boolean(savedWeddingResponse),
     rehearsalRsvp: normalizeLookupAnswer(item?.rehearsalRsvp || item?.savedRehearsalRsvp),
     openHouseRsvp: normalizeLookupAnswer(item?.openHouseRsvp || item?.savedOpenHouseRsvp),
+    lookupContact: {
+      name: String(item?.lookupContact?.name || "").trim(),
+      email: String(item?.lookupContact?.email || "").trim(),
+      phone: String(item?.lookupContact?.phone || "").trim()
+    },
     savedRiverWalkInterest: String(item?.savedRiverWalkInterest || "").trim(),
     savedRiverWalkCount: normalizeWholeNumber(item?.savedRiverWalkCount),
     savedLodging: String(item?.savedLodging || "").trim(),
@@ -876,15 +882,21 @@ function renderRsvpEditor(group) {
     member.firstName === rsvpState.lookupFirstName
     && member.lastName === rsvpState.lookupLastName
   ));
+  const lookupContact = group.lookupContact || lookupMember || {};
+  if (rsvpWelcome) {
+    const name = lookupContact.name || group.primaryContact || members[0]?.name || "there";
+    rsvpWelcome.textContent = `Welcome, ${name}!`;
+    rsvpWelcome.hidden = false;
+  }
   if (rsvpContactName) {
-    rsvpContactName.value = lookupMember?.name || group.primaryContact || members[0]?.name || "";
+    rsvpContactName.value = lookupContact.name || group.primaryContact || members[0]?.name || "";
   }
   if (rsvpEmail) {
-    rsvpEmail.value = lookupMember?.email || group.savedEmail || group.email || "";
+    rsvpEmail.value = lookupContact.email || group.savedEmail || group.email || "";
   }
   const mobileField = rsvpResponseForm.elements.namedItem("mobile");
   if (mobileField instanceof HTMLInputElement) {
-    mobileField.value = lookupMember?.phone || group.savedMobile || group.phone || "";
+    mobileField.value = lookupContact.phone || group.savedMobile || group.phone || "";
   }
   const smsOptInField = rsvpResponseForm.elements.namedItem("smsOptIn");
   if (smsOptInField instanceof HTMLInputElement) {
