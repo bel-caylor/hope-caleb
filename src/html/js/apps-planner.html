@@ -5354,7 +5354,7 @@
     taskTextModalTitleEl.textContent = `Send Text For ${taskTitle}`;
     taskTextModalNotesEl.textContent = String(task.notes || "").trim() || "No task notes provided.";
     taskTextMessageEl.value = [
-      `Agency Wedding Task\n${taskTitle}`,
+      `H&C Wedding Task\n${taskTitle}`,
       String(task.notes || "").trim()
     ].filter(Boolean).join("\n\n");
     setStatus(taskTextStatusEl, "", "");
