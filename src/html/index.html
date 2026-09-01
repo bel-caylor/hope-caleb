@@ -6966,8 +6966,18 @@
         display: block;
         width: 5.25rem;
         height: 5.25rem;
+        padding: 0;
         border: 1px solid var(--planner-border);
         border-radius: 8px;
+        background: var(--white);
+        cursor: zoom-in;
+        overflow: hidden;
+      }
+
+      .todo-task-snapshot img {
+        display: block;
+        width: 100%;
+        height: 100%;
         object-fit: cover;
       }
 
@@ -7955,6 +7965,15 @@
               <button class="button button--light" type="button" data-close-task-text-modal>Cancel</button>
             </div>
             <p class="status" id="taskTextStatus"></p>
+          </div>
+        </section>
+
+        <section class="modal" id="todoPhotoViewerModal" hidden aria-hidden="true">
+          <div class="modal__backdrop" data-close-todo-photo-viewer></div>
+          <div class="modal__dialog workspace-task-image-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="todoPhotoViewerModalTitle">
+            <button class="modal__close" type="button" data-close-todo-photo-viewer aria-label="Close photo preview">X</button>
+            <h3 class="sr-only" id="todoPhotoViewerModalTitle">Photo preview</h3>
+            <img class="workspace-task-image-modal__image" id="todoPhotoViewerImage" alt="">
           </div>
         </section>
 

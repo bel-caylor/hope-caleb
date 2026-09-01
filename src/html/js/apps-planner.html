@@ -54,6 +54,8 @@
   const bedModal = document.querySelector("#bedModal");
   const todoModal = document.querySelector("#todoModal");
   const taskTextModal = document.querySelector("#taskTextModal");
+  const todoPhotoViewerModal = document.querySelector("#todoPhotoViewerModal");
+  const todoPhotoViewerImage = document.querySelector("#todoPhotoViewerImage");
   const taskTextModalTitleEl = document.querySelector("#taskTextModalTitle");
   const taskTextModalNotesEl = document.querySelector("#taskTextModalNotes");
   const taskTextRecipientListEl = document.querySelector("#taskTextRecipientList");
@@ -1691,7 +1693,7 @@
       <div class="guest-card__field guest-card__field--full todo-task-snapshots">
         <span>Photos</span>
         <div class="todo-task-snapshot-list">
-          ${photos.map((asset, index) => `<img class="todo-task-snapshot" src="${escapeHtml(displayImageUrl(asset.assetUrl))}" data-workspace-asset-image="${escapeHtml(asset.id)}" alt="Photo ${index + 1} attached to ${escapeHtml(todo.title || "task")}" loading="lazy">`).join("")}
+          ${photos.map((asset, index) => `<button class="todo-task-snapshot" type="button" data-open-todo-photo-viewer aria-label="Open photo ${index + 1} attached to ${escapeHtml(todo.title || "task")}"><img src="${escapeHtml(displayImageUrl(asset.assetUrl))}" data-workspace-asset-image="${escapeHtml(asset.id)}" alt="Photo ${index + 1} attached to ${escapeHtml(todo.title || "task")}" loading="lazy"></button>`).join("")}
         </div>
       </div>
     `;
@@ -11409,6 +11411,18 @@ function sortTables(items) {
   });
 
   todosListEl.addEventListener("click", async (event) => {
+    const photoButton = event.target.closest("[data-open-todo-photo-viewer]");
+    if (photoButton) {
+      const image = photoButton.querySelector("img");
+      if (image?.src && todoPhotoViewerModal && todoPhotoViewerImage) {
+        todoPhotoViewerImage.src = image.currentSrc || image.src;
+        todoPhotoViewerImage.alt = image.alt || "Task photo";
+        todoPhotoViewerModal.hidden = false;
+        todoPhotoViewerModal.setAttribute("aria-hidden", "false");
+      }
+      return;
+    }
+
     const completionCheckbox = event.target.closest("[data-workspace-todo-complete]");
     if (completionCheckbox) {
       event.stopPropagation();
@@ -11490,6 +11504,12 @@ function sortTables(items) {
   });
 
   document.querySelectorAll("[data-close-task-text-modal]").forEach((button) => button.addEventListener("click", closeTaskTextModal));
+  document.querySelectorAll("[data-close-todo-photo-viewer]").forEach((button) => button.addEventListener("click", () => {
+    if (!todoPhotoViewerModal) return;
+    todoPhotoViewerModal.hidden = true;
+    todoPhotoViewerModal.setAttribute("aria-hidden", "true");
+    todoPhotoViewerImage?.removeAttribute("src");
+  }));
 
   taskTextRecipientListEl?.addEventListener("change", (event) => {
     const checkbox = event.target.closest("[data-task-text-recipient]");
