@@ -2220,6 +2220,11 @@ main > .section:nth-of-type(even)::after {
   text-align: center;
 }
 
+[data-rsvp-lookup-card] > h3,
+[data-rsvp-lookup-card] > p {
+  text-align: left;
+}
+
 [data-rsvp-lookup-card] .rsvp-lookup-form {
   text-align: center;
 }
