@@ -3282,3 +3282,140 @@ h4#rsvp-volunteer-heading {
 .section-nav .section-nav__toggle span {
   transform: none;
 }
+
+/* Home hero: use the photograph itself as the backdrop and keep the navigation
+   visible across the top, with the monogram as a small corner mark. */
+.page-home .hero-photo {
+  filter: none;
+}
+
+.page-home .hero-ornament {
+  top: 0.65rem;
+  left: clamp(1rem, 3vw, 2.5rem);
+  z-index: 23;
+  width: clamp(3.25rem, 6vw, 4.5rem);
+  padding: 0;
+  background: none;
+  backdrop-filter: none;
+  border-radius: 0;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.page-home .hero-copy {
+  width: min(1120px, calc(100% - 2rem));
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: 4.5rem 0 2.5rem;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.page-home .hero-copy h1 {
+  color: #fff;
+  text-shadow: 0 0.1em 0.35em rgba(30, 18, 13, 0.35);
+}
+
+.page-home .hero-date {
+  color: #fff;
+  text-shadow: 0 0.08em 0.3em rgba(30, 18, 13, 0.42);
+}
+
+@media (min-width: 761px) {
+  .page-home .section-nav {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 20;
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--palette-brown);
+    border: 0;
+    box-shadow: 0 0.2rem 1rem rgba(35, 20, 15, 0.16);
+  }
+
+  .page-home .section-nav::before,
+  .page-home .section-nav .section-nav__menu-toggle {
+    display: none;
+  }
+
+  .page-home .section-nav .section-nav__inner {
+    position: static;
+    display: flex;
+    width: min(1120px, calc(100% - 2rem));
+    min-width: 0;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: clamp(0.6rem, 1.7vw, 1.35rem);
+    margin: 0 auto;
+    padding: 0.9rem 0 0.9rem clamp(4.5rem, 8vw, 6.5rem);
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .page-home .section-nav a {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #fff;
+    font-size: clamp(0.76rem, 1.15vw, 0.92rem);
+    letter-spacing: 0.045em;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .page-home .section-nav__item {
+    width: auto;
+  }
+
+  .page-home .section-nav__item--has-submenu {
+    display: inline-flex;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .page-home .section-nav__toggle {
+    width: 1.3rem;
+    height: 1.3rem;
+    border-color: rgba(255, 255, 255, 0.52);
+    background: transparent;
+    color: #fff;
+  }
+
+  .page-home .section-nav__submenu {
+    background: var(--palette-brown);
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0.9rem 2rem rgba(35, 20, 15, 0.22);
+  }
+
+  .page-home .section-nav__submenu a {
+    padding: 0.48rem 0.65rem;
+    text-align: left;
+  }
+}
+
+@media (max-width: 760px) {
+  .page-home .hero-copy {
+    width: min(1120px, calc(100% - 1.5rem));
+    padding-top: 4.25rem;
+    place-content: center;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .page-home .hero-ornament {
+    width: 3.1rem;
+    top: 0.55rem;
+    left: 1rem;
+  }
+}
