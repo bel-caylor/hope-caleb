@@ -8,7 +8,7 @@ const AMAZON_REGISTRY = {
 };
 
 const HONEYMOON_OPTIONS = {
-  zelleEmail: "Hccaylor+wedding@gmail.com",
+  zelleEmail: "Hccaylor@gmail.com",
   venmoUrl: "https://venmo.com/u/Hope-Caylor"
 };
 
