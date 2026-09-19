@@ -1,8 +1,8 @@
 :root {
   --ink: #3f3034;
   --muted: #6e5c62;
-  --paper: #fbf7f3;
-  --paper-strong: #f4ede6;
+  --paper: #ecdec9;
+  --paper-strong: #ecdec9;
   --white: #fffaf7;
   --line: rgba(89, 0, 0, 0.14);
   --palette-brown: #4f342d;
@@ -33,9 +33,7 @@ html {
 body {
   margin: 0;
   color: var(--ink);
-  background:
-    radial-gradient(circle at top, rgba(153, 85, 102, 0.14), transparent 28%),
-    linear-gradient(180deg, #fcfaf8 0%, #f5efea 100%);
+  background: var(--paper-strong);
   font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.6;
   overflow-x: hidden;
