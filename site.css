@@ -3405,6 +3405,109 @@ h4#rsvp-volunteer-heading {
 }
 
 @media (max-width: 760px) {
+  .page-home .section-nav {
+    position: fixed;
+    top: 0.8rem;
+    left: 0.8rem;
+    z-index: 25;
+    width: auto;
+    height: auto;
+    background: transparent;
+    border: 0;
+    backdrop-filter: none;
+  }
+
+  .page-home .section-nav__menu-toggle {
+    display: flex;
+    position: relative;
+    z-index: 27;
+    width: 2.7rem;
+    height: 2.7rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    margin: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--palette-brown);
+    color: #fff;
+    box-shadow: 0 0.45rem 1.1rem rgba(35, 20, 15, 0.25);
+  }
+
+  .page-home .section-nav__menu-toggle::before {
+    display: none;
+  }
+
+  .page-home .section-nav__menu-toggle span {
+    width: 0.26rem;
+    height: 0.26rem;
+    margin: 0;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .page-home .section-nav.is-menu-open .section-nav__menu-toggle {
+    color: #fff;
+    background: var(--palette-brown);
+  }
+
+  .page-home .section-nav.is-menu-open .section-nav__menu-toggle::after {
+    display: none;
+  }
+
+  .page-home .section-nav.is-menu-open .section-nav__menu-toggle span {
+    opacity: 1;
+  }
+
+  .page-home .section-nav .section-nav__inner {
+    position: fixed;
+    top: 0.55rem;
+    left: 0.55rem;
+    z-index: 26;
+    display: flex;
+    width: min(17rem, calc(100vw - 1.1rem));
+    min-width: 0;
+    max-width: none;
+    height: auto;
+    max-height: calc(100dvh - 1.1rem);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 4.4rem 0.9rem 0.9rem;
+    overflow-y: auto;
+    background: var(--palette-brown);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 1.15rem;
+    box-shadow: 0 1rem 2.5rem rgba(35, 20, 15, 0.28);
+    transform: translateX(-115%);
+    transition: transform 220ms ease;
+  }
+
+  .page-home .section-nav.is-menu-open .section-nav__inner {
+    transform: translateX(0);
+  }
+
+  .page-home .section-nav a {
+    display: block;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.7rem;
+    background: transparent;
+    color: #fff;
+    text-align: left;
+  }
+
+  .page-home .section-nav__item,
+  .page-home .section-nav__item--has-submenu {
+    width: 100%;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .page-home .section-nav__submenu {
+    background: transparent;
+  }
+
   .page-home .hero-copy {
     width: min(1120px, calc(100% - 1.5rem));
     padding-top: 4.25rem;
@@ -3413,9 +3516,4 @@ h4#rsvp-volunteer-heading {
     text-align: center;
   }
 
-  .page-home .hero-ornament {
-    width: 3.1rem;
-    top: 0.55rem;
-    left: 1rem;
-  }
 }
