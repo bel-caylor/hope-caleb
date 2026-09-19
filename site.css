@@ -3357,6 +3357,7 @@ h4#rsvp-volunteer-heading {
    visible across the top, with the monogram as a small corner mark. */
 .page-home .hero-photo {
   filter: none;
+  opacity: 0.84;
 }
 
 .page-home .hero-ornament {
