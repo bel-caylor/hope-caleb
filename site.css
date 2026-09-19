@@ -1740,6 +1740,11 @@ main > .section:nth-of-type(even)::after {
   justify-self: end;
 }
 
+.honeymoon-block,
+.registry-intro {
+  padding: 1.35rem;
+}
+
 .registry-note {
   margin: 1.25rem 0 0;
   color: var(--muted);
