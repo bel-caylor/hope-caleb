@@ -736,6 +736,7 @@ main {
   transform-origin: center;
   pointer-events: none;
   z-index: 0;
+  background: var(--paper-strong);
 }
 
 .section--highlight {
@@ -750,10 +751,6 @@ main {
 
 main > .section:nth-of-type(odd) {
   background: transparent;
-}
-
-main > .section:nth-of-type(odd)::before {
-  background: linear-gradient(225deg, rgba(248, 236, 239, 0.7) 0%, rgba(222, 188, 196, 0.78) 100%);
 }
 
 main > .section:nth-of-type(odd)::after {
@@ -782,10 +779,6 @@ main > .section:nth-of-type(odd) > .lead {
 
 main > .section:nth-of-type(even) {
   background: transparent;
-}
-
-main > .section:nth-of-type(even)::before {
-  background: linear-gradient(135deg, rgba(235, 240, 223, 0.62) 0%, rgba(162, 169, 121, 0.54) 100%);
 }
 
 main > .section:nth-of-type(even)::after {
