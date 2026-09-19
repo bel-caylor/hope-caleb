@@ -1627,7 +1627,7 @@ main > .section:nth-of-type(even)::after {
 .faq-list {
   display: grid;
   gap: 1rem;
-  max-width: 600px;
+  max-width: 800px;
   margin: auto;
 }
 
