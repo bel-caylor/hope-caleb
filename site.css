@@ -2212,8 +2212,24 @@ main > .section:nth-of-type(even)::after {
 
 .rsvp-layout .rsvp-card {
   width: 100%;
-  max-width: 640px;
+  max-width: 800px;
   justify-self: center;
+}
+
+[data-rsvp-lookup-card] {
+  text-align: center;
+}
+
+[data-rsvp-lookup-card] .rsvp-lookup-form {
+  text-align: center;
+}
+
+[data-rsvp-lookup-card] .rsvp-field input {
+  text-align: left;
+}
+
+[data-rsvp-lookup-card] .button-row {
+  justify-content: center;
 }
 
 .rsvp-card h3,
