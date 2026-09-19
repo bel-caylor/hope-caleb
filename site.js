@@ -967,9 +967,10 @@ function renderRsvpEditor(group) {
     // The RSVP is shared by the whole household. A single out-of-town guest
     // must not expose these questions to a mixed-type group.
     const isOutOfTownGroup = members.length > 0 && members.every((member) => isOutOfTownGuest(member));
+    const hasAdditionalEventInvitation = group.invitedRehearsal || group.invitedOpenHouse;
     rsvpRiverWalkSection.hidden = !isOutOfTownGroup;
     rsvpTravelDetails.hidden = !isOutOfTownGroup;
-    rsvpOutOfTownSection.hidden = !isOutOfTownGroup;
+    rsvpOutOfTownSection.hidden = !isOutOfTownGroup && !hasAdditionalEventInvitation;
     if (rsvpOutOfTownGatheringsCopy) {
       rsvpOutOfTownGatheringsCopy.hidden = rsvpRehearsalSection.hidden && rsvpOpenHouseSection.hidden;
     }
