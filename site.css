@@ -852,7 +852,7 @@ main > .section:nth-of-type(even)::after {
 
 @media (min-width: 961px) {
   #details .grid--two {
-    max-width: 760px;
+    max-width: 900px;
     z-index: 2;
   }
 }
