@@ -3399,6 +3399,40 @@ h4#rsvp-volunteer-heading {
   text-shadow: 0 0.08em 0.3em rgba(30, 18, 13, 0.42);
 }
 
+/* Give the story page the same photo-forward hero treatment as the home page. */
+.page-story .site-header,
+.page-story .site-header--short,
+.page-story .site-header--short .hero-copy {
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+.page-story .hero-photo {
+  filter: none;
+  opacity: 0.74;
+}
+
+.page-story .hero-shade {
+  background: none;
+}
+
+.page-story .hero-copy {
+  width: min(1120px, calc(100% - 2rem));
+  padding: 4.5rem 0 2.5rem;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.page-story .hero-copy h1 {
+  color: #fff;
+  text-shadow: 0 0.1em 0.35em rgba(30, 18, 13, 0.35);
+}
+
+.page-story .hero-copy .eyebrow {
+  color: rgba(255, 255, 255, 0.9);
+}
+
 @media (min-width: 761px) {
   .page-home .section-nav {
     position: absolute;
