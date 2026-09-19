@@ -912,6 +912,7 @@ main > .section:nth-of-type(even)::after {
 
 .card--detail .card-copy {
   font-family: "Lora", Georgia, "Times New Roman", serif;
+  text-align: center;
 }
 
 .card-title {
