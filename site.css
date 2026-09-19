@@ -3434,6 +3434,86 @@ h4#rsvp-volunteer-heading {
 }
 
 @media (min-width: 761px) {
+  .page-story .section-nav {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 20;
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--palette-brown);
+    border: 0;
+    box-shadow: 0 0.2rem 1rem rgba(35, 20, 15, 0.16);
+  }
+
+  .page-story .section-nav::before,
+  .page-story .section-nav .section-nav__menu-toggle {
+    display: none;
+  }
+
+  .page-story .section-nav .section-nav__inner {
+    position: static;
+    display: flex;
+    width: min(1120px, calc(100% - 2rem));
+    min-width: 0;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: clamp(0.6rem, 1.7vw, 1.35rem);
+    margin: 0 auto;
+    padding: 0.9rem 0 0.9rem clamp(4.5rem, 8vw, 6.5rem);
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .page-story .section-nav a {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #fff;
+    font-size: clamp(0.76rem, 1.15vw, 0.92rem);
+    letter-spacing: 0.045em;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .page-story .section-nav__item {
+    width: auto;
+  }
+
+  .page-story .section-nav__item--has-submenu {
+    display: inline-flex;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .page-story .section-nav__toggle {
+    width: 1.3rem;
+    height: 1.3rem;
+    border-color: rgba(255, 255, 255, 0.52);
+    background: transparent;
+    color: #fff;
+  }
+
+  .page-story .section-nav__submenu {
+    background: var(--palette-brown);
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0.9rem 2rem rgba(35, 20, 15, 0.22);
+  }
+
+  .page-story .section-nav__submenu a {
+    padding: 0.48rem 0.65rem;
+    text-align: left;
+  }
+
   .page-home .section-nav {
     position: absolute;
     top: 0;
