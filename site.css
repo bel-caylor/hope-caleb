@@ -925,7 +925,7 @@ main > .section:nth-of-type(even)::after {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.8rem;
 }
 
