@@ -113,7 +113,18 @@ function appendRsvpRecord(values: Record<string, string>) {
   const sheet = ensureRsvpSheet();
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
     .map((header) => String(header || "").trim());
-  sheet.appendRow(headers.map((header) => values[header] || ""));
+  sheet.appendRow(headers.map((header) => (
+    header === "Arrival Details" || header === "Departure Details"
+      ? asLiteralSheetText(values[header])
+      : values[header] || ""
+  )));
+}
+
+// Sheets otherwise recognizes entries such as "Jan 6" as dates. These RSVP
+// fields are free-form travel notes, so keep the guest's entry as literal text.
+function asLiteralSheetText(value: string | undefined) {
+  const text = String(value || "").trim();
+  return text ? `'${text}` : "";
 }
 
 export function listPublicFeed() {

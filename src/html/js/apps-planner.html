@@ -4976,8 +4976,8 @@
       const travelAndStayFields = [
         ["Stay", rsvp.lodging],
         ["Airport transportation", formatAirportTransportation(rsvp.airportTransportation)],
-        ["Arrival plans", rsvp.arrivalDetails],
-        ["Departure plans", rsvp.departureDetails],
+        ["Arrival plans", formatRsvpTravelText(rsvp.arrivalDetails)],
+        ["Departure plans", formatRsvpTravelText(rsvp.departureDetails)],
         ["Travel help", rsvp.travelHelpNote],
         ["River Walk cruise", formatRiverCruiseInterest(rsvp)]
       ].filter(([, value]) => String(value || "").trim());
@@ -10512,6 +10512,21 @@ function sortTables(items) {
     if (count < 1) return [];
     while (names.length < count) names.push("Guest (name not recorded)");
     return names.slice(0, count);
+  }
+
+  function formatRsvpTravelText(value) {
+    const text = String(value || "").trim();
+    // Older RSVP rows were read as JavaScript Date objects and cached as
+    // strings such as "Tue Jan 06 2026 00:00:00 GMT-0600 (...)". Render
+    // those legacy values as plain date text; all new values stay verbatim.
+    if (!/^(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s\d{1,2}\s\d{4}\s\d{2}:\d{2}:\d{2}\sGMT[+-]\d{4}/.test(text)) {
+      return text;
+    }
+
+    const parsed = new Date(text);
+    return Number.isNaN(parsed.getTime())
+      ? text
+      : parsed.toLocaleDateString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", year: "numeric" });
   }
 
   function formatAirportTransportation(value) {
