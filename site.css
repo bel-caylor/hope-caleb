@@ -910,6 +910,10 @@ main > .section:nth-of-type(even)::after {
   margin-top: 1.15rem;
 }
 
+.card--detail .card-copy {
+  font-family: "Lora", Georgia, "Times New Roman", serif;
+}
+
 .card-title {
   margin: 0;
 }
