@@ -3433,6 +3433,14 @@ h4#rsvp-volunteer-heading {
   color: rgba(255, 255, 255, 0.9);
 }
 
+.page-story #utsa {
+  padding-bottom: 1.5rem;
+}
+
+.page-story #graduation {
+  padding-top: 1.5rem;
+}
+
 @media (min-width: 761px) {
   .page-story .section-nav {
     position: absolute;
