@@ -850,6 +850,13 @@ main > .section:nth-of-type(even)::after {
   margin: auto;
 }
 
+@media (min-width: 961px) {
+  #details .grid--two {
+    max-width: 760px;
+    z-index: 2;
+  }
+}
+
 .grid--three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
