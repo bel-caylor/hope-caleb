@@ -965,12 +965,15 @@ function renderRsvpEditor(group) {
 
   if (rsvpOutOfTownSection) {
     // The RSVP is shared by the whole household. A single out-of-town guest
-    // must not expose these questions to a mixed-type group.
+    // must not expose these questions to a mixed-type group, and wedding-party
+    // groups only need their additional-event choices.
     const isOutOfTownGroup = members.length > 0 && members.every((member) => isOutOfTownGuest(member));
+    const isWeddingPartyGroup = members.some((member) => isWeddingPartyGuest(member));
+    const shouldShowTravelDetails = isOutOfTownGroup && !isWeddingPartyGroup;
     const hasAdditionalEventInvitation = group.invitedRehearsal || group.invitedOpenHouse;
-    rsvpRiverWalkSection.hidden = !isOutOfTownGroup;
-    rsvpTravelDetails.hidden = !isOutOfTownGroup;
-    rsvpOutOfTownSection.hidden = !isOutOfTownGroup && !hasAdditionalEventInvitation;
+    rsvpRiverWalkSection.hidden = !shouldShowTravelDetails;
+    rsvpTravelDetails.hidden = !shouldShowTravelDetails;
+    rsvpOutOfTownSection.hidden = !shouldShowTravelDetails && !hasAdditionalEventInvitation;
     if (rsvpOutOfTownGatheringsCopy) {
       rsvpOutOfTownGatheringsCopy.hidden = rsvpRehearsalSection.hidden && rsvpOpenHouseSection.hidden;
     }
@@ -1039,6 +1042,12 @@ function isOutOfTownGuest(member) {
   return String(member?.type || "")
     .split(/[,|/]/)
     .some((type) => type.trim().toLowerCase() === "oot caylor");
+}
+
+function isWeddingPartyGuest(member) {
+  return String(member?.type || "")
+    .split(/[,|/]/)
+    .some((type) => /wedding\s*party/.test(type.trim().toLowerCase()));
 }
 
 function hideRsvpEditor() {
