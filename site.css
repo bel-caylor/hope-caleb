@@ -859,6 +859,10 @@ main > .section:nth-of-type(even)::after {
   #travel .grid--two {
     max-width: 900px;
   }
+
+  #travel .travel-card-link[href="travel.html#schedule"] > p {
+    margin-top: 2.65rem;
+  }
 }
 
 .grid--three {
