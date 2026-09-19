@@ -1709,7 +1709,7 @@ main > .section:nth-of-type(even)::after {
   display: grid;
   gap: 1.2rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: end;
+  align-items: stretch;
 }
 
 .registry-intro {
@@ -1727,13 +1727,14 @@ main > .section:nth-of-type(even)::after {
 }
 
 .honeymoon-block {
-  align-self: end;
+  align-self: stretch;
   width: 100%;
   max-width: 560px;
   justify-self: start;
 }
 
 .registry-intro {
+  align-self: stretch;
   width: 100%;
   max-width: 560px;
   justify-self: end;
