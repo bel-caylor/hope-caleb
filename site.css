@@ -915,6 +915,15 @@ main > .section:nth-of-type(even)::after {
   text-align: center;
 }
 
+.card,
+.panel,
+.timeline-card,
+.faq-item,
+.content-block,
+.countdown-card {
+  font-family: "Lora", Georgia, "Times New Roman", serif;
+}
+
 .card-title {
   margin: 0;
 }
