@@ -1289,12 +1289,6 @@ main > .section:nth-of-type(even)::after {
   margin-top: 1rem;
 }
 
-.page-story #graduation .photo-feature {
-  width: min(100%, 760px);
-  margin-right: auto;
-  margin-left: auto;
-}
-
 .photo-feature img,
 .gallery-card img,
 .stacked-photos img {
@@ -1317,9 +1311,8 @@ main > .section:nth-of-type(even)::after {
 }
 
 .story-gallery-grid--colorado .story-slider {
-  width: min(100%, 760px);
+  width: 100%;
   min-height: 44rem;
-  justify-self: center;
 }
 
 .story-gallery-grid--colorado .story-slider__viewport {
