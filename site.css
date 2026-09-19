@@ -855,6 +855,10 @@ main > .section:nth-of-type(even)::after {
     max-width: 900px;
     z-index: 2;
   }
+
+  #travel .grid--two {
+    max-width: 900px;
+  }
 }
 
 .grid--three {
