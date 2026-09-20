@@ -4827,6 +4827,13 @@
     return Array.from(latestByGroup.entries()).map(([group, rsvp]) => ({ group, rsvp }));
   }
 
+  function getSubmissionGuestCount(rsvp) {
+    const members = String(rsvp?.groupMembers || "").split("|").map((entry) => entry.trim()).filter(Boolean);
+    const weddingCount = members.filter((entry) => getRsvpGroup(entry.slice(entry.lastIndexOf(":") + 1)) === "yes").length;
+    const extras = Number.parseInt(rsvp?.plusOneCount || "0", 10) + Number.parseInt(rsvp?.childrenCount || "0", 10);
+    return members.length ? weddingCount + (Number.isNaN(extras) ? 0 : extras) : String(rsvp?.guests || "").trim();
+  }
+
   function renderVolunteers() {
     if (!volunteersListEl) return;
     const roles = new Map();
@@ -4911,12 +4918,6 @@
         const responseTone = getRsvpGroup(response);
         return `<li class="rsvp-member-response rsvp-member-response--${escapeHtml(responseTone)}"><strong>${escapeHtml(name)}</strong><span class="rsvp-response rsvp-response--${escapeHtml(responseTone)}">${escapeHtml(response)}</span></li>`;
       }).join("");
-    const getSubmissionGuestCount = (rsvp) => {
-      const members = String(rsvp.groupMembers || "").split("|").map((entry) => entry.trim()).filter(Boolean);
-      const weddingCount = members.filter((entry) => getRsvpGroup(entry.slice(entry.lastIndexOf(":") + 1)) === "yes").length;
-      const extras = Number.parseInt(rsvp.plusOneCount || "0", 10) + Number.parseInt(rsvp.childrenCount || "0", 10);
-      return members.length ? weddingCount + (Number.isNaN(extras) ? 0 : extras) : String(rsvp.guests || "").trim();
-    };
     const totalAttendingGuests = latestSubmissions.reduce((total, { latest }) => {
       const guestCount = Number.parseInt(getSubmissionGuestCount(latest), 10);
       return total + (Number.isNaN(guestCount) ? 0 : guestCount);
