@@ -3403,10 +3403,13 @@ h4#rsvp-volunteer-heading {
 }
 
 .page-home .hero-copy {
+  position: absolute;
+  top: 75%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: min(1120px, calc(100% - 2rem));
-  min-height: 100vh;
-  min-height: 100svh;
-  padding: 4.5rem 0 2.5rem;
+  min-height: auto;
+  padding: 0;
   place-content: center;
   justify-items: center;
   text-align: center;
@@ -3737,7 +3740,7 @@ h4#rsvp-volunteer-heading {
 
   .page-home .hero-copy {
     width: min(1120px, calc(100% - 1.5rem));
-    padding-top: 4.25rem;
+    padding-top: 0;
     place-content: center;
     justify-items: center;
     text-align: center;
