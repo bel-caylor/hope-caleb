@@ -923,6 +923,11 @@ main > .section:nth-of-type(even)::after {
   text-align: center;
 }
 
+.card-copy--schedule {
+  font-size: clamp(1.35rem, 2.9vw, 1.75rem);
+  line-height: 1.55;
+}
+
 .card,
 .panel,
 .timeline-card,
