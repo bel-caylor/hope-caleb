@@ -14,7 +14,7 @@ const FILES = [
   "slideshow.html", "rehearsal-slideshow-manager.html", "rehearsal-slideshow.html",
   "styles.css", "script.js", "slideshow.css", "rehearsal-slideshow-manager.css",
   "slideshow.js", "rehearsal-slideshow-manager.js", "rehearsal-slideshow.js",
-  "favicon.svg", "robots.txt", "CNAME"
+  "favicon.svg", "manifest.webmanifest", "service-worker.js", "robots.txt", "CNAME"
 ];
 
 function readLocalEnv() {
@@ -50,6 +50,7 @@ function buildPlanner() {
     .replace(/content="<\?= scriptBaseUrl \?>"/g, `content="${escapeHtml(planner)}"`)
     .replace(/content="<\?= plannerBuildVersion \?>"/g, `content="${escapeHtml(version)}"`);
   fs.mkdirSync(PLANNER_OUT_DIR, { recursive: true });
+  fs.writeFileSync(path.join(OUT_DIR, "dashboard.html"), html);
   fs.writeFileSync(path.join(PLANNER_OUT_DIR, "dashboard.html"), html);
   fs.writeFileSync(path.join(PLANNER_OUT_DIR, "Dashboard.html"), html);
   for (const file of ["manifest.webmanifest", "service-worker.js", "favicon.svg"]) {
@@ -62,5 +63,9 @@ fs.rmSync(OUT_DIR, { recursive: true, force: true });
 fs.mkdirSync(OUT_DIR, { recursive: true });
 for (const file of FILES) fs.copyFileSync(path.join(ROOT, file), path.join(OUT_DIR, file));
 fs.cpSync(path.join(ROOT, "images"), path.join(OUT_DIR, "images"), { recursive: true });
+for (const file of ["manifest.webmanifest", "service-worker.js", "favicon.svg"]) {
+  fs.copyFileSync(path.join(ROOT, file), path.join(PLANNER_OUT_DIR, file));
+}
+fs.cpSync(path.join(ROOT, "images"), path.join(PLANNER_OUT_DIR, "images"), { recursive: true });
 buildPlanner();
 console.log("Built public wedding site at dist-public/.");

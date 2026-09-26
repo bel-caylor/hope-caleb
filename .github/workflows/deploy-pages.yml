@@ -18,6 +18,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      PUBLIC_RSVP_FEED_URL: ${{ vars.PUBLIC_RSVP_FEED_URL }}
+      PLANNER_PROXY_URL: ${{ vars.PLANNER_PROXY_URL }}
+      GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
