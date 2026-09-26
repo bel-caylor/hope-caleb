@@ -5,6 +5,7 @@ wedding-planner-proxy/node_modules/
 # Build output
 dist/
 dist-standalone/
+dist-public/
 
 # Local Apps Script config
 .clasp.json
