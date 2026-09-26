@@ -3050,10 +3050,6 @@ h4#rsvp-volunteer-heading {
     object-position: center 32%;
   }
 
-  .site-header--travel .hero-media img.hero-photo--travel {
-    object-position: 20% 32% !important;
-  }
-
   .hero-copy {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
