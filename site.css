@@ -932,6 +932,10 @@ main > .section:nth-of-type(even)::after {
   font-size: 0.8em;
 }
 
+.card-copy--schedule p:last-child {
+  font-size: 1em;
+}
+
 .card,
 .panel,
 .timeline-card,
