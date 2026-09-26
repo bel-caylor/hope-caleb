@@ -1576,6 +1576,13 @@ main > .section:nth-of-type(even)::after {
   margin-inline: auto;
 }
 
+#schedule .timeline-card {
+  box-sizing: border-box;
+  width: 90%;
+  max-width: 500px;
+  justify-self: center;
+}
+
 .countdown-card {
   display: grid;
   gap: 1rem;
@@ -1655,7 +1662,7 @@ main > .section:nth-of-type(even)::after {
   color: #b22222;
   font-weight: 800;
   text-transform: uppercase;
-  font-size: 1rem;
+  font-size: 0.9rem;
   line-height: 1;
 }
 
