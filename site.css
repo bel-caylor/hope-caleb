@@ -3519,8 +3519,13 @@ h4#rsvp-volunteer-heading {
 }
 
 .page-story .hero-copy {
+  position: absolute;
+  top: 75%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: min(1120px, calc(100% - 2rem));
-  padding: 4.5rem 0 2.5rem;
+  min-height: auto;
+  padding: 0;
   place-content: center;
   justify-items: center;
   text-align: center;
