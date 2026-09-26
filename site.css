@@ -1176,8 +1176,9 @@ main > .section:nth-of-type(even)::after {
 }
 
 .timeline-card--clock .schedule-clock {
-  top: 1.2rem;
+  top: 50%;
   left: 1.35rem;
+  transform: translateY(-50%);
 }
 
 .section-grid-spaced {
@@ -1572,14 +1573,14 @@ main > .section:nth-of-type(even)::after {
 
 #schedule .timeline {
   box-sizing: border-box;
-  max-width: 1100px;
+  max-width: 800px;
   margin-inline: auto;
 }
 
 #schedule .timeline-card {
   box-sizing: border-box;
   width: 90%;
-  max-width: 500px;
+  max-width: 350px;
   justify-self: center;
   padding-left: 5rem;
 }
