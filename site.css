@@ -3472,18 +3472,23 @@ h4#rsvp-volunteer-heading {
 }
 
 .section-nav .section-nav__toggle {
+  align-self: center;
   width: 1.8rem;
-  height: 1.8rem;
+  height: 1.2rem;
   margin: 0;
   border: 0;
   background: transparent;
   color: var(--wine-soft);
-  font-size: 1.65rem;
+  font-size: 1rem;
   line-height: 1;
 }
 
 .section-nav .section-nav__toggle span {
-  transform: none;
+  width: 0.48rem;
+  height: 0.48rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-0.12rem) rotate(45deg);
 }
 
 /* Keep the home and travel pages on the same photo-forward hero treatment. */

@@ -64,7 +64,7 @@ const rsvpEmail = document.querySelector("[data-rsvp-email]");
 const rsvpSubmitStatus = document.querySelector("[data-rsvp-submit-status]");
 const rsvpChangePartyButton = document.querySelector("[data-rsvp-change-party]");
 const TRAVEL_ACCESS_STORAGE_KEY = "hopeCalebTravelAccessV1";
-const ALLOWED_TRAVEL_TYPES = new Set(["oot caylor", "family montes", "wedding party"]);
+const ALLOWED_TRAVEL_TYPES = new Set(["oot caylor", "family montes", "family caylor", "wedding party"]);
 let travelAccessGranted = hasTravelAccess();
 
 const rsvpState = {
@@ -78,10 +78,16 @@ function normalizedGuestType(type) {
   return String(type || "").trim().toLocaleLowerCase().replace(/\s+/g, " ");
 }
 
+function hasAllowedTravelType(type) {
+  return String(type || "")
+    .split(",")
+    .some((value) => ALLOWED_TRAVEL_TYPES.has(normalizedGuestType(value)));
+}
+
 function hasTravelAccess() {
   try {
     const saved = JSON.parse(window.localStorage.getItem(TRAVEL_ACCESS_STORAGE_KEY) || "null");
-    return Boolean(saved?.firstName && saved?.lastName && ALLOWED_TRAVEL_TYPES.has(normalizedGuestType(saved.type)));
+    return Boolean(saved?.firstName && saved?.lastName && hasAllowedTravelType(saved.type));
   } catch (_) {
     return false;
   }
@@ -89,7 +95,7 @@ function hasTravelAccess() {
 
 function storeTravelAccess(member) {
   travelAccessGranted = Boolean(member?.firstName && member?.lastName
-    && ALLOWED_TRAVEL_TYPES.has(normalizedGuestType(member.type)));
+    && hasAllowedTravelType(member.type));
   if (!travelAccessGranted) return;
   try {
     window.localStorage.setItem(TRAVEL_ACCESS_STORAGE_KEY, JSON.stringify({
@@ -111,7 +117,7 @@ function clearTravelAccess() {
 }
 
 function revealTravelNavIfAllowed(member) {
-  if (!member || !ALLOWED_TRAVEL_TYPES.has(normalizedGuestType(member.type))) return;
+  if (!member || !hasAllowedTravelType(member.type)) return;
   document.querySelectorAll("[data-travel-nav-item]").forEach((item) => { item.hidden = false; });
 }
 
@@ -158,7 +164,7 @@ function configureTravelPage() {
       const eligible = matches.flatMap((group) => group.members)
         .find((member) => normalizeNamePart(member.firstName) === firstName
           && normalizeNamePart(member.lastName) === lastName
-          && ALLOWED_TRAVEL_TYPES.has(normalizedGuestType(member.type)));
+          && hasAllowedTravelType(member.type));
       if (!eligible) {
         clearTravelAccess();
         status.textContent = "We couldn't verify travel access for that name. Check the spelling or contact Hope, Caleb, or Belinda.";
@@ -188,7 +194,7 @@ if (!document.body.classList.contains("page-travel")) {
 }
 
 function revealTravelSectionIfAllowed(member) {
-  if (!member || !ALLOWED_TRAVEL_TYPES.has(normalizedGuestType(member.type))) return;
+  if (!member || !hasAllowedTravelType(member.type)) return;
   const section = document.querySelector("#travel");
   if (section) section.hidden = false;
   travelAccessGranted = true;
@@ -996,7 +1002,7 @@ function selectRsvpGroup(group) {
   const verifiedMember = group.members.find((member) =>
     member.firstName === rsvpState.lookupFirstName && member.lastName === rsvpState.lookupLastName
   );
-  if (verifiedMember && ALLOWED_TRAVEL_TYPES.has(normalizedGuestType(verifiedMember.type))) {
+  if (verifiedMember && hasAllowedTravelType(verifiedMember.type)) {
     storeTravelAccess(verifiedMember);
     revealTravelSectionIfAllowed(verifiedMember);
   }
