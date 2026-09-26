@@ -1178,7 +1178,7 @@ main > .section:nth-of-type(even)::after {
 .timeline-card--clock .schedule-clock {
   top: 50%;
   left: 1.35rem;
-  transform: translateY(-50%);
+  transform: translateY(calc(-50% - 0.3rem));
 }
 
 .section-grid-spaced {
