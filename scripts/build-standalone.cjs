@@ -20,7 +20,8 @@ function injectIncludes(html) {
   for (const name of INCLUDE_FILES) {
     const distSource = path.join(DIST, `${name}.html`);
     const source = fs.readFileSync(fs.existsSync(distSource) ? distSource : path.join(SOURCE_HTML, `${name}.html`), "utf8");
-    html = html.replace(new RegExp(`<\\?!= include\\("${name}"\\); \\?>|<\\?!= include\\("${name}"\\) \\?>`), source);
+    const includePattern = new RegExp(`<\\?!= include\\("${name}"\\);? \\?>`);
+    html = html.replace(includePattern, () => source);
   }
   return html;
 }

@@ -37,7 +37,8 @@ function buildPlanner() {
   let html = fs.readFileSync(PLANNER_TEMPLATE, "utf8");
   for (const name of PLANNER_FILES) {
     const include = fs.readFileSync(path.join(ROOT, "src", "html", "js", `${name}.html`), "utf8");
-    html = html.replace(new RegExp(`<\\?!= include\\("${name}"\\); \\?>|<\\?!= include\\("${name}"\\) \\?>`), include);
+    const includePattern = new RegExp(`<\\?!= include\\("${name}"\\);? \\?>`);
+    html = html.replace(includePattern, () => include);
   }
   const local = readLocalEnv();
   const feed = process.env.PUBLIC_RSVP_FEED_URL || local.PUBLIC_RSVP_FEED_URL || "";
