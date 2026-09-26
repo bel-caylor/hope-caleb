@@ -928,6 +928,10 @@ main > .section:nth-of-type(even)::after {
   line-height: 1.55;
 }
 
+.card-copy--schedule p:first-child {
+  font-size: 0.8em;
+}
+
 .card,
 .panel,
 .timeline-card,
