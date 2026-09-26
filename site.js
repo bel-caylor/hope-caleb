@@ -263,8 +263,8 @@ const sectionNav = document.querySelector(".section-nav");
 const sectionMenuToggle = document.querySelector("[data-section-menu-toggle]");
 const sectionMenuPanel = document.querySelector("[data-section-menu-panel]");
 const submenuItems = Array.from(document.querySelectorAll(".section-nav__item--has-submenu"));
-const mobileNavMedia = window.matchMedia("(max-width: 760px)");
-const compactDesktopNavMedia = window.matchMedia("(min-width: 761px)");
+const mobileNavMedia = window.matchMedia("(max-width: 900px)");
+const compactDesktopNavMedia = window.matchMedia("(min-width: 901px)");
 const RSVP_LOOKUP_STORAGE_KEY = "hope-caleb-rsvp-lookup";
 
 function saveRsvpLookupNames(firstName, lastName) {

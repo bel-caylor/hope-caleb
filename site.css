@@ -575,7 +575,7 @@ main {
   text-underline-offset: 0.2rem;
 }
 
-@media (min-width: 761px) {
+@media (min-width: 901px) {
   .section-nav {
     position: static;
     height: 0;
@@ -3496,7 +3496,7 @@ h4#rsvp-volunteer-heading {
 }
 
 /* Keep the Travel caret clear of the desktop text baseline. */
-@media (min-width: 761px) {
+@media (min-width: 901px) {
   :is(.page-home, .page-travel, .page-story) .section-nav__toggle {
     display: inline-flex;
     width: 1.2rem;
@@ -3610,7 +3610,7 @@ h4#rsvp-volunteer-heading {
   padding-top: 1.5rem;
 }
 
-@media (min-width: 761px) {
+@media (min-width: 901px) {
   :is(.page-home, .page-travel, .page-story) .section-nav {
     position: relative;
     top: 0;
@@ -3734,7 +3734,7 @@ h4#rsvp-volunteer-heading {
 
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   :is(.page-home, .page-travel, .page-story) .section-nav {
     position: fixed;
     top: 0.8rem;
@@ -3867,7 +3867,32 @@ h4#rsvp-volunteer-heading {
     box-shadow: none;
   }
 
+  :is(.page-home, .page-travel, .page-story) .section-nav__item--has-submenu {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 2.5rem;
+    grid-template-areas:
+      "link toggle"
+      "submenu submenu";
+    align-items: center;
+    column-gap: 0.25rem;
+  }
+
+  :is(.page-home, .page-travel, .page-story) .section-nav__item--has-submenu > a {
+    grid-area: link;
+    padding: 0.6rem 0.75rem;
+  }
+
+  :is(.page-home, .page-travel, .page-story) .section-nav__item--has-submenu > .section-nav__toggle {
+    grid-area: toggle;
+    justify-self: end;
+    margin: 0;
+  }
+
   :is(.page-home, .page-travel, .page-story) .section-nav__submenu {
+    position: static;
+    grid-area: submenu;
+    width: 100%;
+    min-width: 0;
     background: transparent;
     padding-left: 1.35rem;
   }
