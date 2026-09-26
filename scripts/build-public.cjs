@@ -8,6 +8,7 @@ const PLANNER_TEMPLATE = path.join(ROOT, "src", "html", "index.html");
 const PLANNER_FILES = ["util", "apps-planner"];
 const LOCAL_ENV_FILE = path.join(ROOT, ".env.standalone.local");
 const VERSION_FILE = path.join(ROOT, "src", "version.ts");
+const SECTION_NAV_TEMPLATE = path.join(ROOT, "partials", "section-nav.html");
 const FILES = [
   "index.html", "privacy-policy.html", "sms-opt-in-proof.html", "story.html",
   "terms-and-conditions.html", "travel.html", "site.css", "site.js",
@@ -62,7 +63,17 @@ function buildPlanner() {
 
 fs.rmSync(OUT_DIR, { recursive: true, force: true });
 fs.mkdirSync(OUT_DIR, { recursive: true });
-for (const file of FILES) fs.copyFileSync(path.join(ROOT, file), path.join(OUT_DIR, file));
+const sectionNav = fs.readFileSync(SECTION_NAV_TEMPLATE, "utf8").trim();
+for (const file of FILES) {
+  const source = path.join(ROOT, file);
+  const destination = path.join(OUT_DIR, file);
+  if (["index.html", "story.html", "travel.html"].includes(file)) {
+    const html = fs.readFileSync(source, "utf8").replace("<!-- SECTION_NAV -->", sectionNav);
+    fs.writeFileSync(destination, html);
+  } else {
+    fs.copyFileSync(source, destination);
+  }
+}
 fs.cpSync(path.join(ROOT, "images"), path.join(OUT_DIR, "images"), { recursive: true });
 for (const file of ["manifest.webmanifest", "service-worker.js", "favicon.svg"]) {
   fs.copyFileSync(path.join(ROOT, file), path.join(PLANNER_OUT_DIR, file));

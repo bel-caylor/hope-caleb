@@ -125,6 +125,17 @@ document.querySelectorAll("[data-travel-nav-item]").forEach((item) => {
   item.hidden = !travelAccessGranted;
 });
 
+const currentNavPage = document.body.classList.contains("page-story")
+  ? "story"
+  : document.body.classList.contains("page-travel") ? "travel" : "home";
+document.querySelectorAll("[data-nav-page]").forEach((link) => {
+  if (link.dataset.navPage === currentNavPage) {
+    link.setAttribute("aria-current", "page");
+  } else {
+    link.removeAttribute("aria-current");
+  }
+});
+
 function configureTravelPage() {
   if (!document.body.classList.contains("page-travel")) return;
   if (hasTravelAccess()) return;
