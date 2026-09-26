@@ -3762,6 +3762,16 @@ h4#rsvp-volunteer-heading {
   }
 
   :is(.page-home, .page-travel, .page-story) .section-nav__toggle {
+    display: inline-flex;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex: 0 0 2.5rem;
+    align-items: center;
+    justify-content: center;
+    margin-left: 0.35rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
     color: #fff !important;
   }
 
@@ -3780,7 +3790,7 @@ h4#rsvp-volunteer-heading {
     align-items: stretch;
     gap: 0.25rem;
     margin: 0;
-    padding: 0.9rem;
+    padding: 3.5rem 0.9rem 0.9rem;
     overflow-y: auto;
     background: var(--palette-brown);
     border: 1px solid rgba(255, 255, 255, 0.16);
@@ -3826,7 +3836,14 @@ h4#rsvp-volunteer-heading {
   }
 
   :is(.page-home, .page-travel, .page-story) .section-nav__toggle span {
+    display: block;
+    width: 0.55rem;
+    height: 0.55rem;
+    border: 0;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
     font-size: 0;
+    transform: translateY(-0.12rem) rotate(45deg);
   }
 
   :is(.page-home, .page-travel, .page-story) .hero-copy {
