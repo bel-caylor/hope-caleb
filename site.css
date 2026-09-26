@@ -3777,8 +3777,14 @@ h4#rsvp-volunteer-heading {
   }
 
   :is(.page-home, .page-travel, .page-story) .section-nav.is-menu-open .section-nav__menu-toggle {
+    position: fixed;
+    top: 1.15rem;
+    right: calc(100vw - min(17rem, 100vw - 1.1rem) - 0.55rem - 2.7rem);
+    left: auto;
+    z-index: 28;
     color: #fff;
     background: var(--palette-brown);
+    box-shadow: none;
   }
 
   :is(.page-home, .page-travel, .page-story) .section-nav.is-menu-open .section-nav__menu-toggle::after {
@@ -3796,6 +3802,10 @@ h4#rsvp-volunteer-heading {
     border: 0;
     background: linear-gradient(45deg, transparent 46%, currentColor 47%, currentColor 53%, transparent 54%), linear-gradient(-45deg, transparent 46%, currentColor 47%, currentColor 53%, transparent 54%);
     content: "";
+  }
+
+  :is(.page-home, .page-travel, .page-story) .section-nav.is-menu-open .section-nav__inner {
+    padding-top: 0.9rem;
   }
 
   :is(.page-home, .page-travel, .page-story) .section-nav__toggle {
