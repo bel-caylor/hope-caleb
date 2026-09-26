@@ -9,7 +9,7 @@
     "build": "npm run build:public",
     "build:public": "node scripts/build-public.cjs",
     "build:standalone": "npm run build:core && node scripts/build-standalone.cjs",
-    "watch:standalone": "chokidar \"src/**/*\" \".env.standalone.local\" -c \"npm run build:standalone\" --initial",
+    "watch:standalone": "chokidar \"src/**/*\" \"*.html\" \"site.css\" \"site.js\" \"styles.css\" \"script.js\" \"slideshow*.css\" \"slideshow*.js\" \"rehearsal-slideshow*.css\" \"rehearsal-slideshow*.js\" \"images/**/*\" \".env.standalone.local\" -c \"npm run build:standalone && npm run build:public\" --initial",
     "copy:html": "copyfiles -f \"src/html/**/*.html\" dist",
     "copy:json": "copyfiles -u 1 \"src/**/*.json\" dist/",
     "copy:gas": "copyfiles -u 1 \"src/**/*.gs\" dist/",

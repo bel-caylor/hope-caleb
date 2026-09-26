@@ -71,6 +71,30 @@ a {
   padding-bottom: 2rem;
 }
 
+.travel-access-gate {
+  max-width: 36rem;
+  margin: 12vh auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.travel-access-gate form {
+  display: grid;
+  gap: 1rem;
+  margin: 2rem auto 1rem;
+  text-align: left;
+}
+
+.travel-access-gate form label {
+  display: grid;
+  gap: .35rem;
+}
+
+.travel-access-gate form input {
+  width: 100%;
+  padding: .75rem;
+}
+
 .site-header--travel {
   min-height: 100vh;
   min-height: 100svh;
@@ -119,10 +143,6 @@ a {
 
 .hero-photo--low {
   object-position: center 52%;
-}
-
-.site-header--travel .hero-media img.hero-photo--travel {
-  object-position: 20% 46% !important;
 }
 
 .hero-ornament--travel {
@@ -460,6 +480,10 @@ main {
   gap: 0.28rem;
 }
 
+.section-nav__item[hidden] {
+  display: none !important;
+}
+
 .section-nav__item--has-submenu::after {
   content: "";
   position: absolute;
@@ -795,6 +819,10 @@ main > .section:nth-of-type(even)::after {
   max-width: 44rem;
   font-size: 1.12rem;
   color: var(--muted);
+}
+
+.overview-spacer {
+  height: clamp(1.5rem, 4vw, 3rem);
 }
 
 .lead--travel {
@@ -3461,11 +3489,11 @@ h4#rsvp-volunteer-heading {
 /* Keep the home and travel pages on the same photo-forward hero treatment. */
 :is(.page-home, .page-travel) .hero-photo {
   filter: none;
-  opacity: 0.74;
+  opacity: 0.82;
 }
 
 :is(.page-home, .page-travel) .hero-shade {
-  background: none;
+  background: linear-gradient(180deg, rgba(30, 18, 13, 0.03) 0%, rgba(30, 18, 13, 0.08) 58%, rgba(30, 18, 13, 0.3) 100%);
 }
 
 :is(.page-home, .page-travel) .hero-ornament {
@@ -3630,8 +3658,8 @@ h4#rsvp-volunteer-heading {
     text-align: left;
   }
 
-  :is(.page-home, .page-travel) .section-nav {
-    position: sticky;
+  :is(.page-home, .page-travel, .page-story) .section-nav {
+    position: relative;
     top: 0;
     left: 0;
     z-index: 20;
@@ -3641,6 +3669,13 @@ h4#rsvp-volunteer-heading {
     background: var(--palette-brown);
     border: 0;
     box-shadow: 0 0.2rem 1rem rgba(35, 20, 15, 0.16);
+  }
+
+  :is(.page-home, .page-travel, .page-story) .section-nav.section-nav--compact {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
   }
 
   :is(.page-home, .page-travel) .section-nav::before,
@@ -3680,18 +3715,23 @@ h4#rsvp-volunteer-heading {
     white-space: nowrap;
   }
 
-  :is(.page-home, .page-travel) .section-nav__item {
+  :is(.page-home, .page-travel, .page-story) .section-nav__item {
     width: auto;
+    position: static;
   }
 
-  :is(.page-home, .page-travel) .section-nav__item--has-submenu {
+  :is(.page-home, .page-travel, .page-story) .section-nav__item--has-submenu::after {
+    display: none;
+  }
+
+  :is(.page-home, .page-travel, .page-story) .section-nav__item--has-submenu {
     display: inline-flex;
     padding: 0;
     background: transparent;
     box-shadow: none;
   }
 
-  :is(.page-home, .page-travel) .section-nav__toggle {
+  :is(.page-home, .page-travel, .page-story) .section-nav__toggle {
     width: 1.3rem;
     height: 1.3rem;
     border-color: rgba(255, 255, 255, 0.52);
@@ -3699,15 +3739,51 @@ h4#rsvp-volunteer-heading {
     color: #fff;
   }
 
-  :is(.page-home, .page-travel) .section-nav__submenu {
+  :is(.page-home, .page-travel, .page-story) .section-nav__item:hover .section-nav__toggle,
+  :is(.page-home, .page-travel, .page-story) .section-nav__item:focus-within .section-nav__toggle,
+  :is(.page-home, .page-travel, .page-story) .section-nav__item.is-open .section-nav__toggle,
+  :is(.page-home, .page-travel, .page-story) .section-nav__item--current .section-nav__toggle {
+    border-color: rgba(255, 255, 255, 0.78);
+    background: transparent;
+    color: #fff;
+  }
+
+  :is(.page-home, .page-travel, .page-story) .section-nav__submenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 21;
+    width: 100%;
+    min-width: 0;
+    padding: 0.75rem max(1rem, calc((100% - 1120px) / 2));
+    grid-template-columns: repeat(4, max-content);
+    justify-content: center;
+    gap: clamp(0.75rem, 2vw, 1.5rem);
+    border: 0;
+    border-radius: 0;
     background: var(--palette-brown);
     border-color: rgba(255, 255, 255, 0.18);
     box-shadow: 0 0.9rem 2rem rgba(35, 20, 15, 0.22);
+    transform: translateY(-0.75rem);
+    transition: opacity 220ms ease, transform 220ms ease, visibility 220ms ease;
   }
 
-  :is(.page-home, .page-travel) .section-nav__submenu a {
+  :is(.page-home, .page-travel, .page-story) .section-nav__item:hover .section-nav__submenu,
+  :is(.page-home, .page-travel, .page-story) .section-nav__item:focus-within .section-nav__submenu,
+  :is(.page-home, .page-travel, .page-story) .section-nav__item.is-open .section-nav__submenu {
+    transform: translateY(0);
+  }
+
+  :is(.page-home, .page-travel, .page-story) .section-nav__submenu a {
     padding: 0.48rem 0.65rem;
     text-align: left;
+  }
+
+  .page-story .section-nav.section-nav--compact {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
   }
 }
 
@@ -3763,7 +3839,11 @@ h4#rsvp-volunteer-heading {
   }
 
   :is(.page-home, .page-travel) .section-nav.is-menu-open .section-nav__menu-toggle span {
-    opacity: 1;
+    opacity: 0;
+  }
+
+  :is(.page-home, .page-travel) .section-nav__toggle {
+    color: #fff;
   }
 
   :is(.page-home, .page-travel) .section-nav .section-nav__inner {
@@ -3802,6 +3882,12 @@ h4#rsvp-volunteer-heading {
     background: transparent;
     color: #fff;
     text-align: left;
+  }
+
+  :is(.page-home, .page-travel) .section-nav__item--has-submenu > a {
+    padding-left: 0;
+    padding-top: 0;
+    padding-bottom: 0;
   }
 
   :is(.page-home, .page-travel) .section-nav__item,

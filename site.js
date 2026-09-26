@@ -63,6 +63,9 @@ const rsvpContactName = document.querySelector("[data-rsvp-contact-name]");
 const rsvpEmail = document.querySelector("[data-rsvp-email]");
 const rsvpSubmitStatus = document.querySelector("[data-rsvp-submit-status]");
 const rsvpChangePartyButton = document.querySelector("[data-rsvp-change-party]");
+const TRAVEL_ACCESS_STORAGE_KEY = "hopeCalebTravelAccessV1";
+const ALLOWED_TRAVEL_TYPES = new Set(["oot caylor", "family montes", "wedding party"]);
+let travelAccessGranted = hasTravelAccess();
 
 const rsvpState = {
   lookupFirstName: "",
@@ -70,6 +73,127 @@ const rsvpState = {
   matches: [],
   selectedGroup: null
 };
+
+function normalizedGuestType(type) {
+  return String(type || "").trim().toLocaleLowerCase().replace(/\s+/g, " ");
+}
+
+function hasTravelAccess() {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(TRAVEL_ACCESS_STORAGE_KEY) || "null");
+    return Boolean(saved?.firstName && saved?.lastName && ALLOWED_TRAVEL_TYPES.has(normalizedGuestType(saved.type)));
+  } catch (_) {
+    return false;
+  }
+}
+
+function storeTravelAccess(member) {
+  travelAccessGranted = Boolean(member?.firstName && member?.lastName
+    && ALLOWED_TRAVEL_TYPES.has(normalizedGuestType(member.type)));
+  if (!travelAccessGranted) return;
+  try {
+    window.localStorage.setItem(TRAVEL_ACCESS_STORAGE_KEY, JSON.stringify({
+      firstName: member.firstName,
+      lastName: member.lastName,
+      type: member.type
+    }));
+  } catch (_) {
+    // Keep verified access for this page load if browser storage is unavailable.
+  }
+}
+
+function clearTravelAccess() {
+  travelAccessGranted = false;
+  try { window.localStorage.removeItem(TRAVEL_ACCESS_STORAGE_KEY); } catch (_) {}
+  document.querySelectorAll("[data-travel-nav-item]").forEach((item) => { item.hidden = true; });
+  const travelSection = document.querySelector("#travel");
+  if (travelSection) travelSection.hidden = true;
+}
+
+function revealTravelNavIfAllowed(member) {
+  if (!member || !ALLOWED_TRAVEL_TYPES.has(normalizedGuestType(member.type))) return;
+  document.querySelectorAll("[data-travel-nav-item]").forEach((item) => { item.hidden = false; });
+}
+
+document.querySelectorAll("[data-travel-nav-item]").forEach((item) => {
+  item.hidden = !travelAccessGranted;
+});
+
+function configureTravelPage() {
+  if (!document.body.classList.contains("page-travel")) return;
+  if (hasTravelAccess()) return;
+
+  const main = document.querySelector("main");
+  if (main) main.hidden = true;
+  const header = document.querySelector(".site-header");
+  if (header) header.hidden = true;
+  const nav = document.querySelector(".section-nav");
+  if (nav) nav.hidden = true;
+
+  const gate = document.createElement("main");
+  gate.className = "section travel-access-gate";
+  gate.innerHTML = `
+    <p class="eyebrow">Travel &amp; Stay</p>
+    <h1>Guest access required</h1>
+    <p>Enter your name to check whether travel information is available for your invitation.</p>
+    <form data-travel-access-form>
+      <label>First name <input name="firstName" autocomplete="given-name" required></label>
+      <label>Last name <input name="lastName" autocomplete="family-name" required></label>
+      <button class="button" type="submit">Check access</button>
+    </form>
+    <p class="status" data-travel-access-status role="status" aria-live="polite"></p>
+    <a href="index.html#home">Return to the wedding site</a>`;
+  document.body.append(gate);
+
+  const form = gate.querySelector("[data-travel-access-form]");
+  const status = gate.querySelector("[data-travel-access-status]");
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const firstName = normalizeNamePart(data.get("firstName"));
+    const lastName = normalizeNamePart(data.get("lastName"));
+    status.textContent = "Checking your invitation…";
+    try {
+      const matches = await loadRsvpLookupMatches(firstName, lastName);
+      const eligible = matches.flatMap((group) => group.members)
+        .find((member) => normalizeNamePart(member.firstName) === firstName
+          && normalizeNamePart(member.lastName) === lastName
+          && ALLOWED_TRAVEL_TYPES.has(normalizedGuestType(member.type)));
+      if (!eligible) {
+        clearTravelAccess();
+        status.textContent = "We couldn't verify travel access for that name. Check the spelling or contact Hope, Caleb, or Belinda.";
+        return;
+      }
+      storeTravelAccess(eligible);
+      window.location.reload();
+    } catch (error) {
+      status.textContent = error.message || "Unable to check your invitation right now. Please try again.";
+    }
+  });
+}
+
+configureTravelPage();
+
+if (!document.body.classList.contains("page-travel")) {
+  const travelLinks = Array.from(document.querySelectorAll('a[href^="travel.html"]'));
+  travelLinks.forEach((link) => link.addEventListener("click", (event) => {
+    if (travelAccessGranted) return;
+    event.preventDefault();
+    document.querySelector("#rsvp")?.scrollIntoView({ behavior: "smooth" });
+    const status = document.querySelector("[data-rsvp-lookup-status]");
+    if (status) status.textContent = "Find your invitation below to check whether you have access to travel information.";
+  }));
+  const travelSection = document.querySelector("#travel");
+  if (travelSection) travelSection.hidden = !travelAccessGranted;
+}
+
+function revealTravelSectionIfAllowed(member) {
+  if (!member || !ALLOWED_TRAVEL_TYPES.has(normalizedGuestType(member.type))) return;
+  const section = document.querySelector("#travel");
+  if (section) section.hidden = false;
+  travelAccessGranted = true;
+  revealTravelNavIfAllowed(member);
+}
 
 if (registryLink) {
   if (AMAZON_REGISTRY.publicUrl) {
@@ -203,10 +327,10 @@ function syncDesktopCompactNav() {
     return;
   }
 
-  const navTop = sectionNav.offsetTop;
-  const navHeight = sectionNav.offsetHeight;
-  const shouldCompact = window.scrollY > navTop + navHeight;
+  const navTop = sectionNav.getBoundingClientRect().top + window.scrollY;
+  const shouldCompact = window.scrollY >= navTop;
   sectionNav.classList.toggle("section-nav--compact", shouldCompact);
+  sectionNav.style.marginBottom = shouldCompact ? `${sectionNav.offsetHeight}px` : "";
 }
 
 function setSectionMenuOpen(isOpen) {
@@ -289,6 +413,13 @@ submenuItems.forEach((item) => {
 
     setOpen(nextOpen);
   });
+
+  toggle.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && item.classList.contains("is-open")) {
+      setOpen(false);
+      toggle.focus();
+    }
+  });
 });
 
 document.addEventListener("click", (event) => {
@@ -302,9 +433,10 @@ document.addEventListener("click", (event) => {
   }
 
   submenuItems.forEach((item) => {
-    if (!item.contains(event.target)) {
+    const toggle = item.querySelector("[data-section-submenu-toggle]");
+    const clickedToggle = toggle?.contains(event.target);
+    if (!item.contains(event.target) && !clickedToggle) {
       item.classList.remove("is-open");
-      const toggle = item.querySelector("[data-section-submenu-toggle]");
       if (toggle) {
         toggle.setAttribute("aria-expanded", "false");
       }
@@ -547,6 +679,7 @@ if (rsvpLookupForm && rsvpResponseForm) {
   });
 
   rsvpChangePartyButton?.addEventListener("click", () => {
+    clearTravelAccess();
     showRsvpLookupCard();
     hideRsvpEditor();
     hideGroupPicker();
@@ -860,6 +993,13 @@ function hideGroupPicker() {
 
 function selectRsvpGroup(group) {
   rsvpState.selectedGroup = group;
+  const verifiedMember = group.members.find((member) =>
+    member.firstName === rsvpState.lookupFirstName && member.lastName === rsvpState.lookupLastName
+  );
+  if (verifiedMember && ALLOWED_TRAVEL_TYPES.has(normalizedGuestType(verifiedMember.type))) {
+    storeTravelAccess(verifiedMember);
+    revealTravelSectionIfAllowed(verifiedMember);
+  }
   hideRsvpLookupCard();
   hideGroupPicker();
   renderRsvpEditor(group);

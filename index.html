@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Lora:wght@400;500;600&family=Pacifico&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="site.css?v=20260827-side-nav-tight-spacing">
+    <link rel="stylesheet" href="site.css?v=20260926-travel-access">
   </head>
   <body class="page-home">
     <header class="site-header" id="home">
@@ -41,7 +41,7 @@
         <a href="story.html">Our Story</a>
         <a href="#rsvp">RSVP</a>
         <a href="#details">Details</a>
-        <div class="section-nav__item section-nav__item--has-submenu">
+        <div class="section-nav__item section-nav__item--has-submenu" data-travel-nav-item hidden>
           <a href="travel.html">Travel</a>
           <button
             class="section-nav__toggle"
@@ -205,73 +205,6 @@
         </div>
       </section>
 
-      <section class="section" id="travel">
-        <p class="eyebrow">Travel</p>
-        <h2>Find the week schedule, lodging,<br>the area map, and our favorite local spots.</h2>
-        <div class="grid grid--two">
-          <a class="content-block travel-card-link" href="travel.html#travel-lodging">
-            <div class="travel-card-head">
-              <div class="travel-card-copy">
-                <p class="eyebrow">Stay Nearby</p>
-                <h3>Travel &amp; Lodging</h3>
-              </div>
-              <span class="travel-card-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path fill="currentColor" d="M4 11a2 2 0 0 1 2-2h5V7a3 3 0 1 1 6 0v2h1a2 2 0 0 1 2 2v6h1v2h-2a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H3v-2h1v-6Zm9-4a1 1 0 1 1 2 0v2h-2V7Zm-7 4v3h12v-3H6Zm0 5v1h12v-1H6Z"/>
-                </svg>
-              </span>
-            </div>
-            <p>Open the stay section for airport notes, nearby rentals, cabin options, and hotel ideas for the weekend.</p>
-            <span class="travel-card-cta">View Travel &amp; Lodging</span>
-          </a>
-          <a class="content-block travel-card-link" href="https://www.google.com/maps/d/u/0/viewer?mid=1ArVd3idrSCWELm_DqkL835Nko1QutW0&ll=29.966253269457013%2C-98.9321415&z=10" target="_blank" rel="noopener noreferrer">
-            <div class="travel-card-head">
-              <div class="travel-card-copy">
-                <p class="eyebrow">Plan the Route</p>
-                <h3>Area Map</h3>
-              </div>
-              <span class="travel-card-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path fill="currentColor" d="M12 2c3.87 0 7 3.13 7 7 0 4.82-5.24 10.67-6.02 11.52a1.3 1.3 0 0 1-1.96 0C10.24 19.67 5 13.82 5 9c0-3.87 3.13-7 7-7Zm0 9.5A2.5 2.5 0 1 0 12 6.5a2.5 2.5 0 0 0 0 5Z"/>
-                </svg>
-              </span>
-            </div>
-            <p>Jump to the wedding weekend map to see the venue, places to stay, and nearby stops worth knowing about.</p>
-            <span class="travel-card-cta">Open Area Map</span>
-          </a>
-          <a class="content-block travel-card-link" href="travel.html#area-highlights">
-            <div class="travel-card-head">
-              <div class="travel-card-copy">
-                <p class="eyebrow">Our Picks</p>
-                <h3>Hope &amp; Caleb's Favorites</h3>
-              </div>
-              <span class="travel-card-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path fill="currentColor" d="M12 21.35 10.55 20C5.4 15.24 2 12.09 2 8.25A5.25 5.25 0 0 1 7.25 3c1.74 0 3.41.81 4.5 2.09A6 6 0 0 1 16.25 3 5.25 5.25 0 0 1 21.5 8.25c0 3.84-3.4 6.99-8.55 11.76L12 21.35Z"/>
-                </svg>
-              </span>
-            </div>
-            <p>Browse a few of the places we would happily take you ourselves if we had extra time together that weekend.</p>
-            <span class="travel-card-cta">See Favorites</span>
-          </a>
-          <a class="content-block travel-card-link" href="travel.html#schedule">
-            <div class="travel-card-head">
-              <div class="travel-card-copy">
-                <p class="eyebrow">Spend More Time</p>
-                <h3>Week Schedule</h3>
-              </div>
-              <span class="travel-card-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path fill="currentColor" d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm11 8H6v10h12V10ZM8 12h3v3H8v-3Z"/>
-                </svg>
-              </span>
-            </div>
-            <p>See the extra events around the wedding weekend so out-of-town guests can join us for more than just the ceremony.</p>
-            <span class="travel-card-cta">Open Week Schedule</span>
-          </a>
-        </div>
-      </section>
-
       <section class="section" id="rsvp">
         <p class="eyebrow">RSVP</p>
         <h2>Find your invitation and reply here.</h2>
@@ -390,6 +323,73 @@
                 <label><input type="checkbox" data-rsvp-volunteer-help value="Transportation for out-of-town guests — Thursday or Friday"> <span>Transportation for out-of-town guests — Thursday or Friday</span></label>
               </div>
             </section>
+
+      <section class="section" id="travel" hidden>
+        <p class="eyebrow">Travel</p>
+        <h2>Find the week schedule, lodging,<br>the area map, and our favorite local spots.</h2>
+        <div class="grid grid--two">
+          <a class="content-block travel-card-link" href="travel.html#travel-lodging">
+            <div class="travel-card-head">
+              <div class="travel-card-copy">
+                <p class="eyebrow">Stay Nearby</p>
+                <h3>Travel &amp; Lodging</h3>
+              </div>
+              <span class="travel-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path fill="currentColor" d="M4 11a2 2 0 0 1 2-2h5V7a3 3 0 1 1 6 0v2h1a2 2 0 0 1 2 2v6h1v2h-2a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H3v-2h1v-6Zm9-4a1 1 0 1 1 2 0v2h-2V7Zm-7 4v3h12v-3H6Zm0 5v1h12v-1H6Z"/>
+                </svg>
+              </span>
+            </div>
+            <p>Open the stay section for airport notes, nearby rentals, cabin options, and hotel ideas for the weekend.</p>
+            <span class="travel-card-cta">View Travel &amp; Lodging</span>
+          </a>
+          <a class="content-block travel-card-link" href="https://www.google.com/maps/d/u/0/viewer?mid=1ArVd3idrSCWELm_DqkL835Nko1QutW0&ll=29.966253269457013%2C-98.9321415&z=10" target="_blank" rel="noopener noreferrer">
+            <div class="travel-card-head">
+              <div class="travel-card-copy">
+                <p class="eyebrow">Plan the Route</p>
+                <h3>Area Map</h3>
+              </div>
+              <span class="travel-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path fill="currentColor" d="M12 2c3.87 0 7 3.13 7 7 0 4.82-5.24 10.67-6.02 11.52a1.3 1.3 0 0 1-1.96 0C10.24 19.67 5 13.82 5 9c0-3.87 3.13-7 7-7Zm0 9.5A2.5 2.5 0 1 0 12 6.5a2.5 2.5 0 0 0 0 5Z"/>
+                </svg>
+              </span>
+            </div>
+            <p>Jump to the wedding weekend map to see the venue, places to stay, and nearby stops worth knowing about.</p>
+            <span class="travel-card-cta">Open Area Map</span>
+          </a>
+          <a class="content-block travel-card-link" href="travel.html#area-highlights">
+            <div class="travel-card-head">
+              <div class="travel-card-copy">
+                <p class="eyebrow">Our Picks</p>
+                <h3>Hope &amp; Caleb's Favorites</h3>
+              </div>
+              <span class="travel-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path fill="currentColor" d="M12 21.35 10.55 20C5.4 15.24 2 12.09 2 8.25A5.25 5.25 0 0 1 7.25 3c1.74 0 3.41.81 4.5 2.09A6 6 0 0 1 16.25 3 5.25 5.25 0 0 1 21.5 8.25c0 3.84-3.4 6.99-8.55 11.76L12 21.35Z"/>
+                </svg>
+              </span>
+            </div>
+            <p>Browse a few of the places we would happily take you ourselves if we had extra time together that weekend.</p>
+            <span class="travel-card-cta">See Favorites</span>
+          </a>
+          <a class="content-block travel-card-link" href="travel.html#schedule">
+            <div class="travel-card-head">
+              <div class="travel-card-copy">
+                <p class="eyebrow">Spend More Time</p>
+                <h3>Week Schedule</h3>
+              </div>
+              <span class="travel-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path fill="currentColor" d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm11 8H6v10h12V10ZM8 12h3v3H8v-3Z"/>
+                </svg>
+              </span>
+            </div>
+            <p>See the extra events around the wedding weekend so out-of-town guests can join us for more than just the ceremony.</p>
+            <span class="travel-card-cta">Open Week Schedule</span>
+          </a>
+        </div>
+      </section>
             <section class="rsvp-form-section rsvp-form-section--details rsvp-contact-section" aria-labelledby="rsvp-contact-heading">
               <h4 id="rsvp-contact-heading">Contact Information</h4>
               <div class="rsvp-form-grid rsvp-form-grid--single">
@@ -496,6 +496,6 @@
       </div>
       <p class="site-footer__credit">Credits: <a href="https://bel-caylor.github.io/bc-web-studio/" target="_blank" rel="noopener noreferrer">Hope's Loving Mother</a></p>
     </footer>
-    <script src="site.js?v=20260831-rsvp-save-errors" defer></script>
+    <script src="site.js?v=20260926-travel-access" defer></script>
   </body>
 </html>
