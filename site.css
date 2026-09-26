@@ -1581,6 +1581,7 @@ main > .section:nth-of-type(even)::after {
   width: 90%;
   max-width: 500px;
   justify-self: center;
+  padding-left: 5rem;
 }
 
 .countdown-card {
