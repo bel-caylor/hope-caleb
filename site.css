@@ -928,11 +928,7 @@ main > .section:nth-of-type(even)::after {
   line-height: 1.55;
 }
 
-.card-copy--schedule p:first-child {
-  font-size: 0.8em;
-}
-
-.card-copy--schedule p:last-child {
+.card-copy--schedule p {
   font-size: 1em;
 }
 
