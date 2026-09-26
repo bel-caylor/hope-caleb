@@ -358,6 +358,7 @@ function setSectionMenuOpen(isOpen) {
   sectionNav.classList.toggle("is-menu-open", isOpen);
   document.body.classList.toggle("is-nav-open", isOpen);
   sectionMenuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  sectionMenuToggle.setAttribute("aria-label", isOpen ? "Close navigation menu" : "Open navigation menu");
   syncMobileMenuToggleVisibility();
   syncDesktopCompactNav();
 }
