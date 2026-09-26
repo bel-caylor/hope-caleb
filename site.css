@@ -3747,6 +3747,13 @@ h4#rsvp-volunteer-heading {
     backdrop-filter: none;
   }
 
+  :is(.page-home, .page-travel, .page-story) .section-nav.is-menu-open {
+    top: 0.55rem;
+    left: 0.55rem;
+    width: 17rem;
+    width: min(17rem, calc(100vw - 1.1rem));
+  }
+
   :is(.page-home, .page-travel, .page-story) .section-nav__menu-toggle {
     display: flex;
     position: relative;
@@ -3777,11 +3784,13 @@ h4#rsvp-volunteer-heading {
   }
 
   :is(.page-home, .page-travel, .page-story) .section-nav.is-menu-open .section-nav__menu-toggle {
-    position: fixed;
-    top: 1.15rem;
-    right: calc(100vw - min(17rem, 100vw - 1.1rem) - 0.55rem - 2.7rem);
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
     left: auto;
     z-index: 28;
+    width: 2.5rem;
+    height: 2.5rem;
     color: #fff;
     background: var(--palette-brown);
     box-shadow: none;
@@ -3792,19 +3801,35 @@ h4#rsvp-volunteer-heading {
   }
 
   :is(.page-home, .page-travel, .page-story) .section-nav.is-menu-open .section-nav__menu-toggle span {
-    opacity: 0;
+    position: absolute;
+    width: 0.9rem;
+    height: 2px;
+    margin: 0;
+    border-radius: 999px;
+    opacity: 1;
   }
 
   :is(.page-home, .page-travel, .page-story) .section-nav.is-menu-open .section-nav__menu-toggle::before {
-    display: block;
-    width: 1.05rem;
-    height: 1.05rem;
-    border: 0;
-    background: linear-gradient(45deg, transparent 46%, currentColor 47%, currentColor 53%, transparent 54%), linear-gradient(-45deg, transparent 46%, currentColor 47%, currentColor 53%, transparent 54%);
-    content: "";
+    display: none;
+  }
+
+  :is(.page-home, .page-travel, .page-story) .section-nav.is-menu-open .section-nav__menu-toggle span:nth-child(1) {
+    transform: rotate(45deg);
+  }
+
+  :is(.page-home, .page-travel, .page-story) .section-nav.is-menu-open .section-nav__menu-toggle span:nth-child(2) {
+    transform: rotate(-45deg);
+  }
+
+  :is(.page-home, .page-travel, .page-story) .section-nav.is-menu-open .section-nav__menu-toggle span:nth-child(3) {
+    display: none;
   }
 
   :is(.page-home, .page-travel, .page-story) .section-nav.is-menu-open .section-nav__inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
     padding-top: 0.9rem;
   }
 
@@ -3828,6 +3853,7 @@ h4#rsvp-volunteer-heading {
     left: 0.55rem;
     z-index: 26;
     display: flex;
+    width: 17rem;
     width: min(17rem, calc(100vw - 1.1rem));
     min-width: 0;
     max-width: none;
@@ -3901,10 +3927,28 @@ h4#rsvp-volunteer-heading {
   :is(.page-home, .page-travel, .page-story) .section-nav__submenu {
     position: static;
     grid-area: submenu;
+    display: none;
     width: 100%;
     min-width: 0;
+    max-width: 100%;
+    margin: 0;
     background: transparent;
     padding-left: 1.35rem;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+    box-shadow: none;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  :is(.page-home, .page-travel, .page-story) .section-nav__item.is-open .section-nav__submenu {
+    display: grid;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
   }
 
   :is(.page-home, .page-travel, .page-story) .section-nav__toggle span {
