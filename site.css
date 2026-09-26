@@ -1785,7 +1785,7 @@ main > .section:nth-of-type(even)::after {
 
 .engagement-gallery-grid .story-slider--portrait {
   max-width: min(100%, calc(90vh * 0.75));
-  max-width: min(100%, calc(90svh * 0.75));
+  max-width: min(100%, calc(100svh * 0.75));
 }
 
 .engagement-gallery-grid .story-slider__viewport,
@@ -3554,7 +3554,7 @@ h4#rsvp-volunteer-heading {
 
 @media (min-width: 761px) {
   .page-story .section-nav {
-    position: absolute;
+    position: sticky;
     top: 0;
     left: 0;
     z-index: 20;
@@ -3581,10 +3581,10 @@ h4#rsvp-volunteer-heading {
     max-height: none;
     flex-direction: row;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: center;
     gap: clamp(0.6rem, 1.7vw, 1.35rem);
     margin: 0 auto;
-    padding: 0.9rem 0 0.9rem clamp(4.5rem, 8vw, 6.5rem);
+    padding: 0.9rem 0;
     overflow: visible;
     background: transparent;
     border: 0;
@@ -3634,7 +3634,7 @@ h4#rsvp-volunteer-heading {
   }
 
   .page-home .section-nav {
-    position: absolute;
+    position: sticky;
     top: 0;
     left: 0;
     z-index: 20;
@@ -3661,10 +3661,10 @@ h4#rsvp-volunteer-heading {
     max-height: none;
     flex-direction: row;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: center;
     gap: clamp(0.6rem, 1.7vw, 1.35rem);
     margin: 0 auto;
-    padding: 0.9rem 0 0.9rem clamp(4.5rem, 8vw, 6.5rem);
+    padding: 0.9rem 0;
     overflow: visible;
     background: transparent;
     border: 0;

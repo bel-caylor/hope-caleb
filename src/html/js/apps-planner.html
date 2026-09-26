@@ -7805,7 +7805,7 @@
       workspaceEventPageEl.style.setProperty("--workspace-event-sticky-header-height", `${stickyHeader.getBoundingClientRect().height}px`);
     };
     syncStickyHeaderHeight();
-    if (stickyHeader && "ResizeObserver" in window) {
+    if (stickyHeader && typeof window.ResizeObserver === "function") {
       workspaceStickyHeaderObserver = new ResizeObserver(syncStickyHeaderHeight);
       workspaceStickyHeaderObserver.observe(stickyHeader);
     }
