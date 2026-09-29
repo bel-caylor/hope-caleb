@@ -8,6 +8,7 @@ const PLANNER_TEMPLATE = path.join(ROOT, "src", "html", "index.html");
 const PLANNER_FILES = ["util", "apps-planner"];
 const LOCAL_ENV_FILE = path.join(ROOT, ".env.standalone.local");
 const VERSION_FILE = path.join(ROOT, "src", "version.ts");
+const PUBLIC_VERSION_FILE = path.join(ROOT, "public-version.json");
 const SECTION_NAV_TEMPLATE = path.join(ROOT, "partials", "section-nav.html");
 const FILES = [
   "index.html", "privacy-policy.html", "sms-opt-in-proof.html", "story.html",
@@ -63,6 +64,10 @@ function buildPlanner() {
 
 fs.rmSync(OUT_DIR, { recursive: true, force: true });
 fs.mkdirSync(OUT_DIR, { recursive: true });
+const publicVersion = `${Date.now().toString(36)}`;
+const publicVersionJson = JSON.stringify({ version: publicVersion });
+fs.writeFileSync(PUBLIC_VERSION_FILE, `${publicVersionJson}\n`);
+fs.writeFileSync(path.join(OUT_DIR, "public-version.json"), `${publicVersionJson}\n`);
 const sectionNav = fs.readFileSync(SECTION_NAV_TEMPLATE, "utf8").trim();
 for (const file of FILES) {
   const source = path.join(ROOT, file);
@@ -73,6 +78,14 @@ for (const file of FILES) {
   } else {
     fs.copyFileSync(source, destination);
   }
+}
+for (const file of ["index.html", "story.html", "travel.html"]) {
+  const destination = path.join(OUT_DIR, file);
+  let html = fs.readFileSync(destination, "utf8");
+  html = html.replace(/site\.css\?v=[^"']+/g, `site.css?v=${publicVersion}`)
+    .replace(/site\.js\?v=[^"']+/g, `site.js?v=${publicVersion}`)
+    .replace(/(<head(?:\s[^>]*)?>)/i, `$1\n    <script>\n      (() => {\n        const key = "hopeCalebPublicVersion";\n        const current = "${publicVersion}";\n        fetch("public-version.json?check=" + Date.now(), { cache: "no-store" })\n          .then((response) => response.ok ? response.json() : null)\n          .then((release) => {\n            if (!release?.version || release.version === current) {\n              sessionStorage.removeItem(key);\n              return;\n            }\n            if (sessionStorage.getItem(key) !== release.version) {\n              sessionStorage.setItem(key, release.version);\n              window.location.reload();\n            }\n          })\n          .catch(() => {});\n      })();\n    </script>`);
+  fs.writeFileSync(destination, html);
 }
 fs.cpSync(path.join(ROOT, "images"), path.join(OUT_DIR, "images"), { recursive: true });
 buildPlanner();
