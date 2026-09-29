@@ -15,6 +15,7 @@ const DEFAULT_AMAZON_REGISTRY_URL = "";
 const LOCAL_DEVELOPMENT_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
 const SESSION_COOKIE = "hope_caleb_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+const RSVP_LOOKUP_CACHE_TTL_SECONDS = 30;
 
 export default {
   async fetch(request: Request, env: Env) {
@@ -100,6 +101,21 @@ async function proxyPublicRsvpLookup(requestUrl: URL, env: Env, origin: string) 
   const lastName = String(requestUrl.searchParams.get("lastName") || "").trim();
   if (!firstName || !lastName) return jsonResponse({ ok: false, error: "Enter both a first name and a last name." }, origin, 400);
 
+  // The browser adds a per-request nonce to avoid its own HTTP cache. Build a
+  // separate edge key from normalized names so repeat lookups can be served
+  // from Cloudflare without putting names in the cache URL.
+  const normalizedName = `${normalizeLookupName(firstName)}|${normalizeLookupName(lastName)}`;
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(normalizedName));
+  const cacheKey = new URL(`/__rsvp-lookup-cache/${toHex(new Uint8Array(digest))}`, requestUrl.origin);
+  const edgeCache = caches.default;
+  const cached = await edgeCache.match(new Request(cacheKey.toString()));
+  if (cached) {
+    const response = jsonResponse(await cached.json(), origin);
+    response.headers.set("X-RSVP-Lookup-Cache", "HIT");
+    response.headers.set("Cache-Control", "no-store");
+    return response;
+  }
+
   const appsScriptBase = normalizeAppsScriptBase(env.APPS_SCRIPT_BASE || DEFAULT_APPS_SCRIPT_BASE);
   if (!appsScriptBase) return jsonResponse({ ok: false, error: "The RSVP service is not configured." }, origin, 500);
 
@@ -113,10 +129,26 @@ async function proxyPublicRsvpLookup(requestUrl: URL, env: Env, origin: string) 
     const text = await upstream.text();
     if (!upstream.ok) return jsonResponse({ ok: false, error: `The RSVP service returned ${upstream.status}.` }, origin, 502);
     const payload = JSON.parse(text);
-    return jsonResponse(payload, origin);
+    const cacheable = new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=${RSVP_LOOKUP_CACHE_TTL_SECONDS}` }
+    });
+    await edgeCache.put(new Request(cacheKey.toString()), cacheable);
+    const response = jsonResponse(payload, origin);
+    response.headers.set("X-RSVP-Lookup-Cache", "MISS");
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   } catch (_) {
     return jsonResponse({ ok: false, error: "The RSVP service could not be reached." }, origin, 502);
   }
+}
+
+function normalizeLookupName(value: string) {
+  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9'-]+/g, " ").trim().replace(/\s+/g, " ");
+}
+
+function toHex(bytes: Uint8Array) {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**
