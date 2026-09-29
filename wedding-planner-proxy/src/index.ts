@@ -18,6 +18,8 @@ const LOCAL_DEVELOPMENT_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:51
 const SESSION_COOKIE = "hope_caleb_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const RSVP_LOOKUP_CACHE_TTL_SECONDS = 30;
+const RSVP_LOOKUP_SNAPSHOT_REFRESH_KEY = "lookup-index-refresh-v1";
+const RSVP_LOOKUP_SNAPSHOT_REFRESH_SECONDS = 60;
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
@@ -109,17 +111,23 @@ async function proxyPublicRsvpLookup(requestUrl: URL, env: Env, origin: string, 
   try {
     const snapshot = await env.PUBLIC_RSVP_LOOKUPS.get("lookup-index-v1", "json") as PublicRsvpLookupSnapshot | null;
     if (snapshot?.byName && snapshot?.byLastName) {
-      const response = jsonResponse({ matches: findSnapshotMatches(snapshot, firstName, lastName) }, origin);
-      response.headers.set("X-RSVP-Lookup-Cache", "KV");
-      response.headers.set("Cache-Control", "no-store");
-      return response;
+      const matches = findSnapshotMatches(snapshot, firstName, lastName);
+      if (matches.length) {
+        // Refresh names from the sheet in the background so additions and
+        // edits are reflected without requiring a Worker deployment.
+        ctx.waitUntil(refreshPublicRsvpLookupSnapshotIfDue(env));
+        const response = jsonResponse({ matches }, origin);
+        response.headers.set("X-RSVP-Lookup-Cache", "KV");
+        response.headers.set("Cache-Control", "no-store");
+        return response;
+      }
     }
   } catch (_) {
     // Keep the existing Apps Script lookup as a fallback if KV is unavailable.
   }
   // A cold index still returns a correct result; seed KV in the background for
   // subsequent lookups, including lookups for different guests.
-  ctx.waitUntil(refreshPublicRsvpLookupSnapshot(env));
+  ctx.waitUntil(refreshPublicRsvpLookupSnapshotIfDue(env));
 
   // The browser adds a per-request nonce to avoid its own HTTP cache. Build a
   // separate edge key from normalized names so repeat lookups can be served
@@ -201,6 +209,19 @@ async function refreshPublicRsvpLookupSnapshot(env: Env) {
   await env.PUBLIC_RSVP_LOOKUPS.put("lookup-index-v1", JSON.stringify(payload), { expirationTtl: 86400 });
 }
 
+async function refreshPublicRsvpLookupSnapshotIfDue(env: Env) {
+  try {
+    const existing = await env.PUBLIC_RSVP_LOOKUPS.get(RSVP_LOOKUP_SNAPSHOT_REFRESH_KEY);
+    if (existing) return;
+    await env.PUBLIC_RSVP_LOOKUPS.put(RSVP_LOOKUP_SNAPSHOT_REFRESH_KEY, "1", {
+      expirationTtl: RSVP_LOOKUP_SNAPSHOT_REFRESH_SECONDS
+    });
+  } catch (_) {
+    // Refreshing is best effort; lookups can continue from the last snapshot.
+  }
+  await refreshPublicRsvpLookupSnapshot(env);
+}
+
 /**
  * Submits a public RSVP through the Worker so the browser can receive the
  * Apps Script validation result. Direct browser posts use no-cors and cannot
@@ -251,7 +272,7 @@ async function proxyPublicRsvpSubmission(request: Request, env: Env, origin: str
       return jsonResponse({ ok: false, error: "The RSVP service returned an unreadable response." }, origin, 502);
     }
     if ((responsePayload as { ok?: boolean } | null)?.ok) {
-      ctx.waitUntil(refreshPublicRsvpLookupSnapshot(env));
+      ctx.waitUntil(refreshPublicRsvpLookupSnapshotIfDue(env));
     }
     return jsonResponse(responsePayload, origin);
   } catch (_) {
