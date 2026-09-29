@@ -2,12 +2,14 @@ type SessionRecord = { email: string; sub: string; expires: number };
 
 type Env = {
   APPS_SCRIPT_BASE?: string;
+  PUBLIC_RSVP_LOOKUP_SYNC_TOKEN?: string;
   AMAZON_REGISTRY_URL?: string;
   GOOGLE_CLIENT_ID?: string;
   PLANNER_ORIGIN?: string;
   PLANNER_ORIGINS?: string;
   SESSION_SIGNING_SECRET?: string;
   PLANNER_SESSIONS: KVNamespace;
+  PUBLIC_RSVP_LOOKUPS: KVNamespace;
 };
 
 const DEFAULT_APPS_SCRIPT_BASE = "";
@@ -18,18 +20,18 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const RSVP_LOOKUP_CACHE_TTL_SECONDS = 30;
 
 export default {
-  async fetch(request: Request, env: Env) {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") || "";
     const allowedOrigin = getAllowedOrigin(origin, env);
     if (!allowedOrigin) return jsonResponse({ ok: false, error: "This planner endpoint is not available from this site." }, defaultOrigin(env), 403);
     if (request.method === "OPTIONS") return new Response("", { headers: cors(allowedOrigin) });
     if (request.method === "POST" && url.pathname === "/rsvp-submit") {
-      return proxyPublicRsvpSubmission(request, env, allowedOrigin);
+      return proxyPublicRsvpSubmission(request, env, allowedOrigin, ctx);
     }
     if (request.method === "GET") {
       if (url.pathname === "/rsvp-lookup") {
-        return proxyPublicRsvpLookup(url, env, allowedOrigin);
+        return proxyPublicRsvpLookup(url, env, allowedOrigin, ctx);
       }
       if (url.pathname === "/session/validate") {
         const validated = await validateSessionAssertion(String(url.searchParams.get("token") || ""), env);
@@ -82,6 +84,9 @@ export default {
     if (!contentType.toLowerCase().includes("json")) return jsonResponse({ ok: false, error: "Apps Script upstream did not return JSON.", upstreamSnippet: text.slice(0, 200) }, allowedOrigin, 502);
     const responsePayload = newSessionCookiePayload(text, sessionId!, Boolean(setCookie));
     return new Response(responsePayload, { status: upstream.status, headers: { ...cors(allowedOrigin), "Content-Type": contentType, ...(setCookie ? { "Set-Cookie": setCookie } : {}) } });
+  },
+  scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(refreshPublicRsvpLookupSnapshot(env));
   }
 };
 
@@ -96,10 +101,25 @@ async function getSession(env: Env, id: string): Promise<SessionRecord | null> {
  * Apps Script directly. Some tablets and privacy filters block that cross-site
  * script request even when the RSVP endpoint itself is healthy.
  */
-async function proxyPublicRsvpLookup(requestUrl: URL, env: Env, origin: string) {
+async function proxyPublicRsvpLookup(requestUrl: URL, env: Env, origin: string, ctx: ExecutionContext) {
   const firstName = String(requestUrl.searchParams.get("firstName") || "").trim();
   const lastName = String(requestUrl.searchParams.get("lastName") || "").trim();
   if (!firstName || !lastName) return jsonResponse({ ok: false, error: "Enter both a first name and a last name." }, origin, 400);
+
+  try {
+    const snapshot = await env.PUBLIC_RSVP_LOOKUPS.get("lookup-index-v1", "json") as PublicRsvpLookupSnapshot | null;
+    if (snapshot?.byName && snapshot?.byLastName) {
+      const response = jsonResponse({ matches: findSnapshotMatches(snapshot, firstName, lastName) }, origin);
+      response.headers.set("X-RSVP-Lookup-Cache", "KV");
+      response.headers.set("Cache-Control", "no-store");
+      return response;
+    }
+  } catch (_) {
+    // Keep the existing Apps Script lookup as a fallback if KV is unavailable.
+  }
+  // A cold index still returns a correct result; seed KV in the background for
+  // subsequent lookups, including lookups for different guests.
+  ctx.waitUntil(refreshPublicRsvpLookupSnapshot(env));
 
   // The browser adds a per-request nonce to avoid its own HTTP cache. Build a
   // separate edge key from normalized names so repeat lookups can be served
@@ -144,11 +164,41 @@ async function proxyPublicRsvpLookup(requestUrl: URL, env: Env, origin: string) 
 }
 
 function normalizeLookupName(value: string) {
-  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9'-]+/g, " ").trim().replace(/\s+/g, " ");
+  return value.toLowerCase().replace(/[^a-z0-9'-]+/g, " ").trim().replace(/\s+/g, " ");
 }
 
 function toHex(bytes: Uint8Array) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+type PublicRsvpLookupSnapshot = {
+  byName: Record<string, unknown[]>;
+  byLastName: Record<string, unknown[]>;
+};
+
+function findSnapshotMatches(snapshot: PublicRsvpLookupSnapshot, firstName: string, lastName: string) {
+  const normalizedFirst = normalizeLookupName(firstName);
+  const normalizedLast = normalizeLookupName(lastName);
+  return snapshot.byName[`${normalizedFirst}|${normalizedLast}`]
+    || snapshot.byLastName[normalizedLast]
+    || [];
+}
+
+async function refreshPublicRsvpLookupSnapshot(env: Env) {
+  const appsScriptBase = normalizeAppsScriptBase(env.APPS_SCRIPT_BASE || DEFAULT_APPS_SCRIPT_BASE);
+  const token = String(env.PUBLIC_RSVP_LOOKUP_SYNC_TOKEN || "").trim();
+  if (!appsScriptBase || !token) return;
+
+  const url = new URL(`${appsScriptBase}/exec`);
+  url.searchParams.set("lookup", "rsvp-index");
+  url.searchParams.set("token", token);
+  const response = await fetch(url.toString(), { headers: { "Accept": "application/json" } });
+  if (!response.ok) throw new Error(`RSVP lookup index refresh returned ${response.status}.`);
+  const payload = await response.json() as PublicRsvpLookupSnapshot & { ok?: boolean };
+  if (!payload?.ok || !payload.byName || !payload.byLastName) {
+    throw new Error("Apps Script returned an invalid RSVP lookup index.");
+  }
+  await env.PUBLIC_RSVP_LOOKUPS.put("lookup-index-v1", JSON.stringify(payload), { expirationTtl: 86400 });
 }
 
 /**
@@ -156,7 +206,7 @@ function toHex(bytes: Uint8Array) {
  * Apps Script validation result. Direct browser posts use no-cors and cannot
  * distinguish an accepted RSVP from a rejected one.
  */
-async function proxyPublicRsvpSubmission(request: Request, env: Env, origin: string) {
+async function proxyPublicRsvpSubmission(request: Request, env: Env, origin: string, ctx: ExecutionContext) {
   const appsScriptBase = normalizeAppsScriptBase(env.APPS_SCRIPT_BASE || DEFAULT_APPS_SCRIPT_BASE);
   if (!appsScriptBase) return jsonResponse({ ok: false, error: "The RSVP service is not configured." }, origin, 500);
 
@@ -199,6 +249,9 @@ async function proxyPublicRsvpSubmission(request: Request, env: Env, origin: str
       responsePayload = JSON.parse(text);
     } catch (_) {
       return jsonResponse({ ok: false, error: "The RSVP service returned an unreadable response." }, origin, 502);
+    }
+    if ((responsePayload as { ok?: boolean } | null)?.ok) {
+      ctx.waitUntil(refreshPublicRsvpLookupSnapshot(env));
     }
     return jsonResponse(responsePayload, origin);
   } catch (_) {

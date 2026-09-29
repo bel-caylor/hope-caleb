@@ -12,7 +12,7 @@ import {
   TABLE_NUMBER_SHEET
 } from "../constants";
 import { requirePlannerAccess, requireScriptEditorAccess } from "../auth";
-import { ensureSheet, getSheetByName, readDisplayRows, readRows, withSpreadsheetWriteLock } from "../util/sheets";
+import { ensureSheet, getCachedPublicRsvpLookupData, getSheetByName, invalidatePublicRsvpLookupCache, readDisplayRows, readRows, withSpreadsheetWriteLock } from "../util/sheets";
 
 type PublicSubmissionParams = Record<string, string | undefined>;
 
@@ -231,6 +231,35 @@ export function lookupPublicRsvpGroups(firstNameRaw: string | undefined, lastNam
   return { matches };
 }
 
+/** Authenticated snapshot consumed only by the Cloudflare Worker. */
+export function getPublicRsvpLookupSnapshot(tokenRaw: string | undefined) {
+  const expectedToken = PropertiesService.getScriptProperties().getProperty("PUBLIC_RSVP_LOOKUP_SYNC_TOKEN") || "";
+  if (!expectedToken || !tokenRaw || tokenRaw !== expectedToken) {
+    throw new Error("Not authorized to read the RSVP lookup snapshot.");
+  }
+  const guests = readPublicGuestLookupRows();
+  const groups = readPublicGroupLookupRows();
+  const byName: Record<string, unknown[]> = {};
+  const byLastName: Record<string, unknown[]> = {};
+  const guestNames = new Set<string>();
+  const lastNames = new Set<string>();
+  guests.forEach((guest) => {
+    const firstName = normalizeLookupNamePart(guest.firstName || extractFirstName(guest.name || ""));
+    const lastName = normalizeLookupNamePart(guest.lastName || extractLastName(guest.name || "")).trim();
+    if (!guest.group || !lastName) return;
+    lastNames.add(lastName);
+    if (firstName) guestNames.add(`${firstName.trim()}|${lastName}`);
+  });
+  guestNames.forEach((key) => {
+    const [firstName, lastName] = key.split("|");
+    byName[key] = buildLookupMatchesForName(firstName, lastName, guests, groups);
+  });
+  lastNames.forEach((lastName) => {
+    byLastName[lastName] = buildLookupMatchesForName("__fallback__", lastName, guests, groups);
+  });
+  return { ok: true, byName, byLastName };
+}
+
 export function savePublicSubmission(rawParams: Record<string, unknown> | undefined) {
   // A public RSVP can update Guests, Groups, and the history sheet. Keep that
   // whole sequence together so simultaneous submissions cannot interleave.
@@ -386,6 +415,7 @@ function syncGroupsSheetInternal() {
   if (!guestsSheet || guestsSheet.getLastRow() < 2) {
     ensureSheet(GROUPS_SHEET, GROUP_HEADERS);
     overwriteSheet(GROUPS_SHEET, GROUP_HEADERS, []);
+    invalidatePublicRsvpLookupCache();
     return {
       ok: true,
       guestRowCount: 0,
@@ -493,6 +523,7 @@ function syncGroupsSheetInternal() {
     ]));
 
   overwriteSheet(GROUPS_SHEET, GROUP_HEADERS, groupRows);
+  invalidatePublicRsvpLookupCache();
 
   return {
     ok: true,
@@ -554,6 +585,7 @@ function saveGroupRsvpSubmission(data: PublicSubmissionParams, options: { sendNo
   submission.contactName = guestResult.lookupGuestName || submission.contactName;
   const groupResult = updateGroupRowForRsvp(groupsSheet, submission, guestResult);
   appendStructuredRsvpRow(submission, guestResult);
+  invalidatePublicRsvpLookupCache();
   if (options.sendNotification !== false) {
     sendRsvpNotification({
       submittedAt: submission.submittedAt,
@@ -1092,9 +1124,7 @@ function getNotificationRecipients() {
 }
 
 function readPublicGuestLookupRows() {
-  const rows = readSheetObjects(GUESTS_SHEET);
-
-  return rows.map((row) => {
+  return getCachedPublicRsvpLookupData("public-rsvp-lookup-guests-v1", () => readSheetObjects(GUESTS_SHEET).map((row) => {
     const name = firstNonEmptyValue(row, [
       /^wedding\s*guest$/i,
       /^guest$/i,
@@ -1117,7 +1147,7 @@ function readPublicGuestLookupRows() {
       plusOnesAllowed: firstNonEmptyValue(row, [/^#\s*of\s*plu/i, /plus\s*one/i], ["rsvp"]),
       childrenAllowed: firstNonEmptyValue(row, [/^#\s*o$/i, /^#\s*of\s*(chi|kid)/i, /children/i], ["policy"])
     };
-  });
+  }));
 }
 
 /** Seating data is available only through the authenticated planner RPC. */
@@ -1148,27 +1178,28 @@ function readPlannerGuestRows() {
 }
 
 function readPublicGroupLookupRows() {
-  const rows = readSheetObjects(GROUPS_SHEET);
-  const latestGroupRsvps = readLatestGroupRsvpMap();
-
-  return rows.map((row) => ({
-    ...latestGroupRsvps.get(firstNonEmptyValue(row, [/^group$/i, /group\s*(name|id)/i])) || {},
-    rowNumber: String(row.__rowNumber || ""),
-    group: firstNonEmptyValue(row, [/^group$/i, /group\s*(name|id)/i]),
-    displayName: firstNonEmptyValue(row, [/^display\s*name$/i, /invitation/i]),
-    primaryContact: firstNonEmptyValue(row, [/^primary\s*contact$/i, /^contact$/i]),
-    email: firstNonEmptyValue(row, [/^email$/i, /e-?mail/i]),
-    phone: firstNonEmptyValue(row, [/^phone/i, /mobile/i, /cell/i]),
-    invitedRehearsal: firstNonEmptyValue(row, [/^invited\s*rehearsal$/i]),
-    invitedOpenHouse: firstNonEmptyValue(row, [/^invited\s*open\s*house$/i]),
-    childrenCount: firstNonEmptyValue(row, [/^(invited\s*)?#\s*(of\s*)?(children|child|kids?)$/i, /^children$/i, /children\s*count/i, /invited.*children/i]),
-    maxPlusOnes: firstNonEmptyValue(row, [/^max\s*plus\s*ones$/i, /plus\s*ones/i]),
-    weddingRsvp: firstNonEmptyValue(row, [/^wedding\s*rsvp$/i, /^rsvp$/i]),
-    rehearsalRsvp: firstNonEmptyValue(row, [/^rehearsal\s*rsvp$/i]),
-    openHouseRsvp: firstNonEmptyValue(row, [/^open\s*house\s*rsvp$/i]),
-    notes: firstNonEmptyValue(row, [/^notes$/i, /comment/i]),
-    lookupCode: firstNonEmptyValue(row, [/^lookup\s*code$/i])
-  }));
+  return getCachedPublicRsvpLookupData("public-rsvp-lookup-groups-v1", () => {
+    const rows = readSheetObjects(GROUPS_SHEET);
+    const latestGroupRsvps = readLatestGroupRsvpMap();
+    return rows.map((row) => ({
+      ...latestGroupRsvps.get(firstNonEmptyValue(row, [/^group$/i, /group\s*(name|id)/i])) || {},
+      rowNumber: String(row.__rowNumber || ""),
+      group: firstNonEmptyValue(row, [/^group$/i, /group\s*(name|id)/i]),
+      displayName: firstNonEmptyValue(row, [/^display\s*name$/i, /invitation/i]),
+      primaryContact: firstNonEmptyValue(row, [/^primary\s*contact$/i, /^contact$/i]),
+      email: firstNonEmptyValue(row, [/^email$/i, /e-?mail/i]),
+      phone: firstNonEmptyValue(row, [/^phone/i, /mobile/i, /cell/i]),
+      invitedRehearsal: firstNonEmptyValue(row, [/^invited\s*rehearsal$/i]),
+      invitedOpenHouse: firstNonEmptyValue(row, [/^invited\s*open\s*house$/i]),
+      childrenCount: firstNonEmptyValue(row, [/^(invited\s*)?#\s*(of\s*)?(children|child|kids?)$/i, /^children$/i, /children\s*count/i, /invited.*children/i]),
+      maxPlusOnes: firstNonEmptyValue(row, [/^max\s*plus\s*ones$/i, /plus\s*ones/i]),
+      weddingRsvp: firstNonEmptyValue(row, [/^wedding\s*rsvp$/i, /^rsvp$/i]),
+      rehearsalRsvp: firstNonEmptyValue(row, [/^rehearsal\s*rsvp$/i]),
+      openHouseRsvp: firstNonEmptyValue(row, [/^open\s*house\s*rsvp$/i]),
+      notes: firstNonEmptyValue(row, [/^notes$/i, /comment/i]),
+      lookupCode: firstNonEmptyValue(row, [/^lookup\s*code$/i])
+    }));
+  });
 }
 
 function buildLookupMatchesForName(

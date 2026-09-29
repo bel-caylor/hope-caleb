@@ -16,7 +16,7 @@ import {
   PLANNER_V2_TASK_HEADERS
 } from "../constants";
 import { getViewerProfile, invalidatePlannerAccessCache, requirePlannerAccess } from "../auth";
-import { createId, deleteRowById, ensureSheet, getSheetByName, readRows, upsertRow } from "../util/sheets";
+import { createId, deleteRowById, ensureSheet, getSheetByName, invalidatePublicRsvpLookupCache, readRows, upsertRow } from "../util/sheets";
 import { listEvents, listTodos } from "./planner";
 
 type WorkspaceAccessLevel = "full_planner" | "contributor" | "wedding_party";
@@ -273,6 +273,7 @@ function saveGuestContact(input: SaveWorkspaceUserInput, guest: GuestContact) {
   sheet.getRange(guest.rowNumber, column("Phone Number")).setValue(phone);
   sheet.getRange(guest.rowNumber, column("SMS Opted In")).setValue(smsOptedIn ? "TRUE" : "FALSE");
   sheet.getRange(guest.rowNumber, column("SMS Consent Recorded At")).setValue(smsOptedIn ? (guest.smsConsentRecordedAt || new Date().toISOString()) : "");
+  invalidatePublicRsvpLookupCache();
   return listGuestContacts().find((item) => item.id === guest.id) || guest;
 }
 

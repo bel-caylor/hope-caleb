@@ -1,5 +1,5 @@
 import { getGoogleClientId } from "./auth";
-import { listPublicFeed, lookupPublicRsvpGroups, savePublicSubmission, syncGroupsSheet, syncGroupsSheetForEditor, syncGuestSummarySheets } from "./features/feed";
+import { getPublicRsvpLookupSnapshot, listPublicFeed, lookupPublicRsvpGroups, savePublicSubmission, syncGroupsSheet, syncGroupsSheetForEditor, syncGuestSummarySheets } from "./features/feed";
 import { getPublicRehearsalSlideImage, initializeBedsSheet, listPublicRehearsalSlides } from "./features/planner";
 import { rpc } from "./rpc";
 import { completeWorkspaceTaskFromTextLink } from "./features/planner-v2";
@@ -24,6 +24,14 @@ export function doGet(e?: GoogleAppsScript.Events.DoGet) {
   }
   if (isRpcGetRequest(e)) {
     return handleRpcGet(e);
+  }
+
+  if (String(e?.parameter?.lookup || "").trim().toLowerCase() === "rsvp-index") {
+    try {
+      return publicFeedResponse(getPublicRsvpLookupSnapshot(e?.parameter?.token), e);
+    } catch (error) {
+      return publicFeedResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }, e);
+    }
   }
 
   if (isPublicLookupRequest(e)) {

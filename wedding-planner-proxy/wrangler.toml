@@ -7,6 +7,13 @@ workers_dev = true
 binding = "PLANNER_SESSIONS"
 id = "7de2ae61852e489d98503d614b87977d"
 
+[[kv_namespaces]]
+binding = "PUBLIC_RSVP_LOOKUPS"
+id = "07777229b98c49389b63a214d45c538f"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
 [vars]
 PLANNER_ORIGIN = "https://hope-caleb.site"
 # Optional comma-separated production origins, in addition to the built-in

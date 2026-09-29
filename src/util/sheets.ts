@@ -1,5 +1,37 @@
 import { SPREADSHEET_ID_PROPERTY_KEY, type PlannerRow } from "../constants";
 
+const PUBLIC_RSVP_LOOKUP_CACHE_TTL_SECONDS = 300;
+const PUBLIC_RSVP_LOOKUP_CACHE_KEYS = ["public-rsvp-lookup-guests-v1", "public-rsvp-lookup-groups-v1"];
+
+export function getCachedPublicRsvpLookupData<T>(key: string, load: () => T): T {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(key);
+  if (cached) {
+    try {
+      return JSON.parse(cached) as T;
+    } catch (_) {
+      cache.remove(key);
+    }
+  }
+
+  const value = load();
+  const serialized = JSON.stringify(value);
+  // Apps Script CacheService limits each value to 100 KB. Skip caching safely
+  // for unusually large guest lists rather than breaking invitation lookup.
+  if (serialized.length < 95000) {
+    try {
+      cache.put(key, serialized, PUBLIC_RSVP_LOOKUP_CACHE_TTL_SECONDS);
+    } catch (_) {
+      // Cache failures should never block a lookup from the source sheet.
+    }
+  }
+  return value;
+}
+
+export function invalidatePublicRsvpLookupCache() {
+  CacheService.getScriptCache().removeAll(PUBLIC_RSVP_LOOKUP_CACHE_KEYS);
+}
+
 function getSpreadsheet() {
   const configuredId = String(
     PropertiesService.getScriptProperties().getProperty(SPREADSHEET_ID_PROPERTY_KEY) || ""

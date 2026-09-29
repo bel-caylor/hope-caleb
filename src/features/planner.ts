@@ -1,6 +1,6 @@
 import { BED_HEADERS, BEDS_SHEET, EVENT_HEADERS, EVENT_LIST_HEADERS, EVENT_LISTS_SHEET, EVENTS_SHEET, GUESTS_SHEET, PEOPLE_HEADERS, PEOPLE_SHEET, REHEARSAL_SLIDE_HEADERS, REHEARSAL_SLIDES_SHEET, SHOT_HEADERS, SHOTS_SHEET, TABLE_HEADERS, TABLES_SHEET, TABLE_LAYOUT_HEADERS, TABLE_LAYOUT_SHEET, TODO_HEADERS, TODO_SHEET } from "../constants";
 import { requirePlannerAccess } from "../auth";
-import { createId, deleteRowById, ensureSheet, getSheetByName, readRows, toIsoString, upsertRow } from "../util/sheets";
+import { createId, deleteRowById, ensureSheet, getSheetByName, invalidatePublicRsvpLookupCache, readRows, toIsoString, upsertRow } from "../util/sheets";
 
 type SavePersonInput = {
   id?: string;
@@ -1308,6 +1308,8 @@ export function saveGuestDetails(input: SaveGuestDetailsInput) {
     guestsSheet.getRange(rowNumber, smsOptedInColumnIndex).setValue(smsOptedIn ? "TRUE" : "FALSE");
     guestsSheet.getRange(rowNumber, smsConsentRecordedAtColumnIndex).setValue(smsOptedIn ? new Date().toISOString() : "");
   }
+
+  invalidatePublicRsvpLookupCache();
 
   return {
     rowNumber,
