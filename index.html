@@ -260,20 +260,20 @@
                   <label class="rsvp-field rsvp-field--inline-select"><span>Number who may attend</span><select name="riverWalkCount" data-rsvp-river-walk-count></select></label>
                 </div>
               </div>
-              <div class="rsvp-travel-details" data-rsvp-travel-details hidden>
-                <h5>Travel &amp; Stay</h5>
-                <p class="meta">These optional details help us welcome you well and coordinate rides if needed.</p>
-                <div class="rsvp-form-grid">
-                  <label class="rsvp-field"><span>Where are you staying?</span><input type="text" name="lodging" data-rsvp-lodging placeholder="Hotel, rental, or area"></label>
-                  <label class="rsvp-field"><span>Airport transportation</span><select name="airportTransportation" data-rsvp-airport-transportation><option value="">Select one (optional)</option><option value="no-help-needed">I have transportation covered</option><option value="airport-ride-needed">I may need a ride to or from the airport</option><option value="coordination-help-needed">I would like help coordinating transportation</option></select></label>
-                </div>
-                <div class="rsvp-form-grid">
-                  <label class="rsvp-field"><span>Arrival plans</span><input type="text" name="arrivalDetails" data-rsvp-arrival-details placeholder="Optional — date, time, and airport"></label>
-                  <label class="rsvp-field"><span>Departure plans</span><input type="text" name="departureDetails" data-rsvp-departure-details placeholder="Optional — date, time, and airport"></label>
-                </div>
-                <label class="rsvp-field"><span>Anything else that would make travel easier?</span><textarea name="travelHelpNote" data-rsvp-travel-help-note rows="3" placeholder="Optional — accessibility, carpooling, or other travel help"></textarea></label>
-              </div>
             </div>
+            <section class="rsvp-form-section rsvp-form-section--details rsvp-travel-section" data-rsvp-travel-details hidden>
+              <h4>Travel &amp; Stay</h4>
+              <p class="meta">These optional details help us welcome you well and coordinate rides if needed.</p>
+              <div class="rsvp-form-grid">
+                <label class="rsvp-field"><span>Where are you staying?</span><input type="text" name="lodging" data-rsvp-lodging placeholder="Hotel, rental, or area"></label>
+                <label class="rsvp-field"><span>Airport transportation</span><select name="airportTransportation" data-rsvp-airport-transportation><option value="">Select one (optional)</option><option value="no-help-needed">I have transportation covered</option><option value="airport-ride-needed">I may need a ride to or from the airport</option><option value="coordination-help-needed">I would like help coordinating transportation</option></select></label>
+              </div>
+              <div class="rsvp-form-grid">
+                <label class="rsvp-field"><span>Arrival plans</span><input type="text" name="arrivalDetails" data-rsvp-arrival-details placeholder="Optional — date, time, and airport"></label>
+                <label class="rsvp-field"><span>Departure plans</span><input type="text" name="departureDetails" data-rsvp-departure-details placeholder="Optional — date, time, and airport"></label>
+              </div>
+              <label class="rsvp-field"><span>Anything else that would make travel easier?</span><textarea name="travelHelpNote" data-rsvp-travel-help-note rows="3" placeholder="Optional — accessibility, carpooling, or other travel help"></textarea></label>
+            </section>
             <section class="rsvp-form-section rsvp-form-section--details rsvp-volunteer-section" data-rsvp-volunteer-section hidden aria-labelledby="rsvp-volunteer-heading">
               <h4 id="rsvp-volunteer-heading">Volunteer</h4>
               <p class="meta">No pressure at all—please select only what you genuinely have capacity for.</p>

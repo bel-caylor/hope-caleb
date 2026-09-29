@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "build:core": "rimraf dist && node esbuild.config.mjs && npm run copy:html && npm run copy:json && npm run copy:gas",
-    "build:core": "rimraf dist && node esbuild.config.mjs && npm run copy:html && npm run copy:json && npm run copy:gas",
     "build": "npm run build:public",
     "build:public": "node scripts/build-public.cjs",
     "build:standalone": "npm run build:core && node scripts/build-standalone.cjs",

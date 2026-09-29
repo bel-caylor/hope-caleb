@@ -1122,12 +1122,10 @@ function renderRsvpEditor(group) {
   }
 
   if (rsvpOutOfTownSection) {
-    // The RSVP is shared by the whole household. A single out-of-town guest
-    // must not expose these questions to a mixed-type group, and wedding-party
-    // groups only need their additional-event choices.
-    const isOutOfTownGroup = members.length > 0 && members.every((member) => isOutOfTownGuest(member));
+    // Show travel questions to groups that include an out-of-town invitee.
+    const hasOutOfTownInvitee = members.some((member) => isOutOfTownGuest(member));
     const isWeddingPartyGroup = members.some((member) => isWeddingPartyGuest(member));
-    const shouldShowTravelDetails = isOutOfTownGroup && !isWeddingPartyGroup;
+    const shouldShowTravelDetails = hasOutOfTownInvitee && !isWeddingPartyGroup;
     const hasAdditionalEventInvitation = group.invitedRehearsal || group.invitedOpenHouse;
     rsvpRiverWalkSection.hidden = !shouldShowTravelDetails;
     rsvpTravelDetails.hidden = !shouldShowTravelDetails;
@@ -1135,7 +1133,7 @@ function renderRsvpEditor(group) {
     if (rsvpOutOfTownGatheringsCopy) {
       rsvpOutOfTownGatheringsCopy.hidden = rsvpRehearsalSection.hidden && rsvpOpenHouseSection.hidden;
     }
-    if (isOutOfTownGroup) {
+    if (hasOutOfTownInvitee) {
       fillCountSelect(rsvpRiverWalkCount, 20);
       rsvpRiverWalkInterest.value = group.savedRiverWalkInterest || "";
       rsvpRiverWalkCount.value = String(Math.min(group.savedRiverWalkCount || 0, 20));
