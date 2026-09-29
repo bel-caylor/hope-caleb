@@ -237,7 +237,13 @@ export function getPublicRsvpLookupSnapshot(tokenRaw: string | undefined) {
   if (!expectedToken || !tokenRaw || tokenRaw !== expectedToken) {
     throw new Error("Not authorized to read the RSVP lookup snapshot.");
   }
-  const guests = readPublicGuestLookupRows();
+  // Match the same normalized guest fields used by the live lookup path. The
+  // snapshot matcher compares these fields directly against normalized names.
+  const guests = readPublicGuestLookupRows().map((guest) => ({
+    ...guest,
+    firstName: normalizeLookupNamePart(guest.firstName || extractFirstName(guest.name || "")),
+    lastName: normalizeLookupNamePart(guest.lastName || extractLastName(guest.name || ""))
+  }));
   const groups = readPublicGroupLookupRows();
   const byName: Record<string, unknown[]> = {};
   const byLastName: Record<string, unknown[]> = {};

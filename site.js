@@ -13,7 +13,7 @@ const HONEYMOON_OPTIONS = {
 };
 
 const HOME_RSVP = {
-  scriptUrl: "https://script.google.com/macros/s/AKfycbwBHDsnbniEymd-nvY0ZqmCElowyzDL8gJI5PoFZ_xGynlsxiucudPXUr4ZYT4N7C1C/exec",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbz4YCYJELsXDAMsnqiCvsTgQ_PhOHTnyYLeOrm-1b73QZeZMFeT0xv40z-td5PAHfpf/exec",
   lookupUrl: "https://hope-caleb-wedding-planner-proxy.belinda-caylor.workers.dev/rsvp-lookup",
   submitUrl: "https://hope-caleb-wedding-planner-proxy.belinda-caylor.workers.dev/rsvp-submit",
   deadlineLabel: "Please reply by December 1, 2026."
