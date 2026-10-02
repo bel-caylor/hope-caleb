@@ -2390,6 +2390,12 @@ main > .section:nth-of-type(even)::after {
   margin: auto;
 }
 
+.rsvp-welcome {
+  margin: 0 0 1.2rem;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  line-height: 1.2;
+}
+
 .rsvp-lookup-form,
 .rsvp-form-section,
 .rsvp-attendance,
