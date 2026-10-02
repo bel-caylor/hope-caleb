@@ -2396,6 +2396,16 @@ main > .section:nth-of-type(even)::after {
   line-height: 1.2;
 }
 
+.rsvp-message-break {
+  display: none;
+}
+
+@media (min-width: 641px) {
+  .rsvp-message-break {
+    display: initial;
+  }
+}
+
 .rsvp-lookup-form,
 .rsvp-form-section,
 .rsvp-attendance,
