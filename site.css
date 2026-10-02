@@ -2400,7 +2400,7 @@ main > .section:nth-of-type(even)::after {
   display: none;
 }
 
-@media (min-width: 641px) {
+@media (min-width: 573px) {
   .rsvp-message-break {
     display: initial;
   }
