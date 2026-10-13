@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Lora:wght@400;500;600&family=Pacifico&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="site.css?v=20260926-shared-menu">
+    <link rel="stylesheet" href="site.css?v=20261002-rsvp-box-spacing">
   </head>
   <body class="page-home">
     <header class="site-header" id="home">
@@ -67,6 +67,19 @@
                 Mountain Home, TX 78058<br>
                 <a href="https://www.moonshadowhaven.com/" target="_blank" rel="noopener noreferrer">moonshadowhaven.com</a>
               </p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="travel-information">
+        <div class="rsvp-layout">
+          <article class="content-block rsvp-card rsvp-travel-info-card">
+            <p class="eyebrow">Travel</p>
+            <h3>Looking for Travel Information</h3>
+            <p class="rsvp-travel-info-card__description">Out-of-town guests will see <strong>additional event details</strong><br>and <strong>travel information</strong> after looking up their RSVP.</p>
+            <div class="button-row">
+              <a class="button" href="#rsvp-lookup">Find your invitation</a>
             </div>
           </article>
         </div>
@@ -173,7 +186,7 @@
         <h2>Find your invitation and reply here.</h2>
         <div class="rsvp-layout">
           <article class="content-block rsvp-card" data-rsvp-lookup-card>
-            <h3>Find your invitation</h3>
+            <h3 id="rsvp-lookup">Find your invitation</h3>
             <p>Enter the first and last name of one invited guest so we can find the right invitation group.</p>
             <form class="rsvp-lookup-form" data-rsvp-lookup-form novalidate>
               <div class="rsvp-form-grid">
@@ -242,18 +255,18 @@
                 <div class="rsvp-out-of-town-stack">
                   <div class="rsvp-out-of-town-card" data-rsvp-rehearsal-section hidden>
                     <h5>Rehearsal Dinner</h5>
-                    <p class="meta">Thursday, January 7th, 6 p.m.<br>at <span class="rsvp-nowrap">@MoonShadowHaven</span>.</p>
+                    <p class="meta"><strong>Thursday</strong>, January 7th, 6 p.m.<br>at <span class="rsvp-nowrap">@MoonShadowHaven</span>.</p>
                     <label class="rsvp-field"><select name="rehearsalRsvp" data-rsvp-rehearsal-select><option value="">Select one</option><option value="attending">Attending</option><option value="not-attending">Not attending</option></select></label>
                   </div>
                   <div class="rsvp-out-of-town-card" data-rsvp-open-house-section hidden>
                     <h5>Caylor Open House</h5>
-                    <p class="meta">Sunday, January 10th, 3 p.m.<br>at <span class="rsvp-nowrap">18914 La Verita</span>.</p>
+                    <p class="meta"><strong>Sunday</strong>, January 10th, 3 p.m.<br>at <span class="rsvp-nowrap">18914 La Verita, 78258</span>.</p>
                     <label class="rsvp-field"><select name="openHouseRsvp" data-rsvp-open-house-select><option value="">Select one</option><option value="attending">Attending</option><option value="not-attending">Not attending</option></select></label>
                   </div>
                 </div>
                 <div class="rsvp-out-of-town-card" data-rsvp-river-walk-section hidden>
                   <h5>River Walk Cruise</h5>
-                  <p class="meta">Saturday, January 9th, 3 p.m.</p>
+                  <p class="meta"><strong>Saturday</strong>, January 9th, 3 p.m.</p>
                   <p class="meta">We’re considering a group tour and would love to know whether there’s enough interest to arrange one. This is an interest check, not a reservation.</p>
                   <label class="rsvp-field"><span>Would your group be interested?</span><select name="riverWalkInterest" data-rsvp-river-walk-interest><option value="">Select one (optional)</option><option value="interested">Interested</option><option value="not-interested">Not interested</option></select></label>
                   <label class="rsvp-field rsvp-field--inline-select"><span>Number who may attend</span><select name="riverWalkCount" data-rsvp-river-walk-count></select></label>
@@ -277,8 +290,8 @@
               <h4 id="rsvp-volunteer-heading">Volunteer</h4>
               <p class="meta">No pressure at all—please select only what you genuinely have capacity for.</p>
               <div class="rsvp-volunteer-options">
-                <label><input type="checkbox" data-rsvp-volunteer-help value="Food setup — Friday, 3 p.m."> <span>Food setup — Friday, 3 p.m.</span></label>
-                <label><input type="checkbox" data-rsvp-volunteer-help value="Serving — Friday, 6 p.m."> <span>Serving — Friday, 6 p.m.</span></label>
+                <label><input type="checkbox" data-rsvp-volunteer-help value="Food setup — Friday, 2:30 p.m."> <span>Food setup — Friday, 2:30 p.m.</span></label>
+                <label><input type="checkbox" data-rsvp-volunteer-help value="Serving — Friday, 5 p.m."> <span>Serving — Friday, 5 p.m.</span></label>
                 <label><input type="checkbox" data-rsvp-volunteer-help value="Cleanup — Friday, 6:45 p.m."> <span>Cleanup — Friday, 6:45 p.m.</span></label>
                 <label><input type="checkbox" data-rsvp-volunteer-help value="Last-minute errands — Friday"> <span>Last-minute errands — Friday</span></label>
                 <label><input type="checkbox" data-rsvp-volunteer-help value="Prayer support"> <span>Prayer support</span></label>

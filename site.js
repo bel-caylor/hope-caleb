@@ -296,6 +296,26 @@ function getSavedRsvpLookupNames() {
   }
 }
 
+function clearRsvpGuestContext() {
+  try { window.sessionStorage.removeItem(RSVP_LOOKUP_STORAGE_KEY); } catch (_) {}
+
+  const url = new URL(window.location.href);
+  const hadGuestParams = url.searchParams.has("firstName") || url.searchParams.has("lastName");
+  url.searchParams.delete("firstName");
+  url.searchParams.delete("lastName");
+  if (hadGuestParams) {
+    window.history.replaceState({}, "", url);
+  }
+
+  document.querySelectorAll(".section-nav a[href]").forEach((link) => {
+    const destination = new URL(link.getAttribute("href"), window.location.href);
+    if (destination.origin !== window.location.origin) return;
+    destination.searchParams.delete("firstName");
+    destination.searchParams.delete("lastName");
+    link.href = destination.toString();
+  });
+}
+
 function preserveRsvpLookupInMenuLinks() {
   const { firstName, lastName } = getSavedRsvpLookupNames();
 
@@ -697,13 +717,16 @@ if (rsvpLookupForm && rsvpResponseForm) {
   });
 
   rsvpChangePartyButton?.addEventListener("click", () => {
+    clearRsvpGuestContext();
     clearTravelAccess();
+    rsvpState.lookupFirstName = "";
+    rsvpState.lookupLastName = "";
+    rsvpState.matches = [];
+    rsvpState.selectedGroup = null;
+    if (rsvpLookupForm) rsvpLookupForm.reset();
     showRsvpLookupCard();
     hideRsvpEditor();
     hideGroupPicker();
-    if (rsvpState.matches.length > 1) {
-      renderGroupPicker(rsvpState.matches);
-    }
   });
 
   hydrateRsvpLookupFromUrl();
