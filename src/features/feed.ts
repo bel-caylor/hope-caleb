@@ -1258,7 +1258,8 @@ function getPublicLookupGroupRecord(
     return null;
   }
 
-  const fromSheet = groups.find((group) => String(group.group || "").trim() === groupName);
+  const matchingGroups = groups.filter((group) => String(group.group || "").trim() === groupName);
+  const fromSheet = matchingGroups[0];
   if (fromSheet) {
     return {
       // Preserve the latest saved group RSVP fields that were merged into the
@@ -1272,7 +1273,10 @@ function getPublicLookupGroupRecord(
       invitedRehearsal: fromSheet.invitedRehearsal,
       invitedOpenHouse: fromSheet.invitedOpenHouse,
       childrenCount: fromSheet.childrenCount,
-      maxPlusOnes: fromSheet.maxPlusOnes,
+      // Duplicate household rows describe the same invitation. Keep the largest
+      // explicit household allowance, independent of spreadsheet row order;
+      // summing would incorrectly multiply that invitation's allowance.
+      maxPlusOnes: String(Math.max(...matchingGroups.map((group) => normalizeWholeNumber(group.maxPlusOnes)))),
       weddingRsvp: fromSheet.weddingRsvp,
       rehearsalRsvp: fromSheet.rehearsalRsvp,
       openHouseRsvp: fromSheet.openHouseRsvp,
