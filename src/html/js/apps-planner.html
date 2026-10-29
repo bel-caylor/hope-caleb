@@ -224,8 +224,6 @@
   let workspaceCaptureRecognition = null;
   let workspaceDraftRefineRecognition = null;
   const workspaceInlineVoiceRecognitions = new Map();
-  const BED_SAVE_DEBOUNCE_MS = 500;
-  const bedSaveTimers = new Map();
   const bedSaveChains = new Map();
   // Completion clicks can happen faster than an Apps Script write completes.
   // Keep one save pipeline per task so an older "checked" response cannot
@@ -4747,14 +4745,6 @@
     bed[field] = String(value || "").trim();
   }
 
-  function clearBedSaveTimer(key) {
-    const timer = bedSaveTimers.get(key);
-    if (timer) {
-      window.clearTimeout(timer);
-      bedSaveTimers.delete(key);
-    }
-  }
-
   async function commitBedInputValue(input, value) {
     if (!input) return;
 
@@ -4791,30 +4781,8 @@
     return nextChain;
   }
 
-  function scheduleBedInputSave(input) {
-    if (!input) return;
-    applyBedInputAppearance(input);
-
-    const key = getBedCellKey(input.dataset.bedId, input.dataset.bedField);
-    clearBedSaveTimer(key);
-
-    const pendingValue = String(input.value || "");
-    const timer = window.setTimeout(async () => {
-      bedSaveTimers.delete(key);
-      try {
-        await commitBedInputValue(input, pendingValue);
-      } catch (error) {
-        setStatus(bedsInlineStatusEl, error.message || "Unable to save bed assignment.", "error");
-      }
-    }, BED_SAVE_DEBOUNCE_MS);
-
-    bedSaveTimers.set(key, timer);
-  }
-
   async function flushBedInputSave(input) {
     if (!input) return;
-    const key = getBedCellKey(input.dataset.bedId, input.dataset.bedField);
-    clearBedSaveTimer(key);
     applyBedInputAppearance(input);
     return commitBedInputValue(input, input.value);
   }
@@ -11713,21 +11681,10 @@ function sortTables(items) {
     setStatus(bedStatusEl, `Editing ${bed.lodging} ${bed.room} ${bed.bedLabel}.`, "success");
   });
 
-  bedsListEl.addEventListener("change", async (event) => {
-    const input = event.target.closest("[data-bed-field]");
-    if (!input) return;
-
-    try {
-      await flushBedInputSave(input);
-    } catch (error) {
-      setStatus(bedsInlineStatusEl, error.message || "Unable to save bed assignment.", "error");
-    }
-  });
-
   bedsListEl.addEventListener("input", (event) => {
     const input = event.target.closest("[data-bed-field]");
     if (!input) return;
-    scheduleBedInputSave(input);
+    applyBedInputAppearance(input);
   });
 
   bedsListEl.addEventListener("focusout", async (event) => {
@@ -11741,18 +11698,12 @@ function sortTables(items) {
     }
   });
 
-  bedsListEl.addEventListener("keydown", async (event) => {
+  bedsListEl.addEventListener("keydown", (event) => {
     const input = event.target.closest("[data-bed-field]");
     if (!input || event.key !== "Enter") return;
 
     event.preventDefault();
     input.blur();
-
-    try {
-      await flushBedInputSave(input);
-    } catch (error) {
-      setStatus(bedsInlineStatusEl, error.message || "Unable to save bed assignment.", "error");
-    }
   });
 
   tablesListEl.addEventListener("click", async (event) => {
