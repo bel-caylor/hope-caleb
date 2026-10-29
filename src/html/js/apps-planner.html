@@ -8455,6 +8455,7 @@
           if (savedAsset?.id) cachedWorkspaceAssets.push(savedAsset);
         }
         savePlannerSessionCache();
+        renderWorkspaceEventPage();
         setStatus(workspaceStatusEl, pendingWorkspaceTaskPhotos.length ? `Task and ${pendingWorkspaceTaskPhotos.length} snapshot${pendingWorkspaceTaskPhotos.length === 1 ? "" : "s"} saved.` : "Task updated.", "success");
       } catch (error) {
         upsertCachedWorkspaceTask(existingTask);
