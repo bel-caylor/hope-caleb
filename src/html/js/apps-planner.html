@@ -6812,11 +6812,12 @@
               ${String(event.location || "").trim() ? `<div><strong>${escapeHtml(event.location)}</strong></div>` : ""}
               ${incompleteTasks.length ? `<div class="workspace-event-directory__tasks" aria-label="Open tasks">${incompleteTasks.map((task) => {
                 const assignee = getWorkspaceTaskAssigneeLabel(task.assignedUserIds || task.assignedUserId);
-                return `<label class="workspace-event-directory__task">
+                return `<div class="workspace-event-directory__task">
                   ${renderWorkspaceTaskCompletionCheckbox(task)}
                   <strong>${escapeHtml(task.title || "Untitled task")}</strong>
+                  ${workspaceTaskPhotoAssets(task.id).length ? `<button class="button button--icon button--light workspace-task-photo-button" type="button" data-calendar-task-photos="${escapeHtml(task.id)}" aria-label="View photos for ${escapeHtml(task.title || "task")}" title="View task photos"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="15" rx="2"></rect><path d="M8 5l1.5-2h5L16 5"></path><circle cx="12" cy="12.5" r="3.2"></circle></svg></button>` : ""}
                   ${assignee !== "Unassigned" ? `<span>— ${escapeHtml(assignee)}</span>` : ""}
-                </label>`;
+                </div>`;
               }).join("")}</div>` : ""}
               ${inviteeNames.length ? `<div class="workspace-event-directory__invitees"><strong>${escapeHtml(inviteeNames.join(", "))}</strong></div>` : ""}
             </div>
@@ -12053,6 +12054,30 @@ function sortTables(items) {
       setStatus(workspaceStatusEl, "Task marked complete.", "success");
     } catch (error) {
       setStatus(workspaceStatusEl, error.message || "Unable to complete this task.", "error");
+    }
+  });
+
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-calendar-task-photos]");
+    const modal = document.querySelector("#calendarTaskPhotosModal");
+    if (button && modal) {
+      event.preventDefault();
+      const task = cachedWorkspaceTasks.find((item) => String(item.id || "") === button.dataset.calendarTaskPhotos);
+      if (!task) return;
+      modal.querySelector("h3").textContent = `${task.title || "Task"} photos`;
+      const content = modal.querySelector("[data-calendar-task-photo-content]");
+      content.innerHTML = workspaceTaskPhotoAssets(task.id).map((asset, index) => `<img class="workspace-task-image-modal__image" src="${escapeHtml(displayImageUrl(asset.assetUrl))}" data-workspace-asset-image="${escapeHtml(asset.id)}" alt="Photo ${index + 1} attached to ${escapeHtml(task.title || "task")}">`).join("");
+      hydrateWorkspaceTodoSnapshots(content);
+      modal.hidden = false;
+      modal.setAttribute("aria-hidden", "false");
+      modal.querySelector("button").focus();
+      modal.__returnFocus = button;
+    }
+    if (event.target.closest("[data-close-calendar-task-photos]") && modal) {
+      modal.hidden = true;
+      modal.setAttribute("aria-hidden", "true");
+      modal.querySelector("[data-calendar-task-photo-content]").replaceChildren();
+      modal.__returnFocus?.focus();
     }
   });
 
