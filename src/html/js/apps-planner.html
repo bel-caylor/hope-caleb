@@ -336,18 +336,6 @@
     }
   }
 
-  function sortBeds(items) {
-    return [...items].sort((left, right) => {
-      const orderDelta = Number(left.sortOrder || 0) - Number(right.sortOrder || 0);
-      if (orderDelta !== 0) {
-        return orderDelta;
-      }
-      return `${left.lodging || ""} ${left.room || ""} ${left.bedLabel || ""}`.localeCompare(
-        `${right.lodging || ""} ${right.room || ""} ${right.bedLabel || ""}`
-      );
-    });
-  }
-
   function upsertItemById(items, nextItem) {
     const nextId = String(nextItem?.id || "").trim();
     if (!nextId) {
@@ -432,7 +420,12 @@
   }
 
   function upsertCachedBed(bed, options = {}) {
-    cachedBeds = sortBeds(upsertItemById(cachedBeds, bed));
+    const existingIndex = cachedBeds.findIndex((item) => item.id === bed?.id);
+    if (existingIndex >= 0) {
+      cachedBeds = cachedBeds.map((item, index) => index === existingIndex ? bed : item);
+    } else if (bed?.id) {
+      cachedBeds = [...cachedBeds, bed];
+    }
     if (options.render !== false) {
       rerenderBedData();
     }
@@ -4642,14 +4635,17 @@
       return;
     }
 
+    // Group only adjacent cabin rows so the spreadsheet order stays intact.
     const groups = cachedBeds.reduce((acc, bed) => {
-      const key = String(bed.lodging || "Other");
-      if (!acc[key]) {
-        acc[key] = [];
+      const lodging = String(bed.lodging || "Other");
+      const previous = acc[acc.length - 1];
+      if (previous && previous.lodging === lodging) {
+        previous.beds.push(bed);
+      } else {
+        acc.push({ lodging, beds: [bed] });
       }
-      acc[key].push(bed);
       return acc;
-    }, {});
+    }, []);
 
     bedsListEl.innerHTML = `
       <div class="guest-table-wrap bed-table-wrap">
@@ -4663,7 +4659,7 @@
               <th>Friday</th>
             </tr>
           </thead>
-          ${Object.entries(groups).map(([lodging, beds]) => `
+          ${groups.map(({ lodging, beds }) => `
             <tbody class="bed-table__group-body">
               ${beds.map((bed, index) => `
                 <tr>
@@ -9028,7 +9024,7 @@
         label: "Beds",
         run: () => backendRequest("listBeds", {}),
         apply: (items) => {
-          cachedBeds = sortBeds(Array.isArray(items) ? items : []);
+          cachedBeds = Array.isArray(items) ? items : [];
         }
       },
       {
@@ -9262,7 +9258,7 @@
     cachedPeople = sortByUpdated(Array.isArray(planner.people) ? planner.people : [], "updatedAt");
     cachedEvents = sortEvents(Array.isArray(planner.events) ? planner.events : []);
     cachedShots = sortShots(Array.isArray(planner.shots) ? planner.shots : []);
-    cachedBeds = sortBeds(Array.isArray(planner.beds) ? planner.beds : []);
+    cachedBeds = Array.isArray(planner.beds) ? planner.beds : [];
     cachedTodos = sortTodos(Array.isArray(planner.todos) ? planner.todos : []);
     cachedEventLists = sortEventLists(Array.isArray(planner.eventLists) ? planner.eventLists : []);
     cachedTables = sortTables(Array.isArray(planner.tables) ? planner.tables : []);
