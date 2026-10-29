@@ -35,6 +35,7 @@ type SaveBedInput = {
   bedLabel?: string;
   bedType?: string;
   capacity?: number | string;
+  wednesday?: string;
   thursday?: string;
   friday?: string;
   notes?: string;
@@ -407,6 +408,7 @@ function mapBedRow(row: Record<string, unknown>) {
     bedLabel: String(row.BedLabel || ""),
     bedType: String(row.BedType || ""),
     capacity: Number(row.Capacity || 0),
+    wednesday: String(row.Wednesday || ""),
     thursday: String(row.Thursday || ""),
     friday: String(row.Friday || ""),
     notes: String(row.Notes || ""),
@@ -820,6 +822,7 @@ function ensureBedsSheet() {
         return bed.bedType;
       case "Capacity":
         return bed.capacity;
+      case "Wednesday":
       case "Thursday":
       case "Friday":
         return "";
@@ -981,6 +984,7 @@ export function saveBed(input: SaveBedInput) {
     BedLabel: String(input.bedLabel || "").trim(),
     BedType: String(input.bedType || "").trim(),
     Capacity: Number(input.capacity || 0),
+    Wednesday: String(input.wednesday ?? existing?.wednesday ?? "").trim(),
     Thursday: String(input.thursday || "").trim(),
     Friday: String(input.friday || "").trim(),
     Notes: String(input.notes || "").trim(),

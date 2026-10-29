@@ -75,6 +75,7 @@ export const BED_HEADERS = [
   "BedLabel",
   "BedType",
   "Capacity",
+  "Wednesday",
   "Thursday",
   "Friday",
   "Notes",
