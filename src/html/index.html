@@ -4544,6 +4544,27 @@
 
       /* The planner header is fixed above ordinary dialogs. Keep photo previews
          above it so the top of a tall image is never obscured. */
+      .task-photo-loading-status {
+        min-height: 160px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+      }
+      .task-photo-loading-status[hidden] { display: none; }
+      .task-photo-spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid #d8b9c0;
+        border-top-color: #91304f;
+        border-radius: 50%;
+        animation: task-photo-spin 0.8s linear infinite;
+      }
+      @keyframes task-photo-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        .task-photo-spinner { animation: none; }
+      }
+
       #todoPhotoViewerModal {
         z-index: 70;
       }

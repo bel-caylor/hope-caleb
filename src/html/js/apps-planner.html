@@ -1707,12 +1707,30 @@
     void Promise.all(images.map(async (image) => {
       const id = String(image.dataset.workspaceAssetImage || "").trim();
       if (!id) return;
+      const loadingFrame = image.closest("[data-photo-loading-frame]");
+      const loadImage = (src) => new Promise((resolve) => {
+        image.onload = () => resolve(true);
+        image.onerror = () => resolve(false);
+        image.src = src;
+      });
+      let dataUrl = "";
       try {
         const response = await backendRequest("getWorkspaceAssetImage", { id });
-        const dataUrl = String(response?.dataUrl || "").trim();
-        if (dataUrl.startsWith("data:image/")) image.src = dataUrl;
+        dataUrl = String(response?.dataUrl || "").trim();
+        if (!loadingFrame && dataUrl.startsWith("data:image/")) image.src = dataUrl;
       } catch (_) {
         // The direct image URL remains available as a fallback.
+      }
+      if (loadingFrame) {
+        let loaded = dataUrl.startsWith("data:image/") && await loadImage(dataUrl);
+        if (!loaded) loaded = await loadImage(image.dataset.photoFallback);
+        loadingFrame.setAttribute("aria-busy", "false");
+        image.hidden = !loaded;
+        const status = loadingFrame.querySelector("[role=status]");
+        status.hidden = Boolean(loaded);
+        if (!loaded) status.textContent = "Unable to load photo. Close and reopen to try again.";
+        image.onload = null;
+        image.onerror = null;
       }
     }));
   }
@@ -12066,7 +12084,7 @@ function sortTables(items) {
       if (!task) return;
       modal.querySelector("h3").textContent = `${task.title || "Task"} photos`;
       const content = modal.querySelector("[data-calendar-task-photo-content]");
-      content.innerHTML = workspaceTaskPhotoAssets(task.id).map((asset, index) => `<img class="workspace-task-image-modal__image" src="${escapeHtml(displayImageUrl(asset.assetUrl))}" data-workspace-asset-image="${escapeHtml(asset.id)}" alt="Photo ${index + 1} attached to ${escapeHtml(task.title || "task")}">`).join("");
+      content.innerHTML = workspaceTaskPhotoAssets(task.id).map((asset, index) => `<div class="task-photo-loading-frame" data-photo-loading-frame aria-busy="true"><p class="task-photo-loading-status" role="status"><span class="task-photo-spinner" aria-hidden="true"></span>Loading photo…</p><img class="workspace-task-image-modal__image" hidden data-photo-fallback="${escapeHtml(displayImageUrl(asset.assetUrl))}" data-workspace-asset-image="${escapeHtml(asset.id)}" alt="Photo ${index + 1} attached to ${escapeHtml(task.title || "task")}"></div>`).join("");
       hydrateWorkspaceTodoSnapshots(content);
       modal.hidden = false;
       modal.setAttribute("aria-hidden", "false");
