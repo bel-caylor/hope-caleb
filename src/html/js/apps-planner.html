@@ -218,6 +218,9 @@
   let workspaceCalendarMonth = String(window.sessionStorage.getItem(STORAGE_KEYS.workspaceCalendarMonth) || "").trim();
   let plannerCacheHydrated = false;
   let plannerDataReady = false;
+  let plannerRefreshPromise = null;
+  let plannerLastRefreshAt = 0;
+  const PLANNER_REFRESH_INTERVAL_MS = 60 * 1000;
   let workspaceCaptureRecognition = null;
   let workspaceDraftRefineRecognition = null;
   const workspaceInlineVoiceRecognitions = new Map();
@@ -8765,6 +8768,7 @@
     window.sessionStorage.setItem(STORAGE_KEYS.authToken, credential);
     googleCredentialPromptPending = false;
     plannerReconnectGoogleButton.hidden = true;
+    plannerLastRefreshAt = 0;
     const cacheShown = showCachedPlannerWhileVerifying(getGoogleCredentialEmail(credential));
     setStatus(plannerLoginStatusEl, "Checking Google account access...", "pending");
 
@@ -9282,7 +9286,15 @@
     rerenderGuestDrivenEventUi();
   }
 
-  async function maybeLoadPlannerData() {
+  function maybeLoadPlannerData() {
+    if (currentView !== "planner" || !canUsePlanner()) return Promise.resolve();
+    if (plannerRefreshPromise) return plannerRefreshPromise;
+    if (plannerDataReady && Date.now() - plannerLastRefreshAt < PLANNER_REFRESH_INTERVAL_MS) return Promise.resolve();
+    plannerRefreshPromise = loadPlannerData().finally(() => { plannerRefreshPromise = null; });
+    return plannerRefreshPromise;
+  }
+
+  async function loadPlannerData() {
     if (currentView !== "planner" || !canUsePlanner()) {
       plannerContentEl.hidden = currentView !== "planner" || !canUsePlanner();
       return;
@@ -9292,7 +9304,7 @@
       plannerLoadingMessageEl.textContent = "Loading your dashboard…";
     }
 
-    if (restorePlannerSessionCache()) {
+    if (!plannerDataReady && restorePlannerSessionCache()) {
       renderRestoredPlannerCache();
       plannerDataReady = true;
       renderRoute();
@@ -9327,6 +9339,10 @@
       }
     } catch (error) {
       if (/Your Google session needs a quick refresh/i.test(String(error?.message || ""))) {
+        if (plannerDataReady) {
+          setStatus(plannerSyncStatusEl, "Showing saved data. Select Reconnect Google to resume updates.", "pending");
+          return;
+        }
         clearStoredAuthToken();
         viewerProfile = {
           signedIn: false,
@@ -9345,8 +9361,12 @@
         setStatus(plannerLoginStatusEl, "Your Google session expired. Select Reconnect Google to sign in again.", "pending");
         return;
       }
+      if (plannerDataReady) {
+        setStatus(plannerSyncStatusEl, `Showing saved data. ${error.message || "Updates are temporarily unavailable."}`, "pending");
+        return;
+      }
       if (plannerLoadingMessageEl) {
-        console.error("Planner bootstrap rendered unsuccessfully after a successful backend response.", error);
+        console.error("Unable to refresh the planner dashboard.", error);
         plannerLoadingMessageEl.textContent = "We couldn’t load your dashboard. Please refresh and try again.";
       }
       setStatus(plannerSyncStatusEl, error.message || "Unable to load planner data.", "error");
@@ -9354,6 +9374,7 @@
     }
     if (!rsvpFeedConnected) await refreshRsvps();
     savePlannerSessionCache();
+    plannerLastRefreshAt = Date.now();
     plannerDataReady = true;
     renderRoute();
     plannerContentEl.hidden = false;
@@ -12448,7 +12469,10 @@ function sortTables(items) {
     }
   });
 
-  window.addEventListener("load", async () => {
+  // GIS may finish loading later, but saved data must not wait for images or
+  // third-party scripts to complete the window load event.
+  window.addEventListener("load", renderGoogleSignIn);
+  async function startPlanner() {
     renderGoogleSignIn();
     const hasStoredToken = hasStoredPlannerSession();
     const cacheShown = hasStoredToken && showCachedPlannerWhileVerifying();
@@ -12467,5 +12491,12 @@ function sortTables(items) {
     renderPlannerVersionInfo();
     await maybeLoadPlannerData();
     await refreshPlannerVersionInfo();
+  }
+  void startPlanner();
+  window.setInterval(() => {
+    if (document.visibilityState === "visible" && hasStoredPlannerSession()) void maybeLoadPlannerData();
+  }, PLANNER_REFRESH_INTERVAL_MS);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && hasStoredPlannerSession()) void maybeLoadPlannerData();
   });
 </script>
